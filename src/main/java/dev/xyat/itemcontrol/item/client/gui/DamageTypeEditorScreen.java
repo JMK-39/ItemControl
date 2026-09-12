@@ -202,10 +202,12 @@ public final class DamageTypeEditorScreen extends KineticScreen {
             int x = LIST_X;
             int y = LIST_Y + row * ROW_PITCH - shift;
             boolean hovered = contains(mouseX, mouseY, x, y, LIST_W, ROW_H);
-            graphics.fill(x, y, x + LIST_W, y + ROW_H, hovered ? 0xFF2A2A2A : 0xFF161616);
-            graphics.renderOutline(x, y, LIST_W, ROW_H, hovered ? 0xFFAAAAAA : 0xFF555555);
-
             String value = entries.get(index);
+            boolean valid = isValidDamageEntry(value);
+            int outline = hovered ? 0xFF55AAFF : (valid ? 0xFF55FF55 : 0xFFFF5555);
+            graphics.fill(x, y, x + LIST_W, y + ROW_H, hovered ? 0xFF2A2A2A : 0xFF161616);
+            graphics.renderOutline(x, y, LIST_W, ROW_H, outline);
+
             String display = displayName(value, dictionary);
             graphics.drawString(font, font.plainSubstrByWidth(display, LIST_W - 10), x + 5, y + 6, 0xFFFFFF, false);
         }
@@ -226,6 +228,22 @@ public final class DamageTypeEditorScreen extends KineticScreen {
         );
     }
 
+    private static boolean isValidDamageEntry(String value) {
+        if (value == null || value.isBlank()) return false;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) return false;
+        var registry = minecraft.level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
+        String raw = value.trim();
+        boolean tag = raw.startsWith("#");
+        String idText = tag ? raw.substring(1) : raw;
+        ResourceLocation id = ResourceLocation.tryParse(idText);
+        if (id == null) return false;
+        if (tag) {
+            return registry.getTagNames().anyMatch(key -> key.location().equals(id));
+        }
+        return registry.containsKey(id);
+    }
+
     private static String displayName(String value, List<String> dictionary) {
         String name = KineticSearch.dictionaryName(value, dictionary);
         return name.equals(value) ? value : value + " - " + name;
@@ -236,10 +254,13 @@ public final class DamageTypeEditorScreen extends KineticScreen {
         int index = rowIndexAt(scaledMouseX, scaledMouseY);
         if (index < 0) return;
         String value = entries.get(index);
-        GuiOverlay.requestTooltip(List.of(
-                        Component.literal(value),
-                        Component.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.remove")
-                ), mouseX, mouseY);
+        List<Component> tooltip = new ArrayList<>();
+        tooltip.add(Component.literal(value));
+        if (!isValidDamageEntry(value)) {
+            tooltip.add(Component.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.invalid"));
+        }
+        tooltip.add(Component.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.remove"));
+        GuiOverlay.requestTooltip(tooltip, mouseX, mouseY);
     }
 
     @Override

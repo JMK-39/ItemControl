@@ -51,9 +51,9 @@ public final class TrashBinButtonEditorScreen extends KineticNativeScreen {
 
         editor.addControlButtons(
                 this::addRenderableWidget,
-                Component.translatable("gui.itemcontrol.cleaner.cleaner.trash_bin_button_editor.save"),
-                Component.translatable("gui.itemcontrol.cleaner.cleaner.trash_bin_button_editor.reset"),
-                Component.translatable("gui.itemcontrol.cleaner.cleaner.trash_bin_button_editor.cancel"),
+                Component.translatable("gui.itemcontrol.cleaner.trash_bin_button_editor.save"),
+                Component.translatable("gui.itemcontrol.cleaner.trash_bin_button_editor.reset"),
+                Component.translatable("gui.itemcontrol.cleaner.trash_bin_button_editor.cancel"),
                 this::saveAndClose,
                 this::closeWithoutSaving
         );

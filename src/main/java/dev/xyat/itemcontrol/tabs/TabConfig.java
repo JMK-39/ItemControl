@@ -106,16 +106,7 @@ public class TabConfig {
     }
 
     public static boolean isValidForServer(Data value) {
-        if (!isStructurallyValid(value)) return false;
-        if (value.removals.stream().anyMatch(rule -> !isValidRemovalRule(rule))) return false;
-        if (value.hiddenTabs.stream().anyMatch(tab -> !isValidTabId(tab))) return false;
-        for (TabAddition addition : value.additions) {
-            if (!isValidTabId(addition.tabId)) return false;
-            for (TabItem item : addition.items) {
-                if (!isValidTabItem(item)) return false;
-            }
-        }
-        return true;
+        return isStructurallyValid(value);
     }
 
     private static boolean isStructurallyValid(Data value) {
