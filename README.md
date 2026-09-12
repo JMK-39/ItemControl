@@ -18,12 +18,11 @@ The project is designed around in-game administration. Where a feature changes s
 - Visual item selection and inspection through the KineticCore UI toolkit.
 - Optional KubeJS and JEI interoperability where supported by the active feature.
 
-### Requirements and Compatibility
+### Dependencies
 
 | Type | Dependency |
 |---|---|
-| Required | Minecraft 1.20.1 |
-| Required | Minecraft Forge 47+ |
+| Required | Forge 47.4.0+ |
 | Required | KineticCore 26.9.8+ |
 | Optional | KubeJS |
 | Optional | JEI |
@@ -267,12 +266,11 @@ Primary configuration/data paths:
 - 使用 KineticCore GUI 提供可视化物品选择与信息读取。
 - 相关功能可选兼容 KubeJS 与 JEI。
 
-### 运行环境与兼容
+### 依赖
 
 | 类型 | 依赖 |
 |---|---|
-| 必需 | Minecraft 1.20.1 |
-| 必需 | Minecraft Forge 47+ |
+| 必需 | Forge 47.4.0+ |
 | 必需 | KineticCore 26.9.8+ |
 | 可选 | KubeJS |
 | 可选 | JEI |
