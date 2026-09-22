@@ -18,7 +18,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -34,8 +33,6 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 public class ItemManagementMixins {
-    private static final Logger LOGGER = LogManager.getLogger("itemcontrol/BanItem");
-
     @Mixin(Slot.class)
     public static class SlotMixin {
         @Inject(method = "set", at = @At("HEAD"))
@@ -62,7 +59,7 @@ public class ItemManagementMixins {
                     itemcontrol_item$clearSlotStack(stack);
                 }
             } catch (Throwable e) {
-                LOGGER.error("槽位封禁检查异常，已跳过本次检查。phase={} stack={}", phase, stack, e);
+                LogManager.getLogger("itemcontrol/BanItem").error("槽位封禁检查异常，已跳过本次检查。phase={} stack={}", phase, stack, e);
             }
         }
 
@@ -110,7 +107,7 @@ public class ItemManagementMixins {
             try {
                 replacementItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(targetId));
             } catch (Throwable e) {
-                LOGGER.error("物品合并目标解析失败，target={}", replacement, e);
+                LogManager.getLogger("itemcontrol/BanItem").error("物品合并目标解析失败，target={}", replacement, e);
                 return;
             }
 
@@ -182,7 +179,7 @@ public class ItemManagementMixins {
                         try {
                             JsonTraverser.replaceIds(element, stringRules);
                         } catch (Throwable e) {
-                            LOGGER.error("数据包 JSON ID 替换失败，已跳过单个 JSON", e);
+                            LogManager.getLogger("itemcontrol/BanItem").error("数据包 JSON ID 替换失败，已跳过单个 JSON", e);
                         }
                     }
                 }

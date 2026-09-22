@@ -2,14 +2,13 @@ package dev.xyat.itemcontrol.cleaner.area;
 
 import dev.xyat.itemcontrol.cleaner.Network.CleanerNetwork;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.PlayerEvent;
+import dev.xyat.kineticcore.api.event.KineticEventPriority;
+import dev.xyat.kineticcore.api.server.event.KineticServerEvents;
+import dev.xyat.kineticcore.api.text.KineticI18n;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,7 +26,7 @@ public class CleanerAreaManager {
             return;
         }
         registered = true;
-        MinecraftForge.EVENT_BUS.addListener(CleanerAreaManager::onPlayerLogin);
+        KineticServerEvents.onPlayerLogin(KineticEventPriority.NORMAL, CleanerAreaManager::onPlayerLogin);
     }
 
     public static void handleToolAction(ServerPlayer player, int action, BlockPos pos) {
@@ -75,12 +74,12 @@ public class CleanerAreaManager {
             START_POINTS.remove(player.getUUID());
             END_POINTS.remove(player.getUUID());
             CleanerNetwork.sendToPlayer(new CleanerNetwork.ClearAreaSelection(), player);
-            notify(player, "msg.itemcontrol.cleaner.cleaner.area.owner", gold(found.ownerName()));
+            notify(player, "msg.itemcontrol.cleaner.cleaner.area.owner", (found.ownerName()));
             return;
         }
         START_POINTS.put(player.getUUID(), pos);
         END_POINTS.remove(player.getUUID());
-        notify(player, "msg.itemcontrol.cleaner.cleaner.area.start", aqua(pos.getX()), aqua(pos.getY()), aqua(pos.getZ()), green(getRemainingGridCount(player)));
+        notify(player, "msg.itemcontrol.cleaner.cleaner.area.start", (pos.getX()), (pos.getY()), (pos.getZ()), (getRemainingGridCount(player)));
     }
 
     private static void selectEnd(ServerPlayer player, BlockPos pos) {
@@ -91,7 +90,7 @@ public class CleanerAreaManager {
         CleanerArea found = findArea(player.serverLevel(), pos);
         if (found != null && !found.ownerId().equals(player.getUUID())) {
             clearServerAndClientSelection(player);
-            notify(player, "msg.itemcontrol.cleaner.cleaner.area.overlap_other", gold(found.ownerName()));
+            notify(player, "msg.itemcontrol.cleaner.cleaner.area.overlap_other", (found.ownerName()));
             return;
         }
         BlockPos start = START_POINTS.get(player.getUUID());
@@ -100,12 +99,12 @@ public class CleanerAreaManager {
             CleanerArea other = findOverlappedOtherArea(player.serverLevel(), preview, player.getUUID());
             if (other != null) {
                 clearServerAndClientSelection(player);
-                notify(player, "msg.itemcontrol.cleaner.cleaner.area.overlap_other", gold(other.ownerName()));
+                notify(player, "msg.itemcontrol.cleaner.cleaner.area.overlap_other", (other.ownerName()));
                 return;
             }
         }
         END_POINTS.put(player.getUUID(), pos);
-        notify(player, "msg.itemcontrol.cleaner.cleaner.area.end", aqua(pos.getX()), aqua(pos.getY()), aqua(pos.getZ()), green(getRemainingGridCountAfterPreview(player, pos)));
+        notify(player, "msg.itemcontrol.cleaner.cleaner.area.end", (pos.getX()), (pos.getY()), (pos.getZ()), (getRemainingGridCountAfterPreview(player, pos)));
     }
 
     private static void saveSelection(ServerPlayer player) {
@@ -124,7 +123,7 @@ public class CleanerAreaManager {
         for (CleanerArea old : data.getAreas()) {
             if (selectedArea.overlaps(old) && !old.ownerId().equals(player.getUUID())) {
                 clearServerAndClientSelection(player);
-                notify(player, "msg.itemcontrol.cleaner.cleaner.area.overlap_other", gold(old.ownerName()));
+                notify(player, "msg.itemcontrol.cleaner.cleaner.area.overlap_other", (old.ownerName()));
                 return;
             }
         }
@@ -140,7 +139,7 @@ public class CleanerAreaManager {
 
         if ((long) realUsedAfterRemove + cost > limit) {
             clearServerAndClientSelection(player);
-            notify(player, "msg.itemcontrol.cleaner.cleaner.area.too_large", yellow(realUsedAfterRemove), red(cost), yellow(limit), green(Math.max(0, limit - realUsedAfterRemove)));
+            notify(player, "msg.itemcontrol.cleaner.cleaner.area.too_large", realUsedAfterRemove, cost, limit, (Math.max(0, limit - realUsedAfterRemove)));
             return;
         }
 
@@ -149,7 +148,7 @@ public class CleanerAreaManager {
         }
         data.addArea(finalArea);
         clearServerAndClientSelection(player);
-        notify(player, "msg.itemcontrol.cleaner.cleaner.area.saved", yellow(cost), green(Math.max(0, limit - realUsedAfterRemove - cost)));
+        notify(player, "msg.itemcontrol.cleaner.cleaner.area.saved", cost, (Math.max(0, limit - realUsedAfterRemove - cost)));
         syncAll(player.server);
     }
 
@@ -208,10 +207,10 @@ public class CleanerAreaManager {
         if (target.ownerId().equals(player.getUUID()) || isAdmin(player)) {
             data.removeArea(target);
             clearServerAndClientSelection(player);
-            notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_one", gold(target.ownerName()), green(getRemainingGridCount(player)));
+            notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_one", (target.ownerName()), (getRemainingGridCount(player)));
             syncAll(player.server);
         } else {
-            notify(player, "msg.itemcontrol.cleaner.cleaner.area.not_owner", gold(target.ownerName()));
+            notify(player, "msg.itemcontrol.cleaner.cleaner.area.not_owner", (target.ownerName()));
         }
     }
 
@@ -219,7 +218,7 @@ public class CleanerAreaManager {
         CleanerAreaSavedData data = CleanerAreaSavedData.get(player.serverLevel());
         int removed = data.removeByOwner(player.getUUID());
         clearServerAndClientSelection(player);
-        notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_self", yellow(removed), green(getRemainingGridCount(player)));
+        notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_self", removed, (getRemainingGridCount(player)));
         syncAll(player.server);
     }
 
@@ -232,7 +231,7 @@ public class CleanerAreaManager {
         int removed = data.clearAllAreas();
         START_POINTS.clear();
         END_POINTS.clear();
-        notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_all", yellow(removed));
+        notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_all", removed);
         syncAll(player.server);
     }
 
@@ -293,28 +292,8 @@ public class CleanerAreaManager {
     }
 
 
-    private static Component gold(Object value) {
-        return Component.literal(String.valueOf(value)).withStyle(ChatFormatting.GOLD);
-    }
-
-    private static Component yellow(Object value) {
-        return Component.literal(String.valueOf(value)).withStyle(ChatFormatting.YELLOW);
-    }
-
-    private static Component green(Object value) {
-        return Component.literal(String.valueOf(value)).withStyle(ChatFormatting.GREEN);
-    }
-
-    private static Component red(Object value) {
-        return Component.literal(String.valueOf(value)).withStyle(ChatFormatting.RED);
-    }
-
-    private static Component aqua(Object value) {
-        return Component.literal(String.valueOf(value)).withStyle(ChatFormatting.AQUA);
-    }
-
     private static void notify(ServerPlayer player, String key, Object... args) {
-        CleanerNetwork.sendToPlayer(new CleanerNetwork.NotifyToast(Component.translatable(key, args)), player);
+        CleanerNetwork.sendToPlayer(new CleanerNetwork.NotifyToast(KineticI18n.translatable(key, args)), player);
     }
 
     public static void syncAll(MinecraftServer server) {
@@ -328,9 +307,7 @@ public class CleanerAreaManager {
         CleanerNetwork.sendToPlayer(new CleanerNetwork.SyncCleanerAreas(data.getAreas()), player);
     }
 
-    private static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            syncTo(player);
-        }
+    private static void onPlayerLogin(ServerPlayer player) {
+        syncTo(player);
     }
 }

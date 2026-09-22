@@ -118,7 +118,7 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
         }
 
         @Override
-        public @NotNull ItemStack addItem(ItemStack pStack) {
+        public @NotNull ItemStack addItem(@Nonnull ItemStack pStack) {
             ItemStack itemstack = pStack.copy();
             this.moveItemToOccupiedSlotsWithSameType(itemstack);
             if (itemstack.isEmpty()) {

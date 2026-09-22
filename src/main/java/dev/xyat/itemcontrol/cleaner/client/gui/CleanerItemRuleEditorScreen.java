@@ -1,12 +1,14 @@
 package dev.xyat.itemcontrol.cleaner.client.gui;
 
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
 import dev.xyat.kineticcore.api.client.theme.GuiTheme;
-import dev.xyat.kineticcore.api.client.overlay.GuiOverlay;
-import dev.xyat.kineticcore.api.client.selector.ItemSelectorScreen;
+import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.selector.KineticSelectors;
 import dev.xyat.kineticcore.api.client.screen.KineticScreen;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets.GridScrollController;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
+import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -16,7 +18,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -87,6 +88,7 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
     ) {
         super(Component.translatable(mode.titleKey));
         this.parent = parent;
+        setParentScreen(parent);
         this.mode = mode;
         this.saveHandler = saveHandler;
         if (initialRules != null) {
@@ -98,7 +100,6 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
             }
         }
         useCanvas(640F, 360F, 6);
-        maxScale = 1.0F;
         configureStandaloneDraft(
                 this::ruleValues,
                 this::restoreRuleValues
@@ -125,36 +126,39 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
     protected void buildUi() {
         updateScrollRange();
 
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.add"),
-                        button -> openItemSelector())
-                .bounds(34, 328, 104, 20)
-                .build());
+        addButton(
+                34, 328, 104,
+                Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.add"),
+                null,
+                this::openItemSelector
+        );
 
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.save"),
-                        button -> save())
-                .bounds(432, 328, 80, 20)
-                .build());
+        addButton(
+                432, 328, 80,
+                Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.save"),
+                null,
+                this::save
+        );
 
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.back"),
-                        button -> closeToParent())
-                .bounds(522, 328, 80, 20)
-                .build());
+        addButton(
+                522, 328, 80,
+                Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.back"),
+                null,
+                this::closeToParent
+        );
     }
 
     private void openItemSelector() {
         if (minecraft == null) return;
-        minecraft.setScreen(new ItemSelectorScreen(this, selection -> {
+        KineticSelectors.openItemSelector(this, selection -> {
             if (selection == null) return;
             String value = selectionValue(selection);
             if (value.isBlank()) {
-                GuiOverlay.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.invalid_selection"));
+                KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.invalid_selection"));
                 return;
             }
             if (!mode.groupRules && !selection.isItem()) {
-                GuiOverlay.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.item_only"));
+                KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.item_only"));
                 return;
             }
             if (mode.singleItem) {
@@ -168,20 +172,20 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
             if (row >= gridScroll.offset() + GRID_ROWS) {
                 gridScroll.setOffset(row - GRID_ROWS + 1);
             }
-        }));
+        });
     }
 
-    private String selectionValue(ItemSelectorScreen.Selection selection) {
+    private String selectionValue(KineticSelectors.ItemSelection selection) {
         if (selection.isTag()) return "#" + selection.value().trim();
         if (selection.isMod()) return "@" + selection.value().trim();
         if (!selection.isItem()) return "";
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(selection.stack().getItem());
+        ResourceLocation id = KineticRegistries.items().id(selection.stack().getItem());
         return id == null ? "" : id.toString();
     }
 
     private void save() {
         if (mode.singleItem && rules.isEmpty()) {
-            GuiOverlay.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.area_tool_required"));
+            KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.area_tool_required"));
             return;
         }
         List<String> values = new ArrayList<>(rules.size());
@@ -190,22 +194,23 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
         }
         try {
             if (!Boolean.TRUE.equals(saveHandler.apply(values))) {
-                GuiOverlay.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
+                KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
             } else {
                 commitDraft();
             }
         } catch (Throwable throwable) {
-            GuiOverlay.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
+            KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
         }
     }
 
     private void closeToParent() {
-        if (minecraft != null) minecraft.setScreen(parent);
+        if (minecraft != null) navigateBack();
     }
 
     @Override
-    public void onClose() {
+    protected boolean handleCloseRequest() {
         closeToParent();
+        return true;
     }
 
     private void updateScrollRange() {
@@ -215,17 +220,17 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
 
     @Override
     protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, canvasWidth, canvasHeight, 0xFF171717, 0xFF0E0E0E);
-        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0xEE1C1C1C, 0xFFAAAAAA);
-        GuiTheme.panel(graphics, GRID_X - 6, GRID_Y - 6, GRID_W + 12, GRID_H + 12, 0xEE101010, 0xFF777777);
+        graphics.fillGradient(0, 0, canvasWidth(), canvasHeight(), 0xFF171717, 0xFF0E0E0E);
+        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
+        GuiTheme.panel(graphics, GRID_X - 6, GRID_Y - 6, GRID_W + 12, GRID_H + 12);
     }
 
     @Override
     protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.drawCenteredString(font, title, canvasWidth / 2, 11, 0xFFFFFF);
+        graphics.drawCenteredString(font, title, canvasWidth() / 2, 11, 0xFFFFFF);
         renderGrid(graphics, mouseX, mouseY);
         if (rules.isEmpty()) {
-            graphics.drawCenteredString(font, Component.translatable(mode.emptyKey), canvasWidth / 2, 164, 0xFFFFFF);
+            graphics.drawCenteredString(font, Component.translatable(mode.emptyKey), canvasWidth() / 2, 164, 0xFFFFFF);
         }
         graphics.drawString(font, Component.translatable(
                 mode.groupRules
@@ -251,11 +256,11 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
             boolean hovered = contains(mouseX, mouseY, GRID_X, GRID_Y, GRID_W, GRID_H)
                     && contains(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE);
             ItemStack stack = rules.get(index).preview();
-            GuiTheme.itemSlot(graphics, stack, x, y, SLOT_SIZE, 4, hovered);
+            GuiTheme.itemSlot(graphics, x, y, SLOT_SIZE, 4, hovered);
             GuiTheme.item(graphics, font, stack, x, y, SLOT_SIZE, 1.0F, true);
             }
         } finally {
-            graphics.disableScissor();
+            disableCanvasScissor(graphics);
         }
 
         updateScrollRange();
@@ -267,10 +272,7 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
                 GRID_Y,
                 4,
                 GRID_H,
-                18,
-                GuiTheme.current().scrollTrack(),
-                GuiTheme.current().scrollThumb(),
-                GuiTheme.current().scrollThumbHover()
+                18
         );
     }
 
@@ -280,7 +282,7 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
         if (index >= 0) {
             RuleDraft rule = rules.get(index);
             if (rule.value.startsWith("#") || rule.value.startsWith("@")) {
-                GuiOverlay.requestTooltip(List.of(
+                KineticOverlays.requestTooltip(List.of(
                                 rule.preview().getHoverName(),
                                 Component.literal(rule.value),
                                 Component.translatable(rule.value.startsWith("#")
@@ -288,18 +290,18 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
                                         : "gui.itemcontrol.cleaner.item_rule_editor.type.mod")
                         ), mouseX, mouseY);
             } else {
-                GuiOverlay.requestItemTooltip(rule.preview(), mouseX, mouseY);
+                KineticOverlays.requestItemTooltip(rule.preview(), mouseX, mouseY);
             }
         }
     }
 
     @Override
     protected boolean canvasMouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && gridScroll.beginDrag(mouseX, mouseY, SCROLL_X, GRID_Y, 4, GRID_H, 18, 0)) {
+        if (KineticMouseButtons.isPrimary(button) && gridScroll.beginDrag(mouseX, mouseY, SCROLL_X, GRID_Y, 4, GRID_H, 18, 0)) {
             return true;
         }
         int index = gridIndexAt(mouseX, mouseY);
-        if (index >= 0 && button == 1) {
+        if (index >= 0 && KineticMouseButtons.isSecondary(button)) {
             rules.remove(index);
             updateScrollRange();
             return true;
@@ -361,8 +363,8 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
         private static ItemStack createPreview(String value) {
             if (value.startsWith("@")) {
                 String namespace = value.substring(1).trim();
-                for (Item item : ForgeRegistries.ITEMS.getValues()) {
-                    ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+                for (Item item : KineticRegistries.items().values()) {
+                    ResourceLocation id = KineticRegistries.items().id(item);
                     if (id != null && id.getNamespace().equals(namespace) && item != Items.AIR) {
                         return new ItemStack(item);
                     }
@@ -373,7 +375,7 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
                 ResourceLocation tagId = ResourceLocation.tryParse(value.substring(1).trim());
                 if (tagId != null) {
                     var tag = ItemTags.create(tagId);
-                    for (Item item : ForgeRegistries.ITEMS.getValues()) {
+                    for (Item item : KineticRegistries.items().values()) {
                         if (item == Items.AIR) continue;
                         ItemStack stack = new ItemStack(item);
                         if (stack.is(tag)) return stack;
@@ -383,7 +385,7 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
             }
             ResourceLocation id = ResourceLocation.tryParse(value);
             if (id == null) return new ItemStack(Items.BARRIER);
-            Item item = ForgeRegistries.ITEMS.getValue(id);
+            Item item = KineticRegistries.items().get(id);
             if (item == null || item == Items.AIR) return new ItemStack(Items.BARRIER);
             return new ItemStack(item);
         }

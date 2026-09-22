@@ -2,12 +2,16 @@ package dev.xyat.itemcontrol.cleaner.event;
 
 import dev.xyat.itemcontrol.cleaner.area.CleanerAreaSavedData;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import dev.xyat.kineticcore.api.event.KineticEventPriority;
+import dev.xyat.kineticcore.api.player.KineticPlayerMessages;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.server.event.KineticServerEvents;
+import dev.xyat.kineticcore.api.text.KineticI18n;
+import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,13 +19,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -40,7 +37,7 @@ public class AutoCleanerEventHandler {
 
     private static int autoTicksUntilNextClean = -1;
     private static int manualTickCounter = -1;
-    private static String manualInitiatorName = "";
+    private static Component manualInitiatorName = Component.empty();
     private static boolean trackingRulesDirty = false;
     private static boolean registered = false;
     private static CleanupSession activeSession;
@@ -50,16 +47,16 @@ public class AutoCleanerEventHandler {
             return;
         }
         registered = true;
-        MinecraftForge.EVENT_BUS.addListener(AutoCleanerEventHandler::onLevelLoad);
-        MinecraftForge.EVENT_BUS.addListener(AutoCleanerEventHandler::onLevelUnload);
-        MinecraftForge.EVENT_BUS.addListener(AutoCleanerEventHandler::onEntityJoin);
-        MinecraftForge.EVENT_BUS.addListener(AutoCleanerEventHandler::onEntityLeave);
-        MinecraftForge.EVENT_BUS.addListener(AutoCleanerEventHandler::onServerStopping);
-        MinecraftForge.EVENT_BUS.addListener(AutoCleanerEventHandler::onServerTick);
+        KineticWorldEvents.onLevelLoad(KineticEventPriority.NORMAL, AutoCleanerEventHandler::onLevelLoad);
+        KineticWorldEvents.onLevelUnload(KineticEventPriority.NORMAL, AutoCleanerEventHandler::onLevelUnload);
+        KineticWorldEvents.onEntityJoin(KineticEventPriority.NORMAL, context -> onEntityJoin(context.entity()));
+        KineticWorldEvents.onEntityLeave(KineticEventPriority.NORMAL, (entity, level) -> onEntityLeave(entity));
+        KineticServerEvents.onStopping(KineticEventPriority.NORMAL, AutoCleanerEventHandler::onServerStopping);
+        KineticServerEvents.onTick(KineticEventPriority.NORMAL, KineticServerEvents.TickPhase.END, AutoCleanerEventHandler::onServerTick);
     }
 
-    private static void onLevelLoad(LevelEvent.Load event) {
-        if (event.getLevel() instanceof ServerLevel level) {
+    private static void onLevelLoad(net.minecraft.world.level.LevelAccessor levelAccess) {
+        if (levelAccess instanceof ServerLevel level) {
             getTrackedEntities(level);
             if (autoTicksUntilNextClean == -1) {
                 resetTimer();
@@ -67,29 +64,28 @@ public class AutoCleanerEventHandler {
         }
     }
 
-    private static void onLevelUnload(LevelEvent.Unload event) {
-        if (event.getLevel() instanceof ServerLevel level) {
+    private static void onLevelUnload(net.minecraft.world.level.LevelAccessor levelAccess) {
+        if (levelAccess instanceof ServerLevel level) {
             TRACKED_ENTITIES.remove(level);
         }
     }
 
-    private static void onEntityJoin(EntityJoinLevelEvent event) {
-        if (event.getLevel() instanceof ServerLevel level && shouldTrack(event.getEntity())) {
-            getTrackedEntities(level).add(event.getEntity());
+    private static void onEntityJoin(Entity entity) {
+        if (entity.level() instanceof ServerLevel level && shouldTrack(entity)) {
+            getTrackedEntities(level).add(entity);
         }
     }
 
-    private static void onEntityLeave(EntityLeaveLevelEvent event) {
-        if (event.getLevel() instanceof ServerLevel level) {
+    private static void onEntityLeave(Entity entity) {
+        if (entity.level() instanceof ServerLevel level) {
             Set<Entity> tracked = TRACKED_ENTITIES.get(level);
             if (tracked != null) {
-                tracked.remove(event.getEntity());
+                tracked.remove(entity);
             }
         }
     }
 
-    private static void onServerStopping(ServerStoppingEvent event) {
-        MinecraftServer server = event.getServer();
+    private static void onServerStopping(MinecraftServer server) {
         TRACKED_ENTITIES.keySet().removeIf(level -> level.getServer() == server);
         if (activeSession != null && activeSession.server == server) {
             activeSession = null;
@@ -97,7 +93,7 @@ public class AutoCleanerEventHandler {
         trackingRulesDirty = false;
         autoTicksUntilNextClean = -1;
         manualTickCounter = -1;
-        manualInitiatorName = "";
+        manualInitiatorName = Component.empty();
     }
 
     public static void onCleanerRulesChanged() {
@@ -124,38 +120,34 @@ public class AutoCleanerEventHandler {
 
     public static void triggerManualClean(ServerPlayer player) {
         if (CleanerConfig.isCleanerHardDisabled) {
-            player.sendSystemMessage(Component.translatable("msg.itemcontrol.cleaner.cleaner.hard_disabled_moe").withStyle(ChatFormatting.RED));
+            KineticPlayerMessages.system(player, KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.hard_disabled_moe"));
             return;
         }
 
         if (!CleanerConfig.allowManualClean && !player.hasPermissions(2)) {
-            player.sendSystemMessage(Component.translatable("msg.itemcontrol.cleaner.cleaner.manual.locked").withStyle(ChatFormatting.RED));
+            KineticPlayerMessages.system(player, KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.manual.locked"));
             return;
         }
 
         if (manualTickCounter > 0 || isAutoCleanImminent()) {
-            player.sendSystemMessage(Component.translatable("msg.itemcontrol.cleaner.cleaner.manual.busy").withStyle(ChatFormatting.YELLOW));
+            KineticPlayerMessages.system(player, KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.manual.busy"));
             return;
         }
 
         manualTickCounter = MANUAL_DELAY_SECONDS * 20;
-        manualInitiatorName = player.getName().getString();
+        manualInitiatorName = player.getDisplayName().copy();
+        broadcastActionBar(player.server, manualInitiatorName, MANUAL_DELAY_SECONDS, false);
 
-        player.sendSystemMessage(Component.translatable("msg.itemcontrol.cleaner.cleaner.manual.confirmed").withStyle(ChatFormatting.GREEN));
+        KineticPlayerMessages.system(player, KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.manual.confirmed"));
     }
 
-    private static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
+    private static void onServerTick(MinecraftServer server) {
         if (CleanerConfig.isCleanerHardDisabled) {
             activeSession = null;
             manualTickCounter = -1;
             return;
         }
 
-        MinecraftServer server = event.getServer();
         rebuildTrackingIfNeeded(server);
 
         if (activeSession != null) {
@@ -185,7 +177,7 @@ public class AutoCleanerEventHandler {
             if (autoTicksUntilNextClean > 0
                     && autoTicksUntilNextClean <= 200
                     && autoTicksUntilNextClean % 20 == 0) {
-                broadcastActionBar(server, "Auto", autoTicksUntilNextClean / 20, true);
+                broadcastActionBar(server, Component.empty(), autoTicksUntilNextClean / 20, true);
             }
             if (autoTicksUntilNextClean == 0) {
                 clearActionBar(server);
@@ -236,7 +228,7 @@ public class AutoCleanerEventHandler {
         if (!CleanerConfig.enableEntityCleaning) {
             return false;
         }
-        ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        ResourceLocation id = KineticRegistries.entityTypes().id(entity.getType());
         return CleanerConfig.shouldCleanEntity(id);
     }
 
@@ -244,7 +236,7 @@ public class AutoCleanerEventHandler {
         if (entity instanceof ItemEntity || entity instanceof ExperienceOrb) {
             return true;
         }
-        ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        ResourceLocation id = KineticRegistries.entityTypes().id(entity.getType());
         return CleanerConfig.shouldCleanEntity(id);
     }
 
@@ -276,78 +268,64 @@ public class AutoCleanerEventHandler {
         trackingRulesDirty = false;
     }
 
-    private static void broadcastActionBar(MinecraftServer server, String initiator, int seconds, boolean isAuto) {
-        ChatFormatting timeColor = seconds <= 3 ? ChatFormatting.RED : ChatFormatting.YELLOW;
-        Component secondsText = Component.literal(String.valueOf(seconds)).withStyle(timeColor, ChatFormatting.BOLD);
-
+    private static void broadcastActionBar(MinecraftServer server, Component initiator, int seconds, boolean isAuto) {
         String key;
-        Component msg;
+        Component message;
+        // Give the numeral its own fully localized color, without relying on
+        // styling propagation from the surrounding translatable message.
+        Component coloredNumber = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.countdown.number." + seconds);
         if (isAuto) {
             key = seconds <= 3
                     ? "msg.itemcontrol.cleaner.cleaner.actionbar.auto.urgent"
-                    : "msg.itemcontrol.cleaner.cleaner.actionbar.auto.normal";
-            msg = Component.translatable(key, secondsText);
+                    : seconds <= 6
+                            ? "msg.itemcontrol.cleaner.cleaner.actionbar.auto.yellow"
+                            : "msg.itemcontrol.cleaner.cleaner.actionbar.auto.normal";
+            message = KineticI18n.translatable(key, coloredNumber);
         } else {
             key = seconds <= 3
                     ? "msg.itemcontrol.cleaner.cleaner.actionbar.manual.urgent"
-                    : "msg.itemcontrol.cleaner.cleaner.actionbar.manual.normal";
-            Component initiatorText = Component.literal(initiator).withStyle(ChatFormatting.GOLD);
-            msg = Component.translatable(key, initiatorText, secondsText);
+                    : seconds <= 6
+                            ? "msg.itemcontrol.cleaner.cleaner.actionbar.manual.yellow"
+                            : "msg.itemcontrol.cleaner.cleaner.actionbar.manual.normal";
+            message = KineticI18n.translatable(key, initiator, coloredNumber);
         }
-        server.getPlayerList().getPlayers().forEach(player -> player.displayClientMessage(msg, true));
+        server.getPlayerList().getPlayers().forEach(player -> KineticPlayerMessages.display(player, message, true));
     }
 
     private static void clearActionBar(MinecraftServer server) {
-        server.getPlayerList().getPlayers()
-                .forEach(player -> player.displayClientMessage(Component.empty(), true));
+        server.getPlayerList().getPlayers().forEach(player -> KineticPlayerMessages.display(player, Component.empty(), true));
     }
 
     private static void broadcastSystemMessage(MinecraftServer server) {
-        server.getPlayerList().broadcastSystemMessage(
-                Component.translatable(
-                        "msg.itemcontrol.cleaner.cleaner.warning",
-                        Component.literal("10").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
-                ).withStyle(ChatFormatting.YELLOW),
-                false);
+        Component message = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.warning", KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.countdown.number.10"));
+        server.getPlayerList().getPlayers().forEach(player -> KineticPlayerMessages.system(player, message));
     }
 
     private static void broadcastResult(MinecraftServer server, CleanResult result) {
-        if (result.itemCount <= 0 && result.entityCount <= 0) {
-            return;
-        }
+        if (result.itemCount <= 0 && result.entityCount <= 0) return;
 
-        MutableComponent msg = Component.translatable("msg.itemcontrol.cleaner.cleaner.result.header")
-                .withStyle(ChatFormatting.GREEN);
-
-        if (result.itemCount > 0) {
-            msg.append(Component.translatable(
-                    "msg.itemcontrol.cleaner.cleaner.result.items",
-                    Component.literal(String.valueOf(result.itemCount))
-                            .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
-        }
+        Component resultLine;
         if (result.itemCount > 0 && result.entityCount > 0) {
-            msg.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY));
-        }
-        if (result.entityCount > 0) {
-            msg.append(Component.translatable(
-                    "msg.itemcontrol.cleaner.cleaner.result.entities",
-                    Component.literal(String.valueOf(result.entityCount))
-                            .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
+            resultLine = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.result.both", result.itemCount, result.entityCount);
+        } else if (result.itemCount > 0) {
+            resultLine = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.result.items", result.itemCount);
+        } else {
+            resultLine = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.result.entities", result.entityCount);
         }
 
+        net.minecraft.network.chat.MutableComponent message = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.result.header").copy()
+                .append(resultLine);
         if (CleanerConfig.enableTrashBin && result.itemCount > 0) {
-            msg.append("\n").append(Component.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.link")
+            Component link = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.link").copy()
                     .withStyle(style -> style
-                            .withColor(ChatFormatting.GOLD)
-                            .withBold(true)
-                            .withUnderlined(true)
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/kt clean bin"))
                             .withHoverEvent(new HoverEvent(
                                     HoverEvent.Action.SHOW_TEXT,
-                                    Component.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.hover")
-                                            .withStyle(ChatFormatting.GOLD)))));
+                                    KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.hover")
+                            )));
+            message.append("\n").append(link);
         }
-        server.getPlayerList().broadcastSystemMessage(msg, false);
+        server.getPlayerList().getPlayers().forEach(player -> KineticPlayerMessages.system(player, message));
     }
 
     public record CleanResult(int itemCount, int entityCount) {
@@ -459,7 +437,7 @@ public class AutoCleanerEventHandler {
                 }
 
                 if (CleanerConfig.enableEntityCleaning) {
-                    ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+                    ResourceLocation id = KineticRegistries.entityTypes().id(entity.getType());
                     if (CleanerConfig.shouldCleanEntity(id)) {
                         entity.discard();
                         session.addEntity();

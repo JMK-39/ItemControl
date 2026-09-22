@@ -1,18 +1,22 @@
 package dev.xyat.itemcontrol.item.event;
 
-import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.util.ItemBanControl;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import dev.xyat.kineticcore.api.event.KineticEventPriority;
+import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
 
-@Mod.EventBusSubscriber(modid = ItemModule.MODID)
-public class WorldLoadEventHandler {
+public final class WorldLoadEventHandler {
+    private static boolean registered;
 
-    @SubscribeEvent
-    public static void onLevelLoad(LevelEvent.Load event) {
-        if (!ItemBanControl.isReplacementEnabled()) {
-            ItemBanControl.setReplacementEnabled(true);
-        }
+    private WorldLoadEventHandler() {
+    }
+
+    public static void register() {
+        if (registered) return;
+        registered = true;
+        KineticWorldEvents.onLevelLoad(KineticEventPriority.NORMAL, level -> {
+            if (!ItemBanControl.isReplacementEnabled()) {
+                ItemBanControl.setReplacementEnabled(true);
+            }
+        });
     }
 }

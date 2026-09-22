@@ -1,14 +1,14 @@
 package dev.xyat.itemcontrol.item.kubejs;
 
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraftforge.fml.ModList;
+import dev.xyat.kineticcore.api.runtime.KineticPlatform;
 
 public final class ItemModuleKubeJSCompat {
     private ItemModuleKubeJSCompat() {
     }
 
     public static boolean postItemRemoved(ItemEntity entity) {
-        if (!ModList.get().isLoaded("kubejs")) {
+        if (!KineticPlatform.isModLoaded("kubejs")) {
             return false;
         }
         return Proxy.postItemRemoved(entity);

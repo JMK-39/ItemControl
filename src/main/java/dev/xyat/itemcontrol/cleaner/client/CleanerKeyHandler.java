@@ -1,31 +1,34 @@
 package dev.xyat.itemcontrol.cleaner.client;
 
-import dev.xyat.itemcontrol.cleaner.CleanerModule;
 import dev.xyat.itemcontrol.cleaner.Network.CleanerNetwork;
-import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 
-@Mod.EventBusSubscriber(modid = CleanerModule.MODID, value = Dist.CLIENT)
-public class CleanerKeyHandler {
-
+public final class CleanerKeyHandler {
     private static int cooldown = 0;
+    private static boolean installed;
 
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    private CleanerKeyHandler() {
+    }
 
+    public static void install() {
+        if (installed) return;
+        installed = true;
+        KineticClientEvents.onTick(KineticClientEvents.TickPhase.END, CleanerKeyHandler::onClientTick);
+    }
+
+    private static void onClientTick() {
         if (cooldown > 0) {
             cooldown--;
         }
+    }
 
-        while (CleanerKeyBindings.CLEANER_KEY.consumeClick()) {
-            if (cooldown == 0 && Minecraft.getInstance().player != null) {
-                CleanerNetwork.sendToServer(new CleanerNetwork.CleanerRequest());
-                cooldown = 20; // 1秒冷却
-            }
+    public static boolean handleCleanerPress() {
+        if (cooldown != 0 || KineticClientRuntime.localPlayer() == null) {
+            return false;
         }
+        CleanerNetwork.sendToServer(new CleanerNetwork.CleanerRequest());
+        cooldown = 20;
+        return true;
     }
 }

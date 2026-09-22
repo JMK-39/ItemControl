@@ -1,25 +1,23 @@
 package dev.xyat.itemcontrol.cleaner;
 
-import dev.xyat.itemcontrol.cleaner.CleanerModule;
 import dev.xyat.itemcontrol.cleaner.area.CleanerAreaManager;
 import dev.xyat.itemcontrol.cleaner.client.gui.CleanerMenu;
 import dev.xyat.itemcontrol.cleaner.event.AutoCleanerEventHandler;
+import dev.xyat.kineticcore.api.registry.KineticMenuTypes;
+import dev.xyat.kineticcore.api.registry.KineticRegistryHandle;
+import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.common.extensions.IForgeMenuType;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
-public class CleanerInit {
-    public static final DeferredRegister<MenuType<?>> MENUS =
-            DeferredRegister.create(ForgeRegistries.MENU_TYPES, CleanerModule.MODID);
+public final class CleanerInit {
+    public static final KineticRegistryHandle<MenuType<CleanerMenu>> TRASH_BIN = KineticMenuTypes.register(
+            KineticResourceIds.of(CleanerModule.MODID, "trash_bin"),
+            (windowId, inventory, data) -> new CleanerMenu(windowId, inventory)
+    );
 
-    public static final RegistryObject<MenuType<CleanerMenu>> TRASH_BIN =
-            MENUS.register("trash_bin", () -> IForgeMenuType.create((windowId, inv, data) -> new CleanerMenu(windowId, inv)));
+    private CleanerInit() {
+    }
 
-    public static void register(IEventBus eventBus) {
-        MENUS.register(eventBus);
+    public static void register() {
         AutoCleanerEventHandler.register();
         CleanerAreaManager.register();
     }

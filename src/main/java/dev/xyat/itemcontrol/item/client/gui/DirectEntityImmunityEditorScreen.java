@@ -1,23 +1,26 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
-import dev.xyat.kineticcore.api.client.overlay.GuiOverlay;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
+import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.search.KineticSearch;
 import dev.xyat.kineticcore.api.client.theme.GuiTheme;
 import dev.xyat.kineticcore.api.client.screen.KineticScreen;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets.EntityPreviewRenderer;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets.GridScrollController;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
+import dev.xyat.kineticcore.api.client.widget.KineticControl;
+import dev.xyat.kineticcore.api.client.widget.render.KineticEntityPreview.EntityPreviewRenderer;
+import dev.xyat.kineticcore.api.client.widget.KineticWidgets;
+import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
+import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticEditBox;
+import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -49,9 +52,6 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
     private static final int GRID_W = GRID_COLS * CELL_PITCH;
     private static final int GRID_H = GRID_ROWS * CELL_PITCH;
     private static final int SCROLL_X = GRID_X + GRID_W + 3;
-    private static final int SELECTED_OUTLINE = 0xFF55FF55;
-    private static final int HOVER_OUTLINE = 0xFFAAAAAA;
-    private static final int NORMAL_OUTLINE = 0xFF555555;
 
     private final Screen parent;
     private final Set<String> selectedEntries = new LinkedHashSet<>();
@@ -59,12 +59,12 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
     private final List<GridEntry> displayEntries = new ArrayList<>();
     private final Map<String, String> searchData = new HashMap<>();
     private final GridScrollController scroll = new GridScrollController();
-    private final EntityPreviewRenderer previewRenderer = new EntityPreviewRenderer(160, 0.72F, 0.9F);
+    private final EntityPreviewRenderer previewRenderer = KineticWidgets.createEntityPreviewRenderer(160, EntityPreviewRenderer.DEFAULT_FILL_RATIO, EntityPreviewRenderer.DEFAULT_MAX_AUTO_SCALE_FACTOR);
 
-    private EditBox searchBox;
-    private Button specialRuleButton;
-    private Button saveButton;
-    private Button backButton;
+    private KineticEditBox searchBox;
+    private StateButton specialRuleButton;
+    private StateButton saveButton;
+    private StateButton backButton;
     private boolean saving;
 
     public DirectEntityImmunityEditorScreen(Screen parent, List<String> initialEntries) {
@@ -76,7 +76,7 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
             }
         }
 
-        ForgeRegistries.ENTITY_TYPES.getKeys().stream()
+        KineticRegistries.entityTypes().ids().stream()
                 .map(ResourceLocation::toString)
                 .sorted(String::compareToIgnoreCase)
                 .forEach(allEntityIds::add);
@@ -86,7 +86,7 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
         allEntityIds.sort(String::compareToIgnoreCase);
         buildSearchData();
         useCanvas(640F, 360F, 6);
-        dev.xyat.kineticcore.api.client.screen.GuiSession.setParent(this, parent);
+        setParentScreen(parent);
         configureDraft(() -> new LinkedHashSet<>(selectedEntries), this::restoreSelectedEntries);
     }
 
@@ -98,30 +98,31 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
 
     @Override
     protected void buildUi() {
-        searchBox = addRenderableWidget(new EditBox(font, SEARCH_X, SEARCH_Y, SEARCH_W, 20, Component.empty()));
+        searchBox = addTextField(SEARCH_X, SEARCH_Y, SEARCH_W, Component.empty());
+        searchBox.setPlaceholder(Component.translatable("gui.itemcontrol.item.direct_entity_editor.search.hint"));
         searchBox.setMaxLength(512);
         searchBox.setResponder(value -> refreshDisplay(true));
 
-        specialRuleButton = addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.item.direct_entity_editor.tag.add"),
-                        button -> toggleTagFromSearch())
-                .bounds(SPECIAL_X, SEARCH_Y, SPECIAL_W, 20)
-                .tooltip(Tooltip.create(Component.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.tag")))
-                .build());
+        specialRuleButton = addButton(
+                SPECIAL_X, SEARCH_Y, SPECIAL_W,
+                Component.translatable("gui.itemcontrol.item.direct_entity_editor.tag.add"),
+                Component.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.tag"),
+                this::toggleTagFromSearch
+        );
 
-        saveButton = addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.item.direct_entity_editor.save"),
-                        button -> save())
-                .bounds(500, 30, 52, 20)
-                .tooltip(Tooltip.create(Component.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.save")))
-                .build());
+        saveButton = addButton(
+                500, 30, 52,
+                Component.translatable("gui.itemcontrol.item.direct_entity_editor.save"),
+                Component.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.save"),
+                this::save
+        );
 
-        backButton = addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.item.direct_entity_editor.back"),
-                        button -> onClose())
-                .bounds(558, 30, 56, 20)
-                .tooltip(Tooltip.create(Component.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.back")))
-                .build());
+        backButton = addButton(
+                558, 30, 56,
+                Component.translatable("gui.itemcontrol.item.direct_entity_editor.back"),
+                Component.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.back"),
+                this::onClose
+        );
 
         refreshDisplay(false);
     }
@@ -130,7 +131,7 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
         searchData.clear();
         for (String id : allEntityIds) {
             ResourceLocation location = ResourceLocation.tryParse(id);
-            EntityType<?> type = location == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(location);
+            EntityType<?> type = location == null ? null : KineticRegistries.entityTypes().get(location);
             String name = type == null ? id : type.getDescription().getString();
             String raw = id + " " + name;
             searchData.put(id, (raw + " " + KineticSearch.pinyin(raw)).toLowerCase(Locale.ROOT));
@@ -174,9 +175,9 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
         if (specialRuleButton == null || searchBox == null) return;
         String value = searchBox.getValue().trim();
         boolean isTag = isValidTagIdentifier(value);
-        specialRuleButton.visible = value.startsWith("#");
-        specialRuleButton.active = isTag;
-        specialRuleButton.setMessage(Component.translatable(selectedEntries.contains(value)
+        ((KineticControl) specialRuleButton).setVisible(value.startsWith("#"));
+        ((KineticControl) specialRuleButton).setEnabled(isTag);
+        ((KineticControl) specialRuleButton).setText(Component.translatable(selectedEntries.contains(value)
                 ? "gui.itemcontrol.item.direct_entity_editor.tag.remove"
                 : "gui.itemcontrol.item.direct_entity_editor.tag.add"));
     }
@@ -203,13 +204,13 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
     private void save() {
         if (saving) return;
         saving = true;
-        if (saveButton != null) saveButton.active = false;
+        if (saveButton != null) ((KineticControl) saveButton).setEnabled(false);
         ItemNetwork.saveDirectEntitySources(new ArrayList<>(selectedEntries));
     }
 
     public void applySaveResult(boolean success, List<String> serverEntries) {
         saving = false;
-        if (saveButton != null) saveButton.active = true;
+        if (saveButton != null) ((KineticControl) saveButton).setEnabled(true);
         if (!success) return;
         selectedEntries.clear();
         if (serverEntries != null) {
@@ -222,21 +223,14 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
     }
 
     @Override
-    public void onClose() {
+    protected void screenRemoved() {
         previewRenderer.clear();
-        super.onClose();
-    }
-
-    @Override
-    public void removed() {
-        previewRenderer.clear();
-        super.removed();
     }
 
     @Override
     protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, canvasWidth, canvasHeight, 0xFF171717, 0xFF0E0E0E);
-        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0xEE1C1C1C, 0xFFAAAAAA);
+        graphics.fillGradient(0, 0, canvasWidth(), canvasHeight(), 0xFF171717, 0xFF0E0E0E);
+        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
         GuiTheme.panelAlt(graphics, GRID_X - 3, GRID_Y - 3, GRID_W + 6, GRID_H + 6);
         renderGrid(graphics, mouseX, mouseY);
         GuiTheme.scrollbar(scroll, graphics, mouseX, mouseY, SCROLL_X, GRID_Y, 4, GRID_H, 18);
@@ -244,9 +238,8 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
 
     @Override
     protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.drawCenteredString(font, title, canvasWidth / 2, 9, 0xFFFFFF);
-        renderSearchHint(graphics);
-        if (specialRuleButton == null || !specialRuleButton.visible) {
+        graphics.drawCenteredString(font, title, canvasWidth() / 2, 9, 0xFFFFFF);
+        if (specialRuleButton == null || !((KineticControl) specialRuleButton).isVisible()) {
             Component count = Component.translatable(
                     "gui.itemcontrol.item.direct_entity_editor.count",
                     selectedEntries.size(),
@@ -255,12 +248,6 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
             graphics.drawString(font, count, 334, SEARCH_Y + 6, 0xFFFFFF, false);
         }
         graphics.drawString(font, Component.translatable("gui.itemcontrol.item.direct_entity_editor.hint"), 26, 342, 0xFFFFFF, false);
-    }
-
-    private void renderSearchHint(GuiGraphics graphics) {
-        if (searchBox == null || searchBox.isFocused() || !searchBox.getValue().isEmpty()) return;
-        String hint = Component.translatable("gui.itemcontrol.item.direct_entity_editor.search.hint").getString();
-        graphics.drawString(font, font.plainSubstrByWidth(hint, SEARCH_W - 8), SEARCH_X + 4, SEARCH_Y + 6, 0xFFAAAAAA, false);
     }
 
     private void renderGrid(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -291,9 +278,9 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
                         y + 3,
                         CELL_SIZE - 6,
                         CELL_SIZE - 6,
-                        canvasScale,
-                        canvasX,
-                        canvasY,
+                        canvasScale(),
+                        canvasX(),
+                        canvasY(),
                         hovered
                 );
                 if (!rendered) {
@@ -301,15 +288,15 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
                 }
             }
 
-            graphics.renderOutline(
-                    x,
-                    y,
-                    CELL_SIZE,
-                    CELL_SIZE,
-                    hovered ? HOVER_OUTLINE : selected ? SELECTED_OUTLINE : NORMAL_OUTLINE
-            );
+            if (hovered) {
+                GuiTheme.stateOutline(graphics, x, y, CELL_SIZE, CELL_SIZE, false, true, false);
+            } else if (selected) {
+                GuiTheme.indicatorOutline(graphics, x, y, CELL_SIZE, CELL_SIZE, GuiTheme.Indicator.SUCCESS);
+            } else {
+                GuiTheme.indicatorOutline(graphics, x, y, CELL_SIZE, CELL_SIZE, GuiTheme.Indicator.MUTED);
+            }
         }
-        graphics.disableScissor();
+        disableCanvasScissor(graphics);
     }
 
     @Override
@@ -323,37 +310,36 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
             lines.add(Component.literal(entry.identifier));
         } else {
             ResourceLocation id = ResourceLocation.tryParse(entry.identifier);
-            EntityType<?> type = id == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(id);
+            EntityType<?> type = id == null ? null : KineticRegistries.entityTypes().get(id);
             lines.add(type == null ? Component.literal(entry.identifier) : type.getDescription());
             lines.add(Component.literal(entry.identifier));
         }
         lines.add(Component.translatable(selectedEntries.contains(entry.identifier)
                 ? "gui.itemcontrol.item.direct_entity_editor.tooltip.selected"
                 : "gui.itemcontrol.item.direct_entity_editor.tooltip.unselected"));
-        GuiOverlay.requestTooltip(lines, mouseX, mouseY);
+        KineticOverlays.requestTooltip(lines, mouseX, mouseY);
     }
 
     @Override
     protected boolean canvasMouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && scroll.beginDrag(mouseX, mouseY, SCROLL_X, GRID_Y, 6, GRID_H, 18, 2)) return true;
+        if (KineticMouseButtons.isPrimary(button) && scroll.beginDrag(mouseX, mouseY, SCROLL_X, GRID_Y, 6, GRID_H, 18, 2)) return true;
         if (super.canvasMouseClicked(mouseX, mouseY, button)) return true;
 
         int index = gridIndexAt(mouseX, mouseY);
         if (index >= 0) {
             GridEntry entry = displayEntries.get(index);
-            if (button == 0) {
+            if (KineticMouseButtons.isPrimary(button)) {
                 toggleEntity(entry.identifier);
                 return true;
             }
-            if (button == 1 && selectedEntries.remove(entry.identifier)) {
+            if (KineticMouseButtons.isSecondary(button) && selectedEntries.remove(entry.identifier)) {
                 refreshDisplay(false);
                 return true;
             }
         }
 
         if (searchBox != null && !searchBox.isMouseOver(mouseX, mouseY)) {
-            searchBox.setFocused(false);
-            if (getFocused() == searchBox) setFocused(null);
+            blurControl(searchBox);
         }
         return false;
     }
@@ -372,7 +358,7 @@ public final class DirectEntityImmunityEditorScreen extends KineticScreen {
 
     @Override
     protected boolean canvasMouseScrolled(double mouseX, double mouseY, double delta) {
-        if (Screen.hasControlDown()) {
+        if (KineticClientRuntime.controlModifierDown()) {
             int index = gridIndexAt(mouseX, mouseY);
             if (index >= 0) {
                 GridEntry entry = displayEntries.get(index);

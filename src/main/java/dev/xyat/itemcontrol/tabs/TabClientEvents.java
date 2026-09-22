@@ -1,23 +1,26 @@
 package dev.xyat.itemcontrol.tabs;
 
+import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
 import dev.xyat.kineticcore.api.client.theme.GuiTheme;
-import dev.xyat.itemcontrol.tabs.TabsModule;
-
-import net.minecraft.client.Minecraft;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = TabsModule.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class TabClientEvents {
-
-    // ===== 通知系统逻辑 =====
+public final class TabClientEvents {
     private static Component message = null;
     private static long expireTime = 0;
+    private static boolean installed;
+
+    private TabClientEvents() {
+    }
+
+    public static void install() {
+        if (installed) return;
+        installed = true;
+        KineticClientEvents.onHudRender(KineticClientEvents.HudStage.HOTBAR, (graphics, partialTick) ->
+                renderNotificationScaled(graphics, KineticClientRuntime.guiScaledWidth(), KineticClientRuntime.font()));
+    }
 
     public static void showNotification(String langKey) {
         message = Component.translatable(langKey);
@@ -38,23 +41,9 @@ public class TabClientEvents {
 
             g.pose().pushPose();
             g.pose().translate(0, 0, 1000);
-            g.fill(x, y, x + boxWidth, y + 20, 0xEE222222);
-            g.renderOutline(x, y, boxWidth, 20, GuiTheme.current().border());
+            GuiTheme.panelAlt(g, x, y, boxWidth, 20);
             g.drawCenteredString(font, message, vWidth / 2, y + 6, 0xFFFFFF);
             g.pose().popPose();
-        }
-    }
-
-    // ===== 事件订阅逻辑 =====
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiOverlayEvent.Post event) {
-        if (event.getOverlay().id().getPath().equals("hotbar")) {
-            Minecraft mc = Minecraft.getInstance();
-            renderNotificationScaled(
-                    event.getGuiGraphics(),
-                    event.getWindow().getGuiScaledWidth(),
-                    mc.font
-            );
         }
     }
 }

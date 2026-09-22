@@ -1,29 +1,26 @@
 package dev.xyat.itemcontrol.item;
 
 import com.mojang.logging.LogUtils;
-import dev.xyat.itemcontrol.item.InitItems;
 import dev.xyat.itemcontrol.item.command.ItemCommandExtension;
+import dev.xyat.itemcontrol.item.client.ItemClientProxy;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfigGui;
+import dev.xyat.itemcontrol.item.event.ItemProtectionHandler;
+import dev.xyat.itemcontrol.item.event.VoidItemEventHandler;
+import dev.xyat.itemcontrol.item.event.WorldLoadEventHandler;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
-import dev.xyat.kineticcore.config.server.KTServerConfigApi;
-import dev.xyat.kineticcore.config.server.KTServerConfigSpec;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import dev.xyat.kineticcore.api.config.server.KTServerConfigApi;
+import dev.xyat.kineticcore.api.config.server.KTServerConfigSpec;
 import org.slf4j.Logger;
+import dev.xyat.kineticcore.api.runtime.KineticPlatform;
 
 public final class ItemModule {
     public static final String MODID = "itemcontrol";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public ItemModule(FMLJavaModLoadingContext context) {
-        IEventBus modEventBus = context.getModEventBus();
-
-        InitItems.ITEMS.register(modEventBus);
+    public ItemModule() {
+        InitItems.register();
         BanItemConfig.load();
         ItemProtectionConfig.load();
         KTServerConfigApi.register(KTServerConfigSpec.builder("itemcontrol:item_protection")
@@ -41,8 +38,14 @@ public final class ItemModule {
                 .afterSave(server -> ItemNetwork.syncServerConfigToAllPlayers())
                 .build());
         ItemNetwork.register();
+        ItemProtectionHandler.register();
+        VoidItemEventHandler.register();
+        WorldLoadEventHandler.register();
         ItemCommandExtension.install();
 
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ItemProtectionConfigGui.load());
+        KineticPlatform.runOnClient(() -> () -> {
+            ItemClientProxy.install();
+            ItemProtectionConfigGui.load();
+        });
     }
 }

@@ -1,35 +1,40 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
-import dev.xyat.itemcontrol.item.ItemModule;
-import dev.xyat.kineticcore.api.client.search.ItemSearchIndex;
-import net.minecraft.client.Minecraft;
+import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
+import dev.xyat.kineticcore.api.event.KineticEventPriority;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
+import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = ItemModule.MODID, value = Dist.CLIENT)
-public class ItemCacheHudRenderer {
+public final class ItemCacheHudRenderer {
+    private static boolean installed;
 
-    @SubscribeEvent
-    public static void onPlayerJoin(EntityJoinLevelEvent event) {
-        if (event.getLevel().isClientSide && event.getEntity() == Minecraft.getInstance().player) {
-            ItemSearchIndex.clear();
-            ItemSearchCache.clear();
-        }
+    private ItemCacheHudRenderer() {
+    }
+
+    public static void install() {
+        if (installed) return;
+        installed = true;
+        KineticWorldEvents.onEntityJoin(KineticEventPriority.NORMAL, context -> {
+            var player = KineticClientRuntime.localPlayer();
+            if (context.level().isClientSide() && player != null && context.entity() == player) {
+                KineticItemSearch.clear();
+                ItemSearchCache.clear();
+            }
+        });
     }
 
     public static Component getDisplayNameCustom(ItemStack stack) {
         if (stack.getItem() == net.minecraft.world.item.Items.ENCHANTED_BOOK) {
             try {
-                List<Component> lines = stack.getTooltipLines(Minecraft.getInstance().player, TooltipFlag.Default.NORMAL);
+                List<Component> lines = stack.getTooltipLines(KineticClientRuntime.localPlayer(), TooltipFlag.Default.NORMAL);
                 if (lines.size() > 1) return Component.translatable("gui.itemcontrol.item.common.tooltip_pair", lines.get(0), lines.get(1));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         return stack.getHoverName();
     }

@@ -1,198 +1,193 @@
 package dev.xyat.itemcontrol.tabs.network;
 
-import dev.xyat.kineticcore.api.KTNetworkProtocol;
-import dev.xyat.kineticcore.api.NetworkCompressUtil;
-import dev.xyat.kineticcore.api.client.overlay.GuiOverlay;
-import dev.xyat.itemcontrol.tabs.TabsModule;
 import dev.xyat.itemcontrol.tabs.TabConfig;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import dev.xyat.itemcontrol.tabs.TabsModule;
+import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.config.client.KTConfigApi;
+import dev.xyat.kineticcore.api.network.KineticCompression;
+import dev.xyat.kineticcore.api.network.NetworkCodec;
+import dev.xyat.kineticcore.api.network.NetworkVersionPolicy;
+import dev.xyat.kineticcore.api.network.PacketChannel;
+import dev.xyat.kineticcore.api.network.ServerPacketContext;
+import dev.xyat.kineticcore.api.resource.KineticResourceIds;
+import dev.xyat.kineticcore.api.text.KineticI18n;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
 
-import java.util.function.Supplier;
-
-public class TabNetwork {
+public final class TabNetwork {
     private static final String PROTOCOL_VERSION = "1";
+    private static final int MAX_COMPRESSED_BYTES = 2 * 1024 * 1024;
+    private static final int MAX_DECOMPRESSED_BYTES = 8 * 1024 * 1024;
+    private static final PacketChannel CHANNEL = PacketChannel.create(
+            KineticResourceIds.of(TabsModule.MODID, "tabs_sync"),
+            PROTOCOL_VERSION,
+            NetworkVersionPolicy.ANY
+    );
+    private static boolean registered;
 
-    public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
-            .named(new ResourceLocation(TabsModule.MODID, "tabs_sync"))
-            .networkProtocolVersion(() -> PROTOCOL_VERSION)
-            .clientAcceptedVersions(KTNetworkProtocol::acceptsAnyVersion)
-            .serverAcceptedVersions(KTNetworkProtocol::acceptsAnyVersion)
-            .simpleChannel();
+    private TabNetwork() {
+    }
 
     public static void register() {
-        int id = 0;
-        CHANNEL.registerMessage(id++, SyncTabPacket.class, SyncTabPacket::encode, SyncTabPacket::new, SyncTabPacket::handle);
-        CHANNEL.registerMessage(id++, SaveTabPacket.class, SaveTabPacket::encode, SaveTabPacket::new, SaveTabPacket::handle);
-        CHANNEL.registerMessage(id++, NotifyPacket.class, NotifyPacket::encode, NotifyPacket::new, NotifyPacket::handle);
-        CHANNEL.registerMessage(id++, RequestNotifyPacket.class, RequestNotifyPacket::encode, RequestNotifyPacket::new, RequestNotifyPacket::handle);
-        CHANNEL.registerMessage(id++, ClearNotifyPacket.class, ClearNotifyPacket::encode, ClearNotifyPacket::new, ClearNotifyPacket::handle);
-        CHANNEL.registerMessage(id++, OpenTabEditorPacket.class, OpenTabEditorPacket::encode, OpenTabEditorPacket::new, OpenTabEditorPacket::handle);
-        CHANNEL.registerMessage(id, RequestOpenEditorPacket.class, RequestOpenEditorPacket::encode, RequestOpenEditorPacket::new, RequestOpenEditorPacket::handle);
+        if (registered) return;
+        registered = true;
+
+        CHANNEL.registerClientbound(0, SyncTabPacket.class,
+                NetworkCodec.of(
+                        (buffer, packet) -> buffer.writeByteArray(
+                                KineticCompression.compressUtf8(packet.json(), MAX_COMPRESSED_BYTES, MAX_DECOMPRESSED_BYTES),
+                                MAX_COMPRESSED_BYTES
+                        ),
+                        buffer -> new SyncTabPacket(KineticCompression.decompressUtf8(
+                                buffer.readByteArray(MAX_COMPRESSED_BYTES), MAX_DECOMPRESSED_BYTES
+                        ))
+                ),
+                TabNetwork::handleSync);
+
+        CHANNEL.registerServerbound(1, SaveTabPacket.class,
+                NetworkCodec.of(
+                        (buffer, packet) -> buffer.writeByteArray(
+                                KineticCompression.compressUtf8(packet.json(), MAX_COMPRESSED_BYTES, MAX_DECOMPRESSED_BYTES),
+                                MAX_COMPRESSED_BYTES
+                        ),
+                        buffer -> new SaveTabPacket(KineticCompression.decompressUtf8(
+                                buffer.readByteArray(MAX_COMPRESSED_BYTES), MAX_DECOMPRESSED_BYTES
+                        ))
+                ),
+                TabNetwork::handleSave);
+
+        CHANNEL.registerClientbound(2, NotifyPacket.class,
+                NetworkCodec.of(
+                        (buffer, packet) -> buffer.writeUtf(packet.langKey(), 1024),
+                        buffer -> new NotifyPacket(buffer.readUtf(1024))
+                ),
+                TabNetwork::handleNotify);
+
+        CHANNEL.registerServerbound(3, RequestNotifyPacket.class,
+                NetworkCodec.of(
+                        (buffer, packet) -> buffer.writeUtf(packet.langKey(), 1024),
+                        buffer -> new RequestNotifyPacket(buffer.readUtf(1024))
+                ),
+                TabNetwork::handleRequestNotify);
+
+        CHANNEL.registerClientbound(4, ClearNotifyPacket.class,
+                NetworkCodec.of((buffer, packet) -> { }, buffer -> new ClearNotifyPacket()),
+                packet -> KineticOverlays.clearToasts());
+
+        CHANNEL.registerClientbound(5, OpenTabEditorPacket.class,
+                NetworkCodec.of(
+                        (buffer, packet) -> buffer.writeByteArray(
+                                KineticCompression.compressUtf8(packet.json(), MAX_COMPRESSED_BYTES, MAX_DECOMPRESSED_BYTES),
+                                MAX_COMPRESSED_BYTES
+                        ),
+                        buffer -> new OpenTabEditorPacket(KineticCompression.decompressUtf8(
+                                buffer.readByteArray(MAX_COMPRESSED_BYTES), MAX_DECOMPRESSED_BYTES
+                        ))
+                ),
+                message -> TabNetworkClient.handleOpenEditor(message));
+
+        CHANNEL.registerServerbound(6, RequestOpenEditorPacket.class,
+                NetworkCodec.of((buffer, packet) -> { }, buffer -> new RequestOpenEditorPacket()),
+                TabNetwork::handleRequestOpenEditor);
     }
 
     public static void requestOpenEditor() {
         CHANNEL.sendToServer(new RequestOpenEditorPacket());
     }
 
+    public static void saveTabs(String json) {
+        CHANNEL.sendToServer(new SaveTabPacket(json));
+    }
+
+    public static void requestNotification(String langKey) {
+        CHANNEL.sendToServer(new RequestNotifyPacket(langKey));
+    }
+
     public static boolean sendEditorSnapshot(ServerPlayer player) {
         if (player == null || !player.hasPermissions(2)) return false;
         if (!TabConfig.loadForEditor()) {
-            CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.load_failed"));
+            CHANNEL.sendToPlayer(player, new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.load_failed"));
             return false;
         }
         String json = TabConfig.GSON.toJson(TabConfig.data);
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new OpenTabEditorPacket(json));
+        CHANNEL.sendToPlayer(player, new OpenTabEditorPacket(json));
         return true;
     }
 
-    public static class SyncTabPacket {
-        private final String json;
-        public SyncTabPacket(String json) { this.json = json; }
-        public SyncTabPacket(net.minecraft.network.FriendlyByteBuf buf) { this.json = NetworkCompressUtil.decompress(buf.readByteArray()); }
-        public void encode(net.minecraft.network.FriendlyByteBuf buf) { buf.writeByteArray(NetworkCompressUtil.compress(json)); }
-        public void handle(Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
-                try {
-                    TabConfig.Data next = TabConfig.GSON.fromJson(json, TabConfig.Data.class);
-                    if (!TabConfig.isValidForServer(next)) return;
-                    TabConfig.data = next;
-                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> TabNetworkClient::handleSync);
-                } catch (RuntimeException exception) {
-                    TabsModule.LOGGER.error("Rejected invalid tabs sync payload", exception);
-                }
-            });
-            ctx.get().setPacketHandled(true);
+    private static void handleSync(SyncTabPacket packet) {
+        try {
+            TabConfig.Data next = TabConfig.GSON.fromJson(packet.json(), TabConfig.Data.class);
+            if (!TabConfig.isValidForServer(next)) return;
+            TabConfig.data = next;
+            TabNetworkClient.handleSync();
+        } catch (RuntimeException exception) {
+            TabsModule.LOGGER.error("Rejected invalid tabs sync payload", exception);
         }
     }
 
-    public static class SaveTabPacket {
-        private final String json;
-        public SaveTabPacket(String json) { this.json = json; }
-        public SaveTabPacket(net.minecraft.network.FriendlyByteBuf buf) { this.json = NetworkCompressUtil.decompress(buf.readByteArray()); }
-        public void encode(net.minecraft.network.FriendlyByteBuf buf) { buf.writeByteArray(NetworkCompressUtil.compress(json)); }
-        public void handle(Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
-                ServerPlayer sender = ctx.get().getSender();
-                if (sender == null) return;
-                if (!sender.hasPermissions(2)) {
-                    CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender), new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.save_failed"));
-                    return;
-                }
+    private static void handleSave(SaveTabPacket packet, ServerPacketContext context) {
+        ServerPlayer sender = context.sender();
+        if (!sender.hasPermissions(2)) {
+            CHANNEL.sendToPlayer(sender, new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.save_failed"));
+            return;
+        }
 
-                boolean success = false;
-                String savedJson = null;
-                try {
-                    TabConfig.Data next = TabConfig.GSON.fromJson(json, TabConfig.Data.class);
-                    if (TabConfig.isValidForServer(next) && TabConfig.save(next)) {
-                        savedJson = TabConfig.GSON.toJson(TabConfig.data);
-                        success = true;
-                    }
-                } catch (RuntimeException exception) {
-                    TabsModule.LOGGER.error("Rejected invalid tabs save payload", exception);
-                }
+        boolean success = false;
+        String savedJson = null;
+        try {
+            TabConfig.Data next = TabConfig.GSON.fromJson(packet.json(), TabConfig.Data.class);
+            if (TabConfig.isValidForServer(next) && TabConfig.save(next)) {
+                savedJson = TabConfig.GSON.toJson(TabConfig.data);
+                success = true;
+            }
+        } catch (RuntimeException exception) {
+            TabsModule.LOGGER.error("Rejected invalid tabs save payload", exception);
+        }
 
-                if (success) {
-                    CHANNEL.send(PacketDistributor.ALL.noArg(), new SyncTabPacket(savedJson));
-                    CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender), new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.saved"));
-                } else {
-                    CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender), new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.save_failed"));
-                }
-            });
-            ctx.get().setPacketHandled(true);
+        if (success) {
+            CHANNEL.broadcast(new SyncTabPacket(savedJson));
+            CHANNEL.sendToPlayer(sender, new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.saved"));
+        } else {
+            CHANNEL.sendToPlayer(sender, new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.save_failed"));
         }
     }
 
-    public static class NotifyPacket {
-        private final String langKey;
-        public NotifyPacket(String langKey) { this.langKey = langKey; }
-        public NotifyPacket(net.minecraft.network.FriendlyByteBuf buf) { this.langKey = buf.readUtf(); }
-        public void encode(net.minecraft.network.FriendlyByteBuf buf) { buf.writeUtf(langKey); }
-        public void handle(Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                if ("gui.itemcontrol.tabs.tabs.notify.saved".equals(langKey)) {
-                    dev.xyat.kineticcore.config.client.KTConfigApi.notifySaved(
-                            dev.xyat.itemcontrol.tabs.config.TabConfigGui.PAGE_ID
-                    );
-                } else {
-                    GuiOverlay.toast(Component.translatable(langKey));
-                }
-            }));
-            ctx.get().setPacketHandled(true);
+    private static void handleNotify(NotifyPacket packet) {
+        if ("gui.itemcontrol.tabs.tabs.notify.saved".equals(packet.langKey())) {
+            KTConfigApi.notifySaved(dev.xyat.itemcontrol.tabs.config.TabConfigGui.PAGE_ID);
+        } else {
+            KineticOverlays.toast(KineticI18n.translatable(packet.langKey()));
         }
     }
 
-    public static class RequestNotifyPacket {
-        private final String langKey;
-        public RequestNotifyPacket(String langKey) { this.langKey = langKey; }
-        public RequestNotifyPacket(net.minecraft.network.FriendlyByteBuf buf) { this.langKey = buf.readUtf(); }
-        public void encode(net.minecraft.network.FriendlyByteBuf buf) { buf.writeUtf(langKey); }
-        public void handle(Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
-                ServerPlayer sender = ctx.get().getSender();
-                if (sender != null) CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender), new NotifyPacket(langKey));
-            });
-            ctx.get().setPacketHandled(true);
+    private static void handleRequestNotify(RequestNotifyPacket packet, ServerPacketContext context) {
+        CHANNEL.sendToPlayer(context.sender(), new NotifyPacket(packet.langKey()));
+    }
+
+    private static void handleRequestOpenEditor(RequestOpenEditorPacket packet, ServerPacketContext context) {
+        ServerPlayer sender = context.sender();
+        if (sender.hasPermissions(2)) {
+            sendEditorSnapshot(sender);
         }
     }
 
-    public static class ClearNotifyPacket {
-        public ClearNotifyPacket() {}
-        public ClearNotifyPacket(net.minecraft.network.FriendlyByteBuf buf) {}
-        public void encode(net.minecraft.network.FriendlyByteBuf buf) {}
-        public void handle(Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> GuiOverlay::clearAllToasts));
-            ctx.get().setPacketHandled(true);
-        }
+    public record SyncTabPacket(String json) {
     }
 
-    public static class OpenTabEditorPacket {
-        private final String json;
-
-        public OpenTabEditorPacket(String json) {
-            this.json = json;
-        }
-
-        public OpenTabEditorPacket(net.minecraft.network.FriendlyByteBuf buf) {
-            this.json = NetworkCompressUtil.decompress(buf.readByteArray());
-        }
-
-        public String json() {
-            return json;
-        }
-
-        public void encode(net.minecraft.network.FriendlyByteBuf buf) {
-            buf.writeByteArray(NetworkCompressUtil.compress(json));
-        }
-
-        public void handle(Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
-                    Dist.CLIENT,
-                    () -> () -> TabNetworkClient.handleOpenEditor(this)
-            ));
-            ctx.get().setPacketHandled(true);
-        }
+    public record SaveTabPacket(String json) {
     }
 
-    public static class RequestOpenEditorPacket {
-        public RequestOpenEditorPacket() {}
-        public RequestOpenEditorPacket(net.minecraft.network.FriendlyByteBuf buf) {}
-        public void encode(net.minecraft.network.FriendlyByteBuf buf) {}
-        public void handle(Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(() -> {
-                ServerPlayer sender = ctx.get().getSender();
-                if (sender != null && sender.hasPermissions(2)) {
-                    sendEditorSnapshot(sender);
-                }
-            });
-            ctx.get().setPacketHandled(true);
-        }
+    public record NotifyPacket(String langKey) {
+    }
+
+    public record RequestNotifyPacket(String langKey) {
+    }
+
+    public record ClearNotifyPacket() {
+    }
+
+    public record OpenTabEditorPacket(String json) {
+    }
+
+    public record RequestOpenEditorPacket() {
     }
 }

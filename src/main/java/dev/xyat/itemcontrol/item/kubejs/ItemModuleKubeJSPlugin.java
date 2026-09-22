@@ -5,10 +5,10 @@ import dev.latvian.mods.kubejs.event.EventHandler;
 import dev.latvian.mods.kubejs.script.BindingsEvent;
 import dev.xyat.itemcontrol.item.event.ItemEntityDamageEvent;
 import dev.xyat.itemcontrol.item.util.ItemProtectionList;
+import dev.xyat.kineticcore.api.event.KineticExternalEvents;
+import dev.xyat.kineticcore.api.event.KineticEventPriority;
+import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public final class ItemModuleKubeJSPlugin extends dev.latvian.mods.kubejs.KubeJSPlugin {
     public static final EventGroup GROUP = EventGroup.of("itemcontrolEvents");
@@ -19,7 +19,15 @@ public final class ItemModuleKubeJSPlugin extends dev.latvian.mods.kubejs.KubeJS
 
     @Override
     public void init() {
-        MinecraftForge.EVENT_BUS.register(this);
+        KineticExternalEvents.subscribe(ItemEntityDamageEvent.class, this::onItemHurt);
+        KineticWorldEvents.onEntityJoin(KineticEventPriority.NORMAL, context -> {
+            if (context.entity() instanceof ItemEntity item
+                    && itemSpawn != null
+                    && itemSpawn.hasListeners()
+                    && itemSpawn.post(new ItemEntityDamageEventJS(item)).override()) {
+                context.cancel();
+            }
+        });
     }
 
     @Override
@@ -35,22 +43,11 @@ public final class ItemModuleKubeJSPlugin extends dev.latvian.mods.kubejs.KubeJS
         event.add("ItemProtection", ItemProtectionList.class);
     }
 
-    @SubscribeEvent
-    public void onItemHurt(ItemEntityDamageEvent event) {
+    private void onItemHurt(ItemEntityDamageEvent event) {
         if (itemHurt != null && itemHurt.hasListeners()) {
             if (itemHurt.post(new ItemEntityDamageEventJS(event)).override()) {
                 event.setCanceled(true);
             }
-        }
-    }
-
-    @SubscribeEvent
-    public void onEntitySpawn(EntityJoinLevelEvent event) {
-        if (event.getEntity() instanceof ItemEntity item
-                && itemSpawn != null
-                && itemSpawn.hasListeners()
-                && itemSpawn.post(new ItemEntityDamageEventJS(item)).override()) {
-            event.setCanceled(true);
         }
     }
 

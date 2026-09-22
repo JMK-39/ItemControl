@@ -1,18 +1,17 @@
 package dev.xyat.itemcontrol.cleaner.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import dev.xyat.itemcontrol.cleaner.CleanerModule;
 import dev.xyat.itemcontrol.cleaner.Network.CleanerNetwork;
 import dev.xyat.itemcontrol.cleaner.area.CleanerArea;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
-import dev.xyat.kineticcore.api.client.overlay.GuiOverlay;
+import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
+import dev.xyat.kineticcore.api.client.input.KineticKeyBindings;
+import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
+import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.render.KineticWorldRender;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Camera;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -22,63 +21,69 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Mod.EventBusSubscriber(modid = CleanerModule.MODID, value = Dist.CLIENT)
-public class CleanerAreaClientEvents {
-    @SubscribeEvent
-    public static void onMouseButton(InputEvent.MouseButton.Pre event) {
+public final class CleanerAreaClientEvents {
+    private static boolean installed;
+
+    private CleanerAreaClientEvents() {
+    }
+
+    public static void install() {
+        if (installed) return;
+        installed = true;
+        KineticClientEvents.onMouseButtonBefore(CleanerAreaClientEvents::onMouseButton);
+        KineticClientEvents.onLevelRender(KineticClientEvents.LevelRenderStage.AFTER_TRANSLUCENT_BLOCKS, CleanerAreaClientEvents::onRenderLevel);
+    }
+
+    private static void onMouseButton(KineticClientEvents.MouseButtonContext event) {
         if (!CleanerConfig.enableProtectedAreas) {
             return;
         }
-        if (event.getAction() != GLFW.GLFW_PRESS) {
+        if (!event.pressed()) {
             return;
         }
 
-        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = KineticClientRuntime.localPlayer();
+        ClientLevel level = KineticClientRuntime.currentLevel();
 
-        if (mc.player == null || mc.level == null || mc.screen != null) {
+        if (player == null || level == null || KineticClientRuntime.currentScreen() != null) {
             return;
         }
-        if (isHoldingTool()) {
-            return;
-        }
-
-        int button = event.getButton();
-
-        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT && button != GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+        if (isHoldingTool(player)) {
             return;
         }
 
-        boolean actionKey = CleanerAreaKeyBindings.AREA_ACTION_KEY.isDown();
-        boolean alt = isKeyDown(GLFW.GLFW_KEY_LEFT_ALT) || isKeyDown(GLFW.GLFW_KEY_RIGHT_ALT);
-        BlockPos pos = getLookBlockPos();
+        int button = event.button();
 
-        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (!KineticMouseButtons.isPrimary(button) && !KineticMouseButtons.isSecondary(button)) {
+            return;
+        }
+
+        boolean actionKey = CleanerAreaKeyBindings.isDown();
+        boolean alt = KineticKeyBindings.isKeyDown(KineticKeyBindings.Key.LEFT_ALT)
+                || KineticKeyBindings.isKeyDown(KineticKeyBindings.Key.RIGHT_ALT);
+        BlockPos pos = getLookBlockPos(player, level);
+
+        if (KineticMouseButtons.isPrimary(button)) {
             if (actionKey && alt) {
                 CleanerAreaClientState.clearSelection();
                 CleanerNetwork.sendToServer(new CleanerNetwork.AreaToolAction(CleanerNetwork.AreaToolAction.CLEAR_ALL, pos));
             } else if (actionKey) {
-                if (!isCurrentSelectionSaveable(mc)) {
-                    notifyTooLarge(mc);
-                    event.setCanceled(true);
+                if (isCurrentSelectionUnsavable(player, level)) {
+                    notifyTooLarge(player, level);
+                    event.cancel();
                     return;
                 }
                 CleanerNetwork.sendToServer(new CleanerNetwork.AreaToolAction(CleanerNetwork.AreaToolAction.CONFIRM, pos));
             } else {
-                handleSelectStart(mc, pos);
+                handleSelectStart(player, level, pos);
             }
 
-            event.setCanceled(true);
+            event.cancel();
             return;
         }
 
@@ -88,23 +93,23 @@ public class CleanerAreaClientEvents {
         } else if (actionKey) {
             CleanerNetwork.sendToServer(new CleanerNetwork.AreaToolAction(CleanerNetwork.AreaToolAction.CLEAR_TARGET, pos));
         } else {
-            handleSelectEnd(mc, pos);
+            handleSelectEnd(player, level, pos);
         }
 
-        event.setCanceled(true);
+        event.cancel();
     }
 
-    private static void handleSelectStart(Minecraft mc, BlockPos pos) {
-        if (mc.player == null || mc.level == null) {
+    private static void handleSelectStart(LocalPlayer player, ClientLevel level, BlockPos pos) {
+        if (player == null || level == null) {
             return;
         }
 
         if (pos != null) {
-            CleanerArea area = findAreaAt(pos);
+            CleanerArea area = findAreaAt(level, pos);
 
-            if (area != null && !area.ownerId().equals(mc.player.getUUID())) {
+            if (area != null && !area.ownerId().equals(player.getUUID())) {
                 CleanerAreaClientState.clearSelection();
-                GuiOverlay.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.owner", Component.literal(area.ownerName()).withStyle(ChatFormatting.GOLD)));
+                KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.owner", Component.literal(area.ownerName()).withStyle(ChatFormatting.GOLD)));
                 return;
             }
 
@@ -115,36 +120,36 @@ public class CleanerAreaClientEvents {
         CleanerNetwork.sendToServer(new CleanerNetwork.AreaToolAction(CleanerNetwork.AreaToolAction.SELECT_START, pos));
     }
 
-    private static void handleSelectEnd(Minecraft mc, BlockPos pos) {
-        if (mc.player == null || mc.level == null) {
+    private static void handleSelectEnd(LocalPlayer player, ClientLevel level, BlockPos pos) {
+        if (player == null || level == null) {
             return;
         }
 
         if (pos != null) {
-            CleanerArea area = findAreaAt(pos);
+            CleanerArea area = findAreaAt(level, pos);
 
-            if (area != null && !area.ownerId().equals(mc.player.getUUID())) {
+            if (area != null && !area.ownerId().equals(player.getUUID())) {
                 CleanerAreaClientState.clearSelection();
-                GuiOverlay.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(area.ownerName()).withStyle(ChatFormatting.GOLD)));
+                KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(area.ownerName()).withStyle(ChatFormatting.GOLD)));
                 return;
             }
 
             BlockPos start = CleanerAreaClientState.getStart();
 
             if (start != null) {
-                CleanerArea preview = new CleanerArea(mc.player.getUUID(), mc.player.getGameProfile().getName(), mc.level.dimension().location().toString(), start, pos);
-                CleanerArea other = findOverlappedOtherArea(preview, mc.player.getUUID());
+                CleanerArea preview = new CleanerArea(player.getUUID(), player.getGameProfile().getName(), level.dimension().location().toString(), start, pos);
+                CleanerArea other = findOverlappedOtherArea(preview, player.getUUID());
 
                 if (other != null) {
                     CleanerAreaClientState.clearSelection();
-                    GuiOverlay.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(other.ownerName()).withStyle(ChatFormatting.GOLD)));
+                    KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(other.ownerName()).withStyle(ChatFormatting.GOLD)));
                     return;
                 }
 
                 CleanerAreaClientState.setEnd(pos);
 
-                if (!isPreviewSaveable(mc, preview)) {
-                    notifyTooLarge(mc);
+                if (!isPreviewSaveable(player, level, preview)) {
+                    notifyTooLarge(player, level);
                 }
             } else {
                 CleanerAreaClientState.setEnd(pos);
@@ -154,103 +159,76 @@ public class CleanerAreaClientEvents {
         CleanerNetwork.sendToServer(new CleanerNetwork.AreaToolAction(CleanerNetwork.AreaToolAction.SELECT_END, pos));
     }
 
-    @SubscribeEvent
-    public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
-            return;
-        }
+    private static void onRenderLevel(KineticClientEvents.LevelRenderContext event) {
         if (!CleanerConfig.enableProtectedAreas) {
             return;
         }
 
-        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = KineticClientRuntime.localPlayer();
+        ClientLevel level = KineticClientRuntime.currentLevel();
 
-        if (mc.player == null || mc.level == null || isHoldingTool()) {
+        if (player == null || level == null || isHoldingTool(player)) {
             return;
         }
 
-        PoseStack pose = event.getPoseStack();
-        Camera camera = mc.gameRenderer.getMainCamera();
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
-        MultiBufferSource.BufferSource buffer = mc.renderBuffers().bufferSource();
+        String dim = level.dimension().location().toString();
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.lineWidth(2.5F);
+        try (KineticWorldRender.LineBatch batch = KineticWorldRender.beginLineBatch(event)) {
+            for (CleanerArea area : CleanerAreaClientState.getAreas()) {
+                if (!area.dimension().equals(dim)) {
+                    continue;
+                }
 
-        String dim = mc.level.dimension().location().toString();
-
-        for (CleanerArea area : CleanerAreaClientState.getAreas()) {
-            if (!area.dimension().equals(dim)) {
-                continue;
+                KineticWorldRender.Indicator indicator = CleanerAreaClientState.isOwn(area, player.getUUID())
+                        ? KineticWorldRender.Indicator.SUCCESS
+                        : KineticWorldRender.Indicator.WARNING;
+                batch.box(areaBox(area), indicator);
             }
 
-            boolean own = CleanerAreaClientState.isOwn(area, mc.player.getUUID());
-            float red = own ? 0.1F : 1.0F;
-            float green = own ? 1.0F : 0.85F;
-            float blue = own ? 0.1F : 0.05F;
+            BlockPos start = CleanerAreaClientState.getStart();
+            BlockPos end = CleanerAreaClientState.getEnd();
 
-            renderAreaBox(pose, buffer, area.minX(), area.minY(), area.minZ(), area.maxX(), area.maxY(), area.maxZ(), camX, camY, camZ, red, green, blue);
+            if (start != null) {
+                BlockPos second = end == null ? start : end;
+                CleanerArea preview = new CleanerArea(player.getUUID(), player.getGameProfile().getName(), dim, start, second);
+                KineticWorldRender.Indicator indicator = isPreviewSaveable(player, level, preview)
+                        ? KineticWorldRender.Indicator.SUCCESS
+                        : KineticWorldRender.Indicator.DANGER;
+                batch.box(areaBox(preview), indicator);
+            }
         }
-
-        BlockPos start = CleanerAreaClientState.getStart();
-        BlockPos end = CleanerAreaClientState.getEnd();
-
-        if (start != null) {
-            BlockPos second = end == null ? start : end;
-            CleanerArea preview = new CleanerArea(mc.player.getUUID(), mc.player.getGameProfile().getName(), dim, start, second);
-            boolean saveable = isPreviewSaveable(mc, preview);
-
-            float red = saveable ? 0.1F : 1.0F;
-            float green = saveable ? 1.0F : 0.05F;
-            float blue = saveable ? 0.1F : 0.05F;
-
-            renderAreaBox(pose, buffer,
-                    preview.minX(),
-                    preview.minY(),
-                    preview.minZ(),
-                    preview.maxX(),
-                    preview.maxY(),
-                    preview.maxZ(),
-                    camX, camY, camZ, red, green, blue);
-        }
-
-        buffer.endBatch(RenderType.lines());
-        RenderSystem.lineWidth(1.0F);
     }
 
-    private static boolean isCurrentSelectionSaveable(Minecraft mc) {
-        if (mc.player == null || mc.level == null) {
-            return false;
+    private static boolean isCurrentSelectionUnsavable(LocalPlayer player, ClientLevel level) {
+        if (player == null || level == null) {
+            return true;
         }
 
         BlockPos start = CleanerAreaClientState.getStart();
         BlockPos end = CleanerAreaClientState.getEnd();
 
         if (start == null || end == null) {
-            return false;
+            return true;
         }
 
-        CleanerArea preview = new CleanerArea(mc.player.getUUID(), mc.player.getGameProfile().getName(), mc.level.dimension().location().toString(), start, end);
-        return isPreviewSaveable(mc, preview);
+        CleanerArea preview = new CleanerArea(player.getUUID(), player.getGameProfile().getName(), level.dimension().location().toString(), start, end);
+        return !isPreviewSaveable(player, level, preview);
     }
 
-    private static boolean isPreviewSaveable(Minecraft mc, CleanerArea preview) {
-        if (mc.player == null || mc.level == null) {
+    private static boolean isPreviewSaveable(LocalPlayer player, ClientLevel level, CleanerArea preview) {
+        if (player == null || level == null) {
             return false;
         }
 
-        CleanerArea other = findOverlappedOtherArea(preview, mc.player.getUUID());
+        CleanerArea other = findOverlappedOtherArea(preview, player.getUUID());
 
         if (other != null) {
             return false;
         }
 
         int limit = Math.max(1, CleanerConfig.protectedAreaMaxGridCountPerPlayer);
-        int used = getUsedGridCost(mc.player.getUUID());
-        List<CleanerArea> selfOverlaps = findOverlappedOwnAreas(preview, mc.player.getUUID());
+        int used = getUsedGridCost(player.getUUID());
+        List<CleanerArea> selfOverlaps = findOverlappedOwnAreas(preview, player.getUUID());
         int removedSelfCost = getTotalGridCost(selfOverlaps);
         CleanerArea finalArea = mergeWithOldSelfAreas(preview, selfOverlaps);
 
@@ -319,8 +297,8 @@ public class CleanerAreaClientEvents {
         return new CleanerArea(selectedArea.ownerId(), selectedArea.ownerName(), selectedArea.dimension(), minX, minY, minZ, maxX, maxY, maxZ);
     }
 
-    private static void notifyTooLarge(Minecraft mc) {
-        if (mc.player == null || mc.level == null) {
+    private static void notifyTooLarge(LocalPlayer player, ClientLevel level) {
+        if (player == null || level == null) {
             return;
         }
 
@@ -331,27 +309,25 @@ public class CleanerAreaClientEvents {
             return;
         }
 
-        CleanerArea preview = new CleanerArea(mc.player.getUUID(), mc.player.getGameProfile().getName(), mc.level.dimension().location().toString(), start, end);
+        CleanerArea preview = new CleanerArea(player.getUUID(), player.getGameProfile().getName(), level.dimension().location().toString(), start, end);
         int limit = Math.max(1, CleanerConfig.protectedAreaMaxGridCountPerPlayer);
-        int used = getUsedGridCost(mc.player.getUUID());
-        List<CleanerArea> selfOverlaps = findOverlappedOwnAreas(preview, mc.player.getUUID());
+        int used = getUsedGridCost(player.getUUID());
+        List<CleanerArea> selfOverlaps = findOverlappedOwnAreas(preview, player.getUUID());
         int removedSelfCost = getTotalGridCost(selfOverlaps);
         CleanerArea finalArea = mergeWithOldSelfAreas(preview, selfOverlaps);
         int realUsedAfterRemove = Math.max(0, used - removedSelfCost);
         int cost = finalArea.gridCost();
         int remaining = Math.max(0, limit - realUsedAfterRemove);
 
-        GuiOverlay.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.too_large", Component.literal(String.valueOf(realUsedAfterRemove)).withStyle(ChatFormatting.YELLOW), Component.literal(String.valueOf(cost)).withStyle(ChatFormatting.RED), Component.literal(String.valueOf(limit)).withStyle(ChatFormatting.YELLOW), Component.literal(String.valueOf(remaining)).withStyle(ChatFormatting.GREEN)));
+        KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.too_large", Component.literal(String.valueOf(realUsedAfterRemove)).withStyle(ChatFormatting.YELLOW), Component.literal(String.valueOf(cost)).withStyle(ChatFormatting.RED), Component.literal(String.valueOf(limit)).withStyle(ChatFormatting.YELLOW), Component.literal(String.valueOf(remaining)).withStyle(ChatFormatting.GREEN)));
     }
 
-    private static CleanerArea findAreaAt(BlockPos pos) {
-        Minecraft mc = Minecraft.getInstance();
-
-        if (mc.level == null) {
+    private static CleanerArea findAreaAt(ClientLevel level, BlockPos pos) {
+        if (level == null) {
             return null;
         }
 
-        String dim = mc.level.dimension().location().toString();
+        String dim = level.dimension().location().toString();
 
         for (CleanerArea area : CleanerAreaClientState.getAreas()) {
             if (area.contains(dim, pos)) {
@@ -372,18 +348,16 @@ public class CleanerAreaClientEvents {
         return null;
     }
 
-    private static BlockPos getLookBlockPos() {
-        Minecraft mc = Minecraft.getInstance();
-
-        if (mc.player == null || mc.level == null) {
+    private static BlockPos getLookBlockPos(LocalPlayer player, ClientLevel level) {
+        if (player == null || level == null) {
             return null;
         }
 
         double distance = Math.max(1.0D, CleanerConfig.protectedAreaRayTraceDistance);
-        Vec3 eye = mc.player.getEyePosition(1.0F);
-        Vec3 look = mc.player.getViewVector(1.0F);
+        Vec3 eye = player.getEyePosition(1.0F);
+        Vec3 look = player.getViewVector(1.0F);
         Vec3 end = eye.add(look.x * distance, look.y * distance, look.z * distance);
-        BlockHitResult result = mc.level.clip(new ClipContext(eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
+        BlockHitResult result = level.clip(new ClipContext(eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
 
         if (result.getType() == HitResult.Type.BLOCK) {
             return result.getBlockPos();
@@ -392,26 +366,19 @@ public class CleanerAreaClientEvents {
         return null;
     }
 
-    private static void renderAreaBox(PoseStack pose, MultiBufferSource.BufferSource buffer, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, double camX, double camY, double camZ, float red, float green, float blue) {
-        AABB box = new AABB(minX, minY, minZ, maxX + 1.0D, maxY + 1.0D, maxZ + 1.0D).move(-camX, -camY, -camZ);
-        LevelRenderer.renderLineBox(pose, buffer.getBuffer(RenderType.lines()), box, red, green, blue, 1.0F);
+    private static AABB areaBox(CleanerArea area) {
+        return new AABB(area.minX(), area.minY(), area.minZ(), area.maxX() + 1.0D, area.maxY() + 1.0D, area.maxZ() + 1.0D);
     }
 
-    private static boolean isHoldingTool() {
-        Minecraft mc = Minecraft.getInstance();
-
-        if (mc.player == null) {
+    private static boolean isHoldingTool(LocalPlayer player) {
+        if (player == null) {
             return true;
         }
 
-        ItemStack main = mc.player.getItemInHand(InteractionHand.MAIN_HAND);
-        ItemStack off = mc.player.getItemInHand(InteractionHand.OFF_HAND);
+        ItemStack main = player.getItemInHand(InteractionHand.MAIN_HAND);
+        ItemStack off = player.getItemInHand(InteractionHand.OFF_HAND);
 
         return !CleanerClientConfigState.isProtectedAreaTool(main) && !CleanerClientConfigState.isProtectedAreaTool(off);
     }
 
-    private static boolean isKeyDown(int key) {
-        Minecraft mc = Minecraft.getInstance();
-        return GLFW.glfwGetKey(mc.getWindow().getWindow(), key) == GLFW.GLFW_PRESS;
-    }
 }

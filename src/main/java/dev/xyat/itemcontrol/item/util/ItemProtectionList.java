@@ -5,7 +5,8 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -20,7 +21,7 @@ public class ItemProtectionList {
      */
     public static void addFireImmune(String id) {
         if (id.startsWith("#")) {
-            FIRE_IMMUNE_TAGS.add(ItemTags.create(new ResourceLocation(id.substring(1))));
+            FIRE_IMMUNE_TAGS.add(ItemTags.create(KineticResourceIds.parse(id.substring(1))));
         } else if (id.startsWith("@")) {
             FIRE_IMMUNE_MODS.add(id.substring(1));
         } else {
@@ -43,7 +44,7 @@ public class ItemProtectionList {
     public static boolean isFireImmune(ItemStack stack) {
         if (stack.isEmpty()) return false;
 
-        ResourceLocation registryName = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation registryName = KineticRegistries.items().id(stack.getItem());
         if (registryName == null) return false;
 
         // 1. 检查精确 ID

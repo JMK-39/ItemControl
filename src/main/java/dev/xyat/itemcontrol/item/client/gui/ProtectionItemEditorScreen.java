@@ -1,19 +1,22 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
 import dev.xyat.kineticcore.api.client.theme.GuiTheme;
 import dev.xyat.kineticcore.api.client.search.KineticSearch;
-import dev.xyat.kineticcore.api.client.overlay.GuiOverlay;
-import dev.xyat.kineticcore.api.client.search.ItemSearchIndex;
+import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
 import dev.xyat.kineticcore.api.client.screen.KineticScreen;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets.EditedEntryTracker;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets.GridScrollController;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets.LayerState;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets.HighZButton;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
+import dev.xyat.kineticcore.api.client.widget.KineticControl;
+import dev.xyat.kineticcore.api.client.widget.state.EditedEntryTracker;
+import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
+import dev.xyat.kineticcore.api.client.widget.state.LayerState;
+import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.HighZButton;
+import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
+import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticEditBox;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
@@ -24,7 +27,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -55,8 +57,6 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
     private static final int GRID_W = GRID_COLS * SLOT_PITCH;
     private static final int GRID_H = GRID_ROWS * SLOT_PITCH;
     private static final int SCROLL_X = GRID_X + GRID_W + 5;
-    private static final int RULE_OUTLINE_COLOR = 0xFF55FF55;
-    private static final int HOVER_OUTLINE_COLOR = 0xFFAAAAAA;
     private static final int PLACEHOLDER_TEXT_COLOR = 0xBFFFFFFF;
     private static final float ITEM_SCALE = 1.0F;
 
@@ -76,19 +76,19 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
     private final EditedEntryTracker<RuleDraft> editedTracker = new EditedEntryTracker<>();
     private final LayerState<Layer> layerManager = new LayerState<>();
 
-    private List<ItemSearchIndex.CachedItem> allItems = List.of();
-    private EditBox searchBox;
-    private Button specialRuleButton;
-    private Button saveButton;
-    private Button backButton;
+    private List<KineticItemSearch.CachedItem> allItems = List.of();
+    private KineticEditBox searchBox;
+    private StateButton specialRuleButton;
+    private StateButton saveButton;
+    private StateButton backButton;
 
-    private Button modalFireButton;
-    private Button modalExplosionButton;
-    private Button modalGlowingButton;
-    private Button modalGravityButton;
-    private Button modalApplyButton;
-    private Button modalDeleteButton;
-    private Button modalCancelButton;
+    private HighZButton modalFireButton;
+    private HighZButton modalExplosionButton;
+    private HighZButton modalGlowingButton;
+    private HighZButton modalGravityButton;
+    private HighZButton modalApplyButton;
+    private HighZButton modalDeleteButton;
+    private HighZButton modalCancelButton;
 
     private RuleDraft modalExistingRule;
     private String modalIdentifier = "";
@@ -110,7 +110,7 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
         }
         editedTracker.refresh(rules, RuleDraft::isEdited);
         useCanvas(640F, 360F, 6);
-        dev.xyat.kineticcore.api.client.screen.GuiSession.setParent(this, parent);
+        setParentScreen(parent);
         configureDraft(this::serializeRules, this::restoreSerializedRules);
     }
 
@@ -129,89 +129,91 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
 
     @Override
     protected void buildUi() {
-        searchBox = new EditBox(font, SEARCH_X, SEARCH_Y, SEARCH_W, 20, Component.empty());
+        searchBox = addTextField(SEARCH_X, SEARCH_Y, SEARCH_W, Component.empty());
+        searchBox.setPlaceholder(Component.translatable("gui.itemcontrol.item.protection_editor.search.hint"));
         searchBox.setMaxLength(1024);
         searchBox.setResponder(value -> refreshDisplay(true));
-        addRenderableWidget(searchBox);
 
-        specialRuleButton = addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.item.protection_editor.special_rule"),
-                        button -> openSpecialRuleFromSearch())
-                .bounds(SPECIAL_X, SEARCH_Y, SPECIAL_W, 20)
-                .tooltip(Tooltip.create(Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.special_rule")))
-                .build());
+        specialRuleButton = addButton(
+                SPECIAL_X, SEARCH_Y, SPECIAL_W,
+                Component.translatable("gui.itemcontrol.item.protection_editor.special_rule"),
+                Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.special_rule"),
+                this::openSpecialRuleFromSearch
+        );
 
-        saveButton = addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.item.protection_editor.save"),
-                        button -> save())
-                .bounds(500, 30, 52, 20)
-                .tooltip(Tooltip.create(Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.save")))
-                .build());
+        saveButton = addButton(
+                500, 30, 52,
+                Component.translatable("gui.itemcontrol.item.protection_editor.save"),
+                Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.save"),
+                this::save
+        );
 
-        backButton = addRenderableWidget(Button.builder(
-                        Component.translatable("gui.itemcontrol.item.protection_editor.back"),
-                        button -> onClose())
-                .bounds(558, 30, 56, 20)
-                .tooltip(Tooltip.create(Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.back")))
-                .build());
+        backButton = addButton(
+                558, 30, 56,
+                Component.translatable("gui.itemcontrol.item.protection_editor.back"),
+                Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.back"),
+                this::onClose
+        );
 
-        modalFireButton = addModalButton(204, 166, 108, 20, button -> {
+        modalFireButton = addModalButton(204, 158, 108, () -> {
             modalFireImmune = !modalFireImmune;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.fire");
-        modalExplosionButton = addModalButton(328, 166, 108, 20, button -> {
+        modalExplosionButton = addModalButton(328, 158, 108, () -> {
             modalExplosionImmune = !modalExplosionImmune;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.explosion");
-        modalGlowingButton = addModalButton(204, 194, 108, 20, button -> {
+        modalGlowingButton = addModalButton(204, 186, 108, () -> {
             modalGlowing = !modalGlowing;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.glowing");
-        modalGravityButton = addModalButton(328, 194, 108, 20, button -> {
+        modalGravityButton = addModalButton(328, 186, 108, () -> {
             modalNoGravity = !modalNoGravity;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.gravity");
 
-        modalApplyButton = addRenderableWidget(new HighZButton(
-                204, 228, 72, 20,
+        modalApplyButton = addHighZButton(
+                204, 222, 72,
                 Component.translatable("gui.itemcontrol.item.protection_editor.apply"),
-                button -> applyModalRule(),
-                Tooltip.create(Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.apply"))
-        ));
-        modalDeleteButton = addRenderableWidget(new HighZButton(
-                284, 228, 72, 20,
+                Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.apply"),
+                240,
+                this::applyModalRule
+        );
+        modalDeleteButton = addHighZButton(
+                284, 222, 72,
                 Component.translatable("gui.itemcontrol.item.protection_editor.delete"),
-                button -> deleteModalRule(),
-                Tooltip.create(Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.delete"))
-        ));
-        modalCancelButton = addRenderableWidget(new HighZButton(
-                364, 228, 72, 20,
+                Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.delete"),
+                240,
+                this::deleteModalRule
+        );
+        modalCancelButton = addHighZButton(
+                364, 222, 72,
                 Component.translatable("gui.itemcontrol.item.protection_editor.cancel"),
-                button -> closeRuleEditor(),
-                Tooltip.create(Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.cancel"))
-        ));
+                Component.translatable("gui.itemcontrol.item.protection_editor.tooltip.cancel"),
+                240,
+                this::closeRuleEditor
+        );
 
         setModalWidgetsVisible(false);
         refreshSpecialRuleButton();
-        refreshDisplay(false);
 
-        ItemSearchIndex.prepareCache(() -> {
-            if (minecraft != null && minecraft.screen == this) {
-                allItems = ItemSearchIndex.getItems();
-                refreshDisplay(false);
-            }
-        });
-        if (ItemSearchIndex.isReady()) {
-            allItems = ItemSearchIndex.getItems();
+        // Use the same resilient ItemControl search snapshot as the other item editors.
+        // It provides a registry fallback immediately, then rebuilds from Kinetic's shared
+        // index once that index becomes ready. The screen therefore never has to hide its
+        // entire content area behind KineticItemSearch.ready().
+        allItems = ItemSearchCache.getAllItems();
+        refreshDisplay(false);
+        ItemSearchCache.prepareCache(() -> {
+            if (KineticClientRuntime.currentScreen() != this) return;
+            allItems = ItemSearchCache.getAllItems();
             refreshDisplay(false);
-        }
+        });
     }
 
-    private Button addModalButton(int x, int y, int w, int h, Button.OnPress onPress, String tooltipKey) {
-        return addRenderableWidget(new HighZButton(
-                x, y, w, h, Component.empty(), onPress,
-                Tooltip.create(Component.translatable(tooltipKey))
-        ));
+    private HighZButton addModalButton(int x, int y, int width, Runnable action, String tooltipKey) {
+        return addHighZButton(
+                x, y, width, Component.empty(), Component.translatable(tooltipKey), 240, action
+        );
     }
 
     private void refreshDisplay(boolean resetScroll) {
@@ -220,10 +222,10 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
 
         Map<String, RuleDraft> exactRules = new LinkedHashMap<>();
         Map<String, Boolean> cachedIdentifiers = new HashMap<>();
-        for (ItemSearchIndex.CachedItem cached : allItems) {
-            if (cached == null || cached.stack == null || cached.stack.isEmpty()) continue;
+        for (KineticItemSearch.CachedItem cached : allItems) {
+            if (cached == null || cached.stack() == null || cached.stack().isEmpty()) continue;
             cachedIdentifiers.put(identifierForCachedItem(cached), Boolean.TRUE);
-            cachedIdentifiers.put(cached.idStr, Boolean.TRUE);
+            cachedIdentifiers.put(cached.id(), Boolean.TRUE);
         }
 
         List<GridEntry> specialEntries = new ArrayList<>();
@@ -243,12 +245,12 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
 
         List<GridEntry> itemEntries = new ArrayList<>();
         int itemOrder = 100000;
-        for (ItemSearchIndex.CachedItem cached : allItems) {
-            if (cached == null || cached.stack == null || cached.stack.isEmpty()) continue;
+        for (KineticItemSearch.CachedItem cached : allItems) {
+            if (cached == null || cached.stack() == null || cached.stack().isEmpty()) continue;
             if (!matchesItemSearch(cached, query)) continue;
             String itemIdentifier = identifierForCachedItem(cached);
             RuleDraft rule = exactRules.get(itemIdentifier);
-            if (rule == null) rule = exactRules.get(cached.idStr);
+            if (rule == null) rule = exactRules.get(cached.id());
             itemEntries.add(itemEntry(cached, rule, itemIdentifier, itemOrder++));
         }
         itemEntries.sort(this::compareEntries);
@@ -273,17 +275,17 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
         return Integer.compare(left.sourceOrder, right.sourceOrder);
     }
 
-    private static boolean matchesItemSearch(ItemSearchIndex.CachedItem item, String query) {
+    private static boolean matchesItemSearch(KineticItemSearch.CachedItem item, String query) {
         if (query == null || query.isBlank()) return true;
         String normalized = query.trim().toLowerCase(Locale.ROOT);
         if (normalized.startsWith("@") && normalized.length() > 1) {
-            return item.namespace.contains(normalized.substring(1));
+            return item.namespace().contains(normalized.substring(1));
         }
         if (normalized.startsWith("#") && normalized.length() > 1) {
             String tagQuery = normalized.substring(1);
-            return item.tagIds.stream().anyMatch(tag -> tag.toLowerCase(Locale.ROOT).contains(tagQuery));
+            return item.tagIds().stream().anyMatch(tag -> tag.toLowerCase(Locale.ROOT).contains(tagQuery));
         }
-        return KineticSearch.match(item.searchData, normalized);
+        return KineticSearch.match(item.searchText(), normalized);
     }
 
     private void refreshSpecialRuleButton() {
@@ -291,9 +293,9 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
         String value = searchBox.getValue().trim();
         boolean special = value.startsWith("#") || value.startsWith("@");
         RuleDraft existing = special ? findRule(value) : null;
-        specialRuleButton.visible = special;
-        specialRuleButton.active = special && (existing != null || isValidSpecialIdentifier(value));
-        specialRuleButton.setMessage(Component.translatable(existing == null
+        ((KineticControl) specialRuleButton).setVisible(special);
+        ((KineticControl) specialRuleButton).setEnabled(special && (existing != null || isValidSpecialIdentifier(value)));
+        ((KineticControl) specialRuleButton).setText(Component.translatable(existing == null
                 ? "gui.itemcontrol.item.protection_editor.special_rule.add"
                 : "gui.itemcontrol.item.protection_editor.special_rule.edit"));
     }
@@ -303,8 +305,8 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
         if (identifier.startsWith("@")) {
             String namespace = identifier.substring(1).trim().toLowerCase(Locale.ROOT);
             if (namespace.isEmpty()) return false;
-            for (ItemSearchIndex.CachedItem item : allItems) {
-                if (namespace.equals(item.namespace.toLowerCase(Locale.ROOT))) return true;
+            for (KineticItemSearch.CachedItem item : allItems) {
+                if (namespace.equals(item.namespace().toLowerCase(Locale.ROOT))) return true;
             }
             return false;
         }
@@ -312,8 +314,8 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
             ResourceLocation tagId = ResourceLocation.tryParse(identifier.substring(1).trim());
             if (tagId == null) return false;
             String expected = tagId.toString();
-            for (ItemSearchIndex.CachedItem item : allItems) {
-                if (item.tagIds.contains(expected)) return true;
+            for (KineticItemSearch.CachedItem item : allItems) {
+                if (item.tagIds().contains(expected)) return true;
             }
         }
         return false;
@@ -324,7 +326,7 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
         String identifier = searchBox.getValue().trim();
         RuleDraft existing = findRule(identifier);
         if (existing == null && !isValidSpecialIdentifier(identifier)) {
-            GuiOverlay.toast(Component.translatable("msg.itemcontrol.item.protection_editor.invalid_selection"));
+            KineticOverlays.toast(Component.translatable("msg.itemcontrol.item.protection_editor.invalid_selection"));
             return;
         }
         ItemStack preview = existing == null ? RuleDraft.createPreview(identifier) : existing.preview();
@@ -404,36 +406,36 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
 
     private void refreshModalButtons() {
         if (modalFireButton == null) return;
-        modalFireButton.setMessage(Component.translatable(modalFireImmune
+        ((KineticControl) modalFireButton).setText(Component.translatable(modalFireImmune
                 ? "gui.itemcontrol.item.protection_editor.fire.on"
                 : "gui.itemcontrol.item.protection_editor.fire.off"));
-        modalExplosionButton.setMessage(Component.translatable(modalExplosionImmune
+        ((KineticControl) modalExplosionButton).setText(Component.translatable(modalExplosionImmune
                 ? "gui.itemcontrol.item.protection_editor.explosion.on"
                 : "gui.itemcontrol.item.protection_editor.explosion.off"));
-        modalGlowingButton.setMessage(Component.translatable(modalGlowing
+        ((KineticControl) modalGlowingButton).setText(Component.translatable(modalGlowing
                 ? "gui.itemcontrol.item.protection_editor.glowing.on"
                 : "gui.itemcontrol.item.protection_editor.glowing.off"));
-        modalGravityButton.setMessage(Component.translatable(modalNoGravity
+        ((KineticControl) modalGravityButton).setText(Component.translatable(modalNoGravity
                 ? "gui.itemcontrol.item.protection_editor.gravity.off"
                 : "gui.itemcontrol.item.protection_editor.gravity.on"));
-        if (modalDeleteButton != null) modalDeleteButton.visible = modalExistingRule != null;
+        if (modalDeleteButton != null) ((KineticControl) modalDeleteButton).setVisible(modalExistingRule != null);
     }
 
     private void setMainWidgetsVisible(boolean visible) {
-        if (searchBox != null) searchBox.visible = visible;
-        if (specialRuleButton != null) specialRuleButton.visible = visible && isSpecialSearch();
-        if (saveButton != null) saveButton.visible = visible;
-        if (backButton != null) backButton.visible = visible;
+        if (searchBox != null) ((KineticControl) searchBox).setVisible(visible);
+        if (specialRuleButton != null) ((KineticControl) specialRuleButton).setVisible(visible && isSpecialSearch());
+        if (saveButton != null) ((KineticControl) saveButton).setVisible(visible);
+        if (backButton != null) ((KineticControl) backButton).setVisible(visible);
     }
 
     private void setModalWidgetsVisible(boolean visible) {
-        if (modalFireButton != null) modalFireButton.visible = visible;
-        if (modalExplosionButton != null) modalExplosionButton.visible = visible;
-        if (modalGlowingButton != null) modalGlowingButton.visible = visible;
-        if (modalGravityButton != null) modalGravityButton.visible = visible;
-        if (modalApplyButton != null) modalApplyButton.visible = visible;
-        if (modalDeleteButton != null) modalDeleteButton.visible = visible && modalExistingRule != null;
-        if (modalCancelButton != null) modalCancelButton.visible = visible;
+        if (modalFireButton != null) ((KineticControl) modalFireButton).setVisible(visible);
+        if (modalExplosionButton != null) ((KineticControl) modalExplosionButton).setVisible(visible);
+        if (modalGlowingButton != null) ((KineticControl) modalGlowingButton).setVisible(visible);
+        if (modalGravityButton != null) ((KineticControl) modalGravityButton).setVisible(visible);
+        if (modalApplyButton != null) ((KineticControl) modalApplyButton).setVisible(visible);
+        if (modalDeleteButton != null) ((KineticControl) modalDeleteButton).setVisible(visible && modalExistingRule != null);
+        if (modalCancelButton != null) ((KineticControl) modalCancelButton).setVisible(visible);
     }
 
     private boolean isSpecialSearch() {
@@ -454,13 +456,13 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
         if (saving) return;
         List<String> serialized = serializeRules();
         saving = true;
-        if (saveButton != null) saveButton.active = false;
+        if (saveButton != null) ((KineticControl) saveButton).setEnabled(false);
         ItemNetwork.saveProtectionRules(serialized);
     }
 
     public void applySaveResult(boolean success, List<String> serverRules) {
         saving = false;
-        if (saveButton != null) saveButton.active = true;
+        if (saveButton != null) ((KineticControl) saveButton).setEnabled(true);
         if (success) {
             Map<String, String> savedByIdentifier = new HashMap<>();
             if (serverRules != null) {
@@ -488,33 +490,30 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
     }
 
     @Override
-    public void onClose() {
+    protected boolean handleCloseRequest() {
         if (layerManager.isAnyOpen()) {
             closeRuleEditor();
-            return;
+            return true;
         }
-        super.onClose();
+        return false;
     }
 
     @Override
     protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, canvasWidth, canvasHeight, 0xFF171717, 0xFF0E0E0E);
-        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0xEE1C1C1C, 0xFFAAAAAA);
+        graphics.fillGradient(0, 0, canvasWidth(), canvasHeight(), 0xFF171717, 0xFF0E0E0E);
+        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
         if (layerManager.isOpen(Layer.RULE_EDITOR)) {
-            graphics.fill(0, 0, canvasWidth, canvasHeight, 0x99000000);
-            GuiTheme.panel(graphics, MODAL_X, MODAL_Y, MODAL_W, MODAL_H, 0xFF171717, 0xFFAAAAAA);
+            GuiTheme.panel(graphics, MODAL_X, MODAL_Y, MODAL_W, MODAL_H);
         }
     }
 
     @Override
     protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.drawCenteredString(font, title, canvasWidth / 2, 9, 0xFFFFFF);
+        graphics.drawCenteredString(font, title, canvasWidth() / 2, 9, 0xFFFFFF);
         if (layerManager.isOpen(Layer.RULE_EDITOR)) {
             renderModal(graphics);
             return;
         }
-        renderSearchHint(graphics);
-        if (!ItemSearchIndex.isReady()) return;
         renderScrollingGridBackground(graphics);
         renderItems(graphics, mouseX, mouseY);
         gridScroll.render(
@@ -525,22 +524,13 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
                 GRID_Y,
                 4,
                 GRID_H,
-                18,
-                GuiTheme.current().scrollTrack(),
-                GuiTheme.current().scrollThumb(),
-                GuiTheme.current().scrollThumbHover()
+                18
         );
         graphics.drawString(font, Component.translatable("gui.itemcontrol.item.protection_editor.hint"), 26, 346, 0xFFFFFF, false);
-        if (specialRuleButton == null || !specialRuleButton.visible) {
+        if (specialRuleButton == null || !((KineticControl) specialRuleButton).isVisible()) {
             Component count = Component.translatable("gui.itemcontrol.item.protection_editor.count", rules.size(), displayEntries.size());
             graphics.drawString(font, count, 334, SEARCH_Y + 6, 0xFFFFFF, false);
         }
-    }
-
-    private void renderSearchHint(GuiGraphics graphics) {
-        if (searchBox == null || searchBox.isFocused() || !searchBox.getValue().isEmpty()) return;
-        String hint = Component.translatable("gui.itemcontrol.item.protection_editor.search.hint").getString();
-        graphics.drawString(font, font.plainSubstrByWidth(hint, SEARCH_W - 8), SEARCH_X + 4, SEARCH_Y + 6, PLACEHOLDER_TEXT_COLOR, false);
     }
 
     private void renderScrollingGridBackground(GuiGraphics graphics) {
@@ -554,7 +544,7 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
                 GuiTheme.itemSlot(graphics, x, y, SLOT_SIZE, 4, false);
             }
         }
-        graphics.disableScissor();
+        disableCanvasScissor(graphics);
     }
 
     private void renderItems(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -573,22 +563,22 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
             boolean hovered = contains(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE);
             GuiTheme.item(graphics, font, entry.stack, x, y, SLOT_SIZE, ITEM_SCALE, false);
             if (hovered) {
-                graphics.renderOutline(x, y, SLOT_SIZE, SLOT_SIZE, HOVER_OUTLINE_COLOR);
+                GuiTheme.stateOutline(graphics, x, y, SLOT_SIZE, SLOT_SIZE, false, true, false);
             } else if (entry.rule != null) {
-                graphics.renderOutline(x, y, SLOT_SIZE, SLOT_SIZE, RULE_OUTLINE_COLOR);
+                GuiTheme.indicatorOutline(graphics, x, y, SLOT_SIZE, SLOT_SIZE, GuiTheme.Indicator.SUCCESS);
             }
             if (entry.rule != null && editedTracker.isEdited(entry.rule)) {
-                graphics.fill(x + SLOT_SIZE - 3, y + 1, x + SLOT_SIZE - 1, y + 3, RULE_OUTLINE_COLOR);
+                GuiTheme.indicatorFill(graphics, x + SLOT_SIZE - 3, y + 1, 2, 2, GuiTheme.Indicator.SUCCESS);
             }
         }
-        graphics.disableScissor();
+        disableCanvasScissor(graphics);
     }
 
     private void renderModal(GuiGraphics graphics) {
-        graphics.drawCenteredString(font, Component.translatable("gui.itemcontrol.item.protection_editor.modal.title"), canvasWidth / 2, MODAL_Y + 10, 0xFFFFFF);
+        graphics.drawCenteredString(font, Component.translatable("gui.itemcontrol.item.protection_editor.modal.title"), canvasWidth() / 2, MODAL_Y + 10, 0xFFFFFF);
         int previewX = MODAL_X + 18;
         int previewY = MODAL_Y + 27;
-        GuiTheme.itemSlot(graphics, modalPreview, previewX, previewY, SLOT_SIZE, 4, false);
+        GuiTheme.itemSlot(graphics, previewX, previewY, SLOT_SIZE, 4, false);
         GuiTheme.item(graphics, font, modalPreview, previewX, previewY, SLOT_SIZE, ITEM_SCALE, false);
         String name = modalPreview.isEmpty()
                 ? Component.translatable("gui.itemcontrol.item.protection_editor.unknown").getString()
@@ -603,11 +593,11 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
 
     @Override
     protected void renderTooltips(GuiGraphics graphics, int scaledMouseX, int scaledMouseY, int mouseX, int mouseY) {
-        if (layerManager.isAnyOpen() || !ItemSearchIndex.isReady()) return;
+        if (layerManager.isAnyOpen()) return;
         int index = gridIndexAt(scaledMouseX, scaledMouseY);
         if (index < 0) return;
         GridEntry entry = displayEntries.get(index);
-        GuiOverlay.requestTooltip(entryTooltip(entry), mouseX, mouseY);
+        KineticOverlays.requestTooltip(entryTooltip(entry), mouseX, mouseY);
     }
 
     private List<Component> entryTooltip(GridEntry entry) {
@@ -650,7 +640,7 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
             return true;
         }
 
-        if (button == 0 && gridScroll.beginDrag(mouseX, mouseY, SCROLL_X, GRID_Y, 4, GRID_H, 18, 2)) {
+        if (KineticMouseButtons.isPrimary(button) && gridScroll.beginDrag(mouseX, mouseY, SCROLL_X, GRID_Y, 4, GRID_H, 18, 2)) {
             return true;
         }
         if (super.canvasMouseClicked(mouseX, mouseY, button)) return true;
@@ -658,19 +648,18 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
         int index = gridIndexAt(mouseX, mouseY);
         if (index >= 0) {
             GridEntry entry = displayEntries.get(index);
-            if (button == 0) {
+            if (KineticMouseButtons.isPrimary(button)) {
                 openRuleEditor(entry.identifier, entry.stack, entry.rule);
                 return true;
             }
-            if (button == 1 && entry.rule != null) {
+            if (KineticMouseButtons.isSecondary(button) && entry.rule != null) {
                 removeRule(entry.rule);
                 return true;
             }
         }
 
         if (searchBox != null && !searchBox.isMouseOver(mouseX, mouseY)) {
-            searchBox.setFocused(false);
-            if (getFocused() == searchBox) setFocused(null);
+            blurControl(searchBox);
         }
         return false;
     }
@@ -732,23 +721,23 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
 
     }
 
-    private GridEntry itemEntry(ItemSearchIndex.CachedItem cached, RuleDraft rule, String itemIdentifier, int sourceOrder) {
+    private GridEntry itemEntry(KineticItemSearch.CachedItem cached, RuleDraft rule, String itemIdentifier, int sourceOrder) {
         String identifier = rule == null ? itemIdentifier : rule.identifier;
-        return new GridEntry(cached.stack, identifier, rule, cached.searchData, sourceOrder);
+        return new GridEntry(cached.stack(), identifier, rule, cached.searchText(), sourceOrder);
     }
 
-    private static String identifierForCachedItem(ItemSearchIndex.CachedItem cached) {
-        if (cached == null || cached.stack == null || cached.stack.isEmpty()) return "";
-        if (cached.stack.getTag() != null && !cached.stack.getTag().isEmpty()) {
-            return cached.idStr + cached.stack.getTag();
+    private static String identifierForCachedItem(KineticItemSearch.CachedItem cached) {
+        if (cached == null || cached.stack() == null || cached.stack().isEmpty()) return "";
+        if (cached.stack().getTag() != null && !cached.stack().getTag().isEmpty()) {
+            return cached.id() + cached.stack().getTag();
         }
-        return cached.idStr;
+        return cached.id();
     }
 
     private GridEntry specialEntry(RuleDraft rule, int sourceOrder) {
         ItemStack preview = rule.preview();
         String name = preview.isEmpty() ? "" : preview.getHoverName().getString();
-        String searchData = KineticSearch.normalize(name + " " + rule.identifier);
+        String searchData = (name + " " + rule.identifier).toLowerCase(Locale.ROOT).trim();
         return new GridEntry(preview, rule.identifier, rule, searchData, sourceOrder);
     }
 
@@ -819,8 +808,8 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
             if (identifier == null || identifier.isBlank()) return new ItemStack(Items.BARRIER);
             if (identifier.startsWith("@")) {
                 String namespace = identifier.substring(1).trim();
-                for (Item item : ForgeRegistries.ITEMS.getValues()) {
-                    ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+                for (Item item : KineticRegistries.items().values()) {
+                    ResourceLocation id = KineticRegistries.items().id(item);
                     if (id != null && id.getNamespace().equals(namespace) && item != Items.AIR) return new ItemStack(item);
                 }
                 return new ItemStack(Items.BARRIER);
@@ -829,7 +818,7 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
                 ResourceLocation tagId = ResourceLocation.tryParse(identifier.substring(1).trim());
                 if (tagId != null) {
                     var tag = ItemTags.create(tagId);
-                    for (Item item : ForgeRegistries.ITEMS.getValues()) {
+                    for (Item item : KineticRegistries.items().values()) {
                         if (item == Items.AIR) continue;
                         ItemStack stack = new ItemStack(item);
                         if (stack.is(tag)) return stack;
@@ -842,7 +831,7 @@ public final class ProtectionItemEditorScreen extends KineticScreen {
             String itemId = nbtStart >= 0 ? identifier.substring(0, nbtStart).trim() : identifier.trim();
             ResourceLocation id = ResourceLocation.tryParse(itemId);
             if (id == null) return new ItemStack(Items.BARRIER);
-            Item item = ForgeRegistries.ITEMS.getValue(id);
+            Item item = KineticRegistries.items().get(id);
             if (item == null || item == Items.AIR) return new ItemStack(Items.BARRIER);
             ItemStack stack = new ItemStack(item);
             if (nbtStart >= 0) {

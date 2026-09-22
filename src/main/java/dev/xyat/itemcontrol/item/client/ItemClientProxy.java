@@ -1,109 +1,110 @@
 package dev.xyat.itemcontrol.item.client;
 
 import com.mojang.logging.LogUtils;
-import dev.xyat.kineticcore.api.client.overlay.GuiOverlay;
-import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.client.gui.BannedItemScreen;
 import dev.xyat.itemcontrol.item.client.gui.DamageTypeEditorScreen;
 import dev.xyat.itemcontrol.item.client.gui.DirectEntityImmunityEditorScreen;
 import dev.xyat.itemcontrol.item.client.gui.ItemSearchCache;
+import dev.xyat.itemcontrol.item.client.gui.ItemCacheHudRenderer;
 import dev.xyat.itemcontrol.item.client.gui.ItemTagEditorScreen;
 import dev.xyat.itemcontrol.item.client.gui.MergeItemScreen;
 import dev.xyat.itemcontrol.item.client.gui.ProtectionItemEditorScreen;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
-import net.minecraft.client.Minecraft;
+import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
+import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
+import dev.xyat.kineticcore.api.text.KineticI18n;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 
-
-@Mod.EventBusSubscriber(modid = ItemModule.MODID, value = Dist.CLIENT)
-public class ItemClientProxy {
-
+public final class ItemClientProxy {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static Screen editorReturnScreen;
+    private static boolean installed;
+
+    private ItemClientProxy() {
+    }
+
+    public static void install() {
+        if (installed) return;
+        installed = true;
+        ItemCacheHudRenderer.install();
+        KineticClientEvents.onLogout(ItemClientProxy::onClientLogout);
+    }
 
     public static void requestOpenEditorFromCurrentScreen(int editorType) {
-        Minecraft minecraft = Minecraft.getInstance();
-        editorReturnScreen = minecraft.screen;
+        editorReturnScreen = KineticClientRuntime.currentScreen();
         ItemNetwork.requestOpenEditor(editorType);
     }
 
-    private static Screen takeEditorReturnScreen(Minecraft minecraft) {
-        Screen parent = editorReturnScreen != null ? editorReturnScreen : minecraft.screen;
+    private static Screen takeEditorReturnScreen() {
+        Screen current = KineticClientRuntime.currentScreen();
+        Screen parent = editorReturnScreen != null ? editorReturnScreen : current;
         editorReturnScreen = null;
         return parent;
     }
 
     public static void openBannedGui() {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = takeEditorReturnScreen(minecraft);
-        ItemSearchCache.prepareCache(() -> minecraft.setScreen(new BannedItemScreen(parent)));
+        Screen parent = takeEditorReturnScreen();
+        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new BannedItemScreen(parent)));
     }
 
     public static void openMergeGui() {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = takeEditorReturnScreen(minecraft);
-        ItemSearchCache.prepareCache(() -> minecraft.setScreen(new MergeItemScreen(parent)));
+        Screen parent = takeEditorReturnScreen();
+        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new MergeItemScreen(parent)));
     }
 
     public static void openItemTagEditor() {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = takeEditorReturnScreen(minecraft);
-        ItemSearchCache.prepareCache(() -> minecraft.setScreen(new ItemTagEditorScreen(parent)));
+        Screen parent = takeEditorReturnScreen();
+        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new ItemTagEditorScreen(parent)));
     }
 
     public static void openProtectionEditor(java.util.List<String> rules) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = takeEditorReturnScreen(minecraft);
-        minecraft.setScreen(new ProtectionItemEditorScreen(parent, rules));
+        Screen parent = takeEditorReturnScreen();
+        ItemSearchCache.prepareCache(() ->
+                KineticClientRuntime.openScreen(new ProtectionItemEditorScreen(parent, rules))
+        );
     }
 
     public static void openDamageTypeEditor(java.util.List<String> entries) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = takeEditorReturnScreen(minecraft);
-        minecraft.setScreen(new DamageTypeEditorScreen(parent, entries));
+        Screen parent = takeEditorReturnScreen();
+        KineticClientRuntime.openScreen(new DamageTypeEditorScreen(parent, entries));
     }
 
     public static void openDirectEntityImmunityEditor(java.util.List<String> entries) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = takeEditorReturnScreen(minecraft);
-        minecraft.setScreen(new DirectEntityImmunityEditorScreen(parent, entries));
+        Screen parent = takeEditorReturnScreen();
+        KineticClientRuntime.openScreen(new DirectEntityImmunityEditorScreen(parent, entries));
     }
 
-
     public static void applyEditorSaveResult(int editorType, boolean success, java.util.List<String> entries, String messageKey) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (editorType == ItemNetwork.EDITOR_BAN_ITEM && minecraft.screen instanceof BannedItemScreen screen) {
+        Screen current = KineticClientRuntime.currentScreen();
+        if (editorType == ItemNetwork.EDITOR_BAN_ITEM && current instanceof BannedItemScreen screen) {
             screen.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_MERGE_ITEM && minecraft.screen instanceof MergeItemScreen screen) {
+        } else if (editorType == ItemNetwork.EDITOR_MERGE_ITEM && current instanceof MergeItemScreen screen) {
             screen.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_ITEM_TAG && minecraft.screen instanceof ItemTagEditorScreen screen) {
+        } else if (editorType == ItemNetwork.EDITOR_ITEM_TAG && current instanceof ItemTagEditorScreen screen) {
             screen.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_PROTECTION_ITEM && minecraft.screen instanceof ProtectionItemEditorScreen screen) {
+        } else if (editorType == ItemNetwork.EDITOR_PROTECTION_ITEM && current instanceof ProtectionItemEditorScreen screen) {
             screen.applySaveResult(success, entries);
-        } else if (editorType == ItemNetwork.EDITOR_DAMAGE_IMMUNITY && minecraft.screen instanceof DamageTypeEditorScreen screen) {
+        } else if (editorType == ItemNetwork.EDITOR_DAMAGE_IMMUNITY && current instanceof DamageTypeEditorScreen screen) {
             screen.applySaveResult(success, entries);
-        } else if (editorType == ItemNetwork.EDITOR_DIRECT_ENTITY_IMMUNITY && minecraft.screen instanceof DirectEntityImmunityEditorScreen screen) {
+        } else if (editorType == ItemNetwork.EDITOR_DIRECT_ENTITY_IMMUNITY && current instanceof DirectEntityImmunityEditorScreen screen) {
             screen.applySaveResult(success, entries);
         }
+
         if (success) {
             String successKey = getEditorSaveSuccessKey(editorType);
             if (!successKey.isBlank()) {
-                GuiOverlay.toast(
+                KineticOverlays.toast(
                         "itemcontrol_editor_save_" + editorType,
-                        Component.translatable(successKey)
+                        KineticI18n.translatable(successKey)
                 );
             }
         } else if (messageKey != null && !messageKey.isBlank()) {
-            GuiOverlay.toast(
+            KineticOverlays.toast(
                     "itemcontrol_editor_save_" + editorType,
-                    Component.translatable(messageKey)
+                    KineticI18n.translatable(messageKey)
             );
         }
     }
@@ -133,8 +134,7 @@ public class ItemClientProxy {
         }
     }
 
-    @SubscribeEvent
-    public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+    private static void onClientLogout() {
         try {
             BanItemConfig.load();
             ItemSearchCache.clear();
@@ -142,5 +142,4 @@ public class ItemClientProxy {
             LOGGER.error("离开服务器后重载本地物品封禁配置失败", e);
         }
     }
-
 }

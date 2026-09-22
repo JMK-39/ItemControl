@@ -8,16 +8,16 @@ import dev.xyat.itemcontrol.cleaner.event.AutoCleanerEventHandler;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
+import dev.xyat.kineticcore.api.runtime.KineticPaths;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
 public class CleanerConfig {
-    private static final Path CONFIG_DIR = FMLPaths.CONFIGDIR.get().resolve("kineticcore");
-    private static final Path CONFIG_PATH = CONFIG_DIR.resolve("cleaner.toml");
+    private static final Path CONFIG_DIR = KineticPaths.configFile("kineticcore/cleaner.toml").getParent();
+    private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/cleaner.toml");
     private static CommentedFileConfig configData;
 
     public static boolean enableCleaner = true;
@@ -58,13 +58,11 @@ public class CleanerConfig {
                 configData.close();
                 configData = null;
             }
-            if (!Files.exists(CONFIG_DIR)) {
-                Files.createDirectories(CONFIG_DIR);
-            }
+            KineticPaths.ensureConfigDirectory("kineticcore");
 
             com.electronwill.nightconfig.core.Config oldValues = com.electronwill.nightconfig.core.Config.inMemory();
 
-            if (Files.exists(CONFIG_PATH)) {
+            if (KineticPaths.configFileExists("kineticcore/cleaner.toml")) {
                 try (FileConfig oldFile = FileConfig.of(CONFIG_PATH)) {
                     oldFile.load();
                     oldValues.putAll(oldFile);
@@ -320,7 +318,7 @@ public class CleanerConfig {
             if (rule.startsWith("@")) {
                 namespaces.add(rule.substring(1));
             } else if (rule.startsWith("#")) {
-                ResourceLocation tagLoc = ResourceLocation.tryParse(rule.substring(1));
+                ResourceLocation tagLoc = KineticResourceIds.tryParse(rule.substring(1));
                 if (tagLoc != null) {
                     tags.add(tagLoc);
                 }
@@ -343,7 +341,7 @@ public class CleanerConfig {
             return false;
         }
 
-        ResourceLocation rl = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation rl = KineticRegistries.items().id(stack.getItem());
 
         if (rl == null) {
             return false;
@@ -379,7 +377,7 @@ public class CleanerConfig {
             return false;
         }
 
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = KineticRegistries.items().id(stack.getItem());
         return id != null && id.toString().equals(protectedAreaToolItem);
     }
 

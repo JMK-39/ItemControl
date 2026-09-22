@@ -17,8 +17,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
+import dev.xyat.kineticcore.api.runtime.KineticPaths;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -29,7 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 public class ItemProtectionConfig {
-    private static final Path CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve("kineticcore/protection.toml");
+    private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/protection.toml");
     private static CommentedFileConfig configData;
 
     public static class ProtectionRule {
@@ -63,7 +64,7 @@ public class ItemProtectionConfig {
             if (tempId.startsWith("@")) {
                 this.modId = tempId.substring(1);
             } else if (tempId.startsWith("#")) {
-                this.tagKey = ItemTags.create(new ResourceLocation(tempId.substring(1)));
+                this.tagKey = ItemTags.create(KineticResourceIds.parse(tempId.substring(1)));
             } else {
                 this.baseId = tempId;
             }
@@ -208,10 +209,10 @@ public class ItemProtectionConfig {
 
         try {
             if (value.startsWith("#")) {
-                ResourceLocation tagId = new ResourceLocation(value.substring(1));
+                ResourceLocation tagId = KineticResourceIds.parse(value.substring(1));
                 GLOBAL_DAMAGE_IMMUNE_TAGS.add(TagKey.create(Registries.DAMAGE_TYPE, tagId));
             } else {
-                ResourceLocation damageId = new ResourceLocation(value);
+                ResourceLocation damageId = KineticResourceIds.parse(value);
                 GLOBAL_DAMAGE_IMMUNE_IDS.add(ResourceKey.create(Registries.DAMAGE_TYPE, damageId));
             }
         } catch (Exception e) {
@@ -227,10 +228,10 @@ public class ItemProtectionConfig {
 
         try {
             if (value.startsWith("#")) {
-                ResourceLocation tagId = new ResourceLocation(value.substring(1));
+                ResourceLocation tagId = KineticResourceIds.parse(value.substring(1));
                 GLOBAL_DIRECT_ENTITY_IMMUNE_TAGS.add(TagKey.create(Registries.ENTITY_TYPE, tagId));
             } else {
-                GLOBAL_DIRECT_ENTITY_IMMUNE_IDS.add(new ResourceLocation(value));
+                GLOBAL_DIRECT_ENTITY_IMMUNE_IDS.add(KineticResourceIds.parse(value));
             }
         } catch (Exception e) {
             ItemModule.LOGGER.warn("Invalid global direct entity immunity entry: {}", raw);
@@ -239,7 +240,7 @@ public class ItemProtectionConfig {
 
     public static ProtectionRule getProtectionRule(ItemStack stack) {
         if (!enableItemProtection || stack.isEmpty()) return null;
-        ResourceLocation itemIdRL = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation itemIdRL = KineticRegistries.items().id(stack.getItem());
         if (itemIdRL == null) return null;
         String itemId = itemIdRL.toString();
 
@@ -288,7 +289,7 @@ public class ItemProtectionConfig {
         if (directEntity == null) return false;
 
         EntityType<?> entityType = directEntity.getType();
-        ResourceLocation entityId = ForgeRegistries.ENTITY_TYPES.getKey(entityType);
+        ResourceLocation entityId = KineticRegistries.entityTypes().id(entityType);
 
         if (entityId != null && GLOBAL_DIRECT_ENTITY_IMMUNE_IDS.contains(entityId)) {
             return true;
@@ -348,7 +349,7 @@ public class ItemProtectionConfig {
             String id = value.startsWith("#") ? value.substring(1) : value;
             if (id.isEmpty()) return false;
             try {
-                new ResourceLocation(id);
+                KineticResourceIds.parse(id);
             } catch (Exception ignored) {
                 return false;
             }
@@ -362,7 +363,7 @@ public class ItemProtectionConfig {
         if (parts.length != 5) return false;
         String identifier = parts[0].trim();
         if (identifier.isEmpty()) return false;
-        if (!isBoolean(parts[1]) || !isBoolean(parts[2]) || !isBoolean(parts[3]) || !isBoolean(parts[4])) {
+        if (isNotBoolean(parts[1]) || isNotBoolean(parts[2]) || isNotBoolean(parts[3]) || isNotBoolean(parts[4])) {
             return false;
         }
 
@@ -381,7 +382,7 @@ public class ItemProtectionConfig {
             String modId = plainIdentifier.substring(1);
             if (modId.isEmpty()) return false;
             try {
-                new ResourceLocation(modId, "validation");
+                KineticResourceIds.of(modId, "validation");
                 return true;
             } catch (Exception ignored) {
                 return false;
@@ -391,16 +392,16 @@ public class ItemProtectionConfig {
         String resource = plainIdentifier.startsWith("#") ? plainIdentifier.substring(1) : plainIdentifier;
         if (resource.isEmpty()) return false;
         try {
-            new ResourceLocation(resource);
+            KineticResourceIds.parse(resource);
             return true;
         } catch (Exception ignored) {
             return false;
         }
     }
 
-    private static boolean isBoolean(String value) {
+    private static boolean isNotBoolean(String value) {
         String normalized = value == null ? "" : value.trim();
-        return "true".equalsIgnoreCase(normalized) || "false".equalsIgnoreCase(normalized);
+        return !"true".equalsIgnoreCase(normalized) && !"false".equalsIgnoreCase(normalized);
     }
 
     public static void save() {

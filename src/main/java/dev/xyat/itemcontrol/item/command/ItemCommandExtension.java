@@ -1,19 +1,19 @@
 package dev.xyat.itemcontrol.item.command;
 
-import dev.xyat.kineticcore.command.KTCommandApi;
-import dev.xyat.kineticcore.command.KTCommandExtension;
+import dev.xyat.kineticcore.api.command.KineticCommands;
+import dev.xyat.kineticcore.api.command.CommandExtension;
 import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import net.minecraft.commands.CommandSourceStack;
 
-public final class ItemCommandExtension implements KTCommandExtension {
+public final class ItemCommandExtension implements CommandExtension {
     private ItemCommandExtension() {
     }
 
     public static void install() {
-        KTCommandApi.register(ItemModule.MODID, new ItemCommandExtension());
+        KineticCommands.registerExtension(ItemModule.MODID, new ItemCommandExtension());
     }
 
     @Override

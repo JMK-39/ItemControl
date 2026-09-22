@@ -1,8 +1,8 @@
 package dev.xyat.itemcontrol.tabs.config;
 
-import dev.xyat.kineticcore.config.client.KTConfigApi;
-import dev.xyat.kineticcore.config.client.KTConfigPage;
-import dev.xyat.kineticcore.config.client.KTConfigScope;
+import dev.xyat.kineticcore.api.config.client.KTConfigApi;
+import dev.xyat.kineticcore.api.config.client.KTConfigPage;
+import dev.xyat.kineticcore.api.config.client.KTConfigScope;
 import dev.xyat.itemcontrol.tabs.network.TabNetwork;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;

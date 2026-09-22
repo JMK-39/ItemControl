@@ -1,12 +1,12 @@
 package dev.xyat.itemcontrol.cleaner.config;
 
-import dev.xyat.kineticcore.config.client.KTConfigApi;
-import dev.xyat.kineticcore.config.client.KTConfigPage;
-import dev.xyat.kineticcore.config.client.KTConfigScope;
-import dev.xyat.kineticcore.config.client.KTServerConfigClient;
+import dev.xyat.kineticcore.api.config.client.KTConfigApi;
+import dev.xyat.kineticcore.api.config.client.KTConfigPage;
+import dev.xyat.kineticcore.api.config.client.KTConfigScope;
+import dev.xyat.kineticcore.api.config.client.KTServerConfigClient;
+import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import dev.xyat.itemcontrol.cleaner.client.gui.CleanerItemRuleEditorScreen;
 import dev.xyat.itemcontrol.cleaner.client.gui.TrashBinButtonEditorScreen;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -33,7 +33,7 @@ public class CleanerConfigGui {
                 .serverManaged()
                 .applyTiming(KTConfigPage.ApplyTiming.MIXED)
                 .applyNotice(Component.translatable("cfg.itemcontrol.cleaner.cleaner.apply_notice"))
-                .section(Component.translatable("cfg.itemcontrol.cleaner.cleaner"))
+                .divider()
                 .booleanValue(
                         "enable_cleaner",
                         Component.translatable("cfg.itemcontrol.cleaner.cleaner.enable"),
@@ -66,7 +66,7 @@ public class CleanerConfigGui {
                         true,
                         null
                 )
-                .intValue(
+                .intValueUnbounded(
                         "cleaner_interval_seconds",
                         Component.translatable("cfg.itemcontrol.cleaner.cleaner.interval"),
                         () -> CleanerConfig.cleanerIntervalSeconds,
@@ -96,7 +96,7 @@ public class CleanerConfigGui {
                         List.of("minecraft:arrow", "minecraft:spectral_arrow"),
                         Component.translatable("cfg.itemcontrol.cleaner.cleaner.entity_list.tooltip")
                 )
-                .section(Component.translatable("cfg.itemcontrol.cleaner.trashbin"))
+                .divider()
                 .booleanValue(
                         "enable_trash_bin",
                         Component.translatable("cfg.itemcontrol.cleaner.bin.enable"),
@@ -131,7 +131,7 @@ public class CleanerConfigGui {
                         CleanerConfigGui::openTrashBinBlacklistEditor,
                         Component.translatable("cfg.itemcontrol.cleaner.bin.blacklist.tooltip")
                 )
-                .section(Component.translatable("cfg.itemcontrol.cleaner.area"))
+                .divider()
                 .booleanValue(
                         "enable_protected_areas",
                         Component.translatable("cfg.itemcontrol.cleaner.area.enable"),
@@ -156,7 +156,7 @@ public class CleanerConfigGui {
                         Integer.MAX_VALUE,
                         null
                 )
-                .doubleValue(
+                .doubleValueUnbounded(
                         "protected_area_ray_trace_distance",
                         Component.translatable("cfg.itemcontrol.cleaner.area.ray_trace_distance"),
                         () -> CleanerConfig.protectedAreaRayTraceDistance,
@@ -172,7 +172,7 @@ public class CleanerConfigGui {
                 .scope(KTConfigScope.CLIENT_LOCAL)
                 .pageDescription(Component.translatable("cfg.itemcontrol.cleaner.client.description"))
                 .applyTiming(KTConfigPage.ApplyTiming.IMMEDIATE)
-                .section(Component.translatable("cfg.itemcontrol.cleaner.trashbin"))
+                .divider()
                 .booleanValue(
                         "show_trash_bin_button",
                         Component.translatable("cfg.itemcontrol.cleaner.bin.show_button"),
@@ -192,14 +192,13 @@ public class CleanerConfigGui {
     }
 
     private static void openItemWhitelistEditor() {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = minecraft.screen;
+        Screen parent = KineticClientRuntime.currentScreen();
         List<String> values = KTServerConfigClient.getStringList(
                 PAGE_ID,
                 "item_whitelist",
                 CleanerConfig.itemWhitelist
         );
-        minecraft.setScreen(new CleanerItemRuleEditorScreen(
+        KineticClientRuntime.openScreen(new CleanerItemRuleEditorScreen(
                 parent,
                 CleanerItemRuleEditorScreen.Mode.CLEANER_WHITELIST,
                 values,
@@ -211,14 +210,13 @@ public class CleanerConfigGui {
     }
 
     private static void openTrashBinBlacklistEditor() {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = minecraft.screen;
+        Screen parent = KineticClientRuntime.currentScreen();
         List<String> values = KTServerConfigClient.getStringList(
                 PAGE_ID,
                 "trash_bin_blacklist",
                 CleanerConfig.trashBinBlacklist
         );
-        minecraft.setScreen(new CleanerItemRuleEditorScreen(
+        KineticClientRuntime.openScreen(new CleanerItemRuleEditorScreen(
                 parent,
                 CleanerItemRuleEditorScreen.Mode.TRASH_BLACKLIST,
                 values,
@@ -230,14 +228,13 @@ public class CleanerConfigGui {
     }
 
     private static void openProtectedAreaToolEditor() {
-        Minecraft minecraft = Minecraft.getInstance();
-        Screen parent = minecraft.screen;
+        Screen parent = KineticClientRuntime.currentScreen();
         String current = KTServerConfigClient.getString(
                 PAGE_ID,
                 "protected_area_tool_item",
                 CleanerConfig.protectedAreaToolItem
         );
-        minecraft.setScreen(new CleanerItemRuleEditorScreen(
+        KineticClientRuntime.openScreen(new CleanerItemRuleEditorScreen(
                 parent,
                 CleanerItemRuleEditorScreen.Mode.AREA_TOOL,
                 List.of(current),
@@ -249,7 +246,6 @@ public class CleanerConfigGui {
     }
 
     private static void openTrashBinButtonEditor() {
-        Minecraft minecraft = Minecraft.getInstance();
-        minecraft.setScreen(new TrashBinButtonEditorScreen(minecraft.screen));
+        KineticClientRuntime.openScreen(new TrashBinButtonEditorScreen(KineticClientRuntime.currentScreen()));
     }
 }

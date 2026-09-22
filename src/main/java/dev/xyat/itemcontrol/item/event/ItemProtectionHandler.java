@@ -3,6 +3,9 @@ package dev.xyat.itemcontrol.item.event;
 import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
 import dev.xyat.itemcontrol.item.util.ItemProtectionList;
+import dev.xyat.kineticcore.api.event.KineticEventPriority;
+import dev.xyat.kineticcore.api.event.KineticExternalEvents;
+import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.tags.DamageTypeTags;
@@ -12,18 +15,24 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = ItemModule.MODID)
-public class ItemProtectionHandler {
+public final class ItemProtectionHandler {
+    private static boolean registered;
 
-    @SubscribeEvent
-    public static void onEntityJoinWorld(EntityJoinLevelEvent event) {
-        if (!ItemProtectionConfig.enableItemProtection || event.getLevel().isClientSide) return;
+    private ItemProtectionHandler() {
+    }
 
-        if (event.getEntity() instanceof ItemEntity itemEntity) {
+    public static void register() {
+        if (registered) return;
+        registered = true;
+        KineticWorldEvents.onEntityJoin(KineticEventPriority.NORMAL, context -> onEntityJoinWorld(context.entity()));
+        KineticExternalEvents.subscribe(ItemEntityDamageEvent.class, ItemProtectionHandler::onItemDamage);
+    }
+
+    private static void onEntityJoinWorld(net.minecraft.world.entity.Entity entity) {
+        if (!ItemProtectionConfig.enableItemProtection || entity.level().isClientSide) return;
+
+        if (entity instanceof ItemEntity itemEntity) {
             ItemStack stack = itemEntity.getItem();
             if (stack.isEmpty()) return;
 
@@ -48,8 +57,7 @@ public class ItemProtectionHandler {
         }
     }
 
-    @SubscribeEvent
-    public static void onItemDamage(ItemEntityDamageEvent event) {
+    private static void onItemDamage(ItemEntityDamageEvent event) {
         ItemEntity itemEntity = event.getEntity();
         ItemStack stack = itemEntity.getItem();
         if (stack.isEmpty()) return;

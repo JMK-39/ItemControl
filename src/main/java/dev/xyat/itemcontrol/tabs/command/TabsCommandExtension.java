@@ -1,16 +1,16 @@
 package dev.xyat.itemcontrol.tabs.command;
 
-import dev.xyat.kineticcore.command.KTCommandApi;
-import dev.xyat.kineticcore.command.KTCommandExtension;
+import dev.xyat.kineticcore.api.command.KineticCommands;
+import dev.xyat.kineticcore.api.command.CommandExtension;
 import dev.xyat.itemcontrol.tabs.TabsModule;
 import dev.xyat.itemcontrol.tabs.TabConfig;
 import net.minecraft.commands.CommandSourceStack;
 
-public final class TabsCommandExtension implements KTCommandExtension {
+public final class TabsCommandExtension implements CommandExtension {
     private TabsCommandExtension() {}
 
     public static void install() {
-        KTCommandApi.register(TabsModule.MODID, new TabsCommandExtension());
+        KineticCommands.registerExtension(TabsModule.MODID, new TabsCommandExtension());
     }
 
     @Override

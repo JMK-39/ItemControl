@@ -4,22 +4,19 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.CommandDispatcher;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
 import dev.xyat.itemcontrol.cleaner.event.AutoCleanerEventHandler;
 import dev.xyat.itemcontrol.cleaner.client.gui.CleanerMenu;
-import dev.xyat.kineticcore.command.CommandUtils;
+import dev.xyat.kineticcore.api.menu.KineticMenus;
+import dev.xyat.kineticcore.api.command.CommandText;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import javax.annotation.Nonnull;
 
 public class CleanerCommand {
 
@@ -50,44 +47,56 @@ public class CleanerCommand {
 
         clean.executes(ctx -> sendHelp(ctx.getSource()));
         root.then(clean);
+        root.then(createDelCommand());
+    }
+
+    /** The original /del bin command and its /kt del bin alias share the same implementation. */
+    public static void registerTopLevelDel(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(createDelCommand());
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> createDelCommand() {
+        return Commands.literal("del")
+                .then(Commands.literal("bin")
+                        .executes(ctx -> openTrashBin(ctx.getSource(), 1))
+                        .then(Commands.argument("index", IntegerArgumentType.integer(1))
+                                .executes(ctx -> openTrashBin(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "index")))));
     }
 
     private static int sendHelp(CommandSourceStack source) {
-        MutableComponent msg = CommandUtils.createHeader("cmd.itemcontrol.cleaner.clean.desc").append("\n");
-        msg.append(CommandUtils.createExecutableCommand("/kt clean bin", "cmd.itemcontrol.cleaner.clean.bin.desc"));
+        MutableComponent msg = CommandText.header("cmd.itemcontrol.cleaner.clean.desc").append("\n");
+        msg.append(CommandText.executable("/kt clean bin", "cmd.itemcontrol.cleaner.clean.bin.desc"));
+        msg.append("\n").append(CommandText.executable("/del bin", "cmd.itemcontrol.cleaner.clean.bin.desc"));
 
         if (source.hasPermission(2)) {
-            msg.append("\n").append(CommandUtils.createExecutableCommand("/kt clean trash", "cmd.itemcontrol.cleaner.clean.trash.desc"));
-            msg.append("\n").append(CommandUtils.createSuggestCommand("/kt clean auto <true/false>", "/kt clean auto ", "cmd.itemcontrol.cleaner.clean.auto.desc"));
-            msg.append("\n").append(CommandUtils.createSuggestCommand("/kt clean toggle <true/false>", "/kt clean toggle ", "cmd.itemcontrol.cleaner.clean.toggle.desc"));
+            msg.append("\n").append(CommandText.executable("/kt clean trash", "cmd.itemcontrol.cleaner.clean.trash.desc"));
+            msg.append("\n").append(CommandText.createSuggestCommand("/kt clean auto <true/false>", "/kt clean auto ", "cmd.itemcontrol.cleaner.clean.auto.desc"));
+            msg.append("\n").append(CommandText.createSuggestCommand("/kt clean toggle <true/false>", "/kt clean toggle ", "cmd.itemcontrol.cleaner.clean.toggle.desc"));
         }
 
         source.sendSuccess(() -> msg, false);
         return 1;
     }
 
-    private static int openTrashBin(CommandSourceStack source, int userIndex) {
+    public static int openTrashBin(CommandSourceStack source, int userIndex) {
         try {
             ServerPlayer player = source.getPlayerOrException();
             CleanerSavedData data = CleanerSavedData.get(source.getLevel());
             int internalIndex = Math.max(0, userIndex - 1);
 
             if (internalIndex >= data.getHistorySize() && internalIndex != 0) {
-                source.sendFailure(Component.translatable("cmd.itemcontrol.cleaner.clean.no_history").withStyle(ChatFormatting.RED));
+                source.sendFailure(Component.translatable("cmd.itemcontrol.cleaner.clean.no_history"));
                 return 0;
             }
 
             SimpleContainer storage = data.getRecord(internalIndex);
-            player.openMenu(new MenuProvider() {
-                @Override @Nonnull public Component getDisplayName() { return Component.translatable("gui.itemcontrol.cleaner.cleaner.title"); }
-                @Override @Nonnull public AbstractContainerMenu createMenu(int id, @Nonnull Inventory inv, @Nonnull Player p) {
-                    return new CleanerMenu(id, inv, storage);
-                }
-            });
+            KineticMenus.open(player,
+                    Component.translatable("gui.itemcontrol.cleaner.cleaner.title"),
+                    (id, inv, menuPlayer) -> new CleanerMenu(id, inv, storage));
             return 1;
         } catch (Exception e) {
             source.sendFailure(Component.translatable("cmd.itemcontrol.cleaner.clean.open_failed",
-                    Component.literal(String.valueOf(e.getMessage())).withStyle(ChatFormatting.YELLOW)));
+                    Component.literal(String.valueOf(e.getMessage()))));
             return 0;
         }
     }

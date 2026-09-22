@@ -1,23 +1,30 @@
 package dev.xyat.itemcontrol.cleaner.client;
 
-import dev.xyat.itemcontrol.cleaner.CleanerModule;
-import net.minecraft.client.KeyMapping;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import org.lwjgl.glfw.GLFW;
+import dev.xyat.kineticcore.api.client.input.KineticKeyBindings;
+import net.minecraft.network.chat.Component;
 
-@Mod.EventBusSubscriber(modid = CleanerModule.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-public class CleanerAreaKeyBindings {
-    public static final KeyMapping AREA_ACTION_KEY = new KeyMapping(
-            "key.itemcontrol.cleaner.area_action",
-            GLFW.GLFW_KEY_LEFT_SHIFT,
-            "key.itemcontrol.category"
-    );
+public final class CleanerAreaKeyBindings {
+    private static KineticKeyBindings.Binding areaActionKey;
 
-    @SubscribeEvent
-    public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(AREA_ACTION_KEY);
+    private CleanerAreaKeyBindings() {
+    }
+
+    public static void register() {
+        if (areaActionKey != null) {
+            return;
+        }
+        areaActionKey = KineticKeyBindings.builder("key.itemcontrol.cleaner.area_action")
+                .category("key.itemcontrol.category")
+                .context(KineticKeyBindings.Context.IN_GAME)
+                .keyboard(KineticKeyBindings.Key.LEFT_SHIFT)
+                .register();
+    }
+
+    public static boolean isDown() {
+        return areaActionKey != null && areaActionKey.isDown();
+    }
+
+    public static Component translatedKeyMessage() {
+        return areaActionKey == null ? Component.empty() : areaActionKey.translatedKeyMessage();
     }
 }

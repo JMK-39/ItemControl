@@ -10,14 +10,13 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import dev.xyat.itemcontrol.item.util.ItemBanControl;
-import net.minecraftforge.registries.ForgeRegistries;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.resource.KineticResourceIds;
+import dev.xyat.kineticcore.api.runtime.KineticPaths;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,8 +25,8 @@ import java.util.stream.Collectors;
 public class BanItemConfig {
     private static final Logger LOGGER = LogManager.getLogger("itemcontrol/Config");
     public static final String VOID_ID = "itemcontrol:void_placeholder";
-    public static final Path PATH = Paths.get("config", "kineticcore", "banitem.json");
-    public static final Path BACKUP_PATH = Paths.get("config", "kineticcore", "banitem.old.json");
+    public static final Path PATH = KineticPaths.configFile("kineticcore/banitem.json");
+    public static final Path BACKUP_PATH = KineticPaths.configFile("kineticcore/banitem.old.json");
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     public static volatile Data data = new Data();
     public static volatile Map<ItemRule, String> ruleReplacementMap = new HashMap<>();
@@ -46,7 +45,7 @@ public class BanItemConfig {
 
     public static String getItemIdFromCache(Item item) {
         return ITEM_ID_CACHE.computeIfAbsent(item, k -> {
-            ResourceLocation rl = ForgeRegistries.ITEMS.getKey(k);
+            ResourceLocation rl = KineticRegistries.items().id(k);
             return rl != null ? rl.toString() : "";
         });
     }
@@ -236,7 +235,7 @@ public class BanItemConfig {
         Set<TagKey<Item>> result = new HashSet<>();
         for (String id : ids) {
             try {
-                result.add(ItemTags.create(new ResourceLocation(id)));
+                result.add(ItemTags.create(KineticResourceIds.parse(id)));
             } catch (Exception ignored) {}
         }
         if (result.isEmpty()) return Collections.emptySet();
@@ -254,7 +253,7 @@ public class BanItemConfig {
         String clean = tagId.trim().toLowerCase(Locale.ROOT);
         if (clean.startsWith("#")) clean = clean.substring(1);
         try {
-            return new ResourceLocation(clean).toString();
+            return KineticResourceIds.parse(clean).toString();
         } catch (Exception ignored) {
             return "";
         }
@@ -278,7 +277,7 @@ public class BanItemConfig {
             String itemId = getBaseIdentifier(entry.getKey());
             if (itemId.isEmpty()) continue;
             try {
-                itemId = new ResourceLocation(itemId).toString();
+                itemId = KineticResourceIds.parse(itemId).toString();
             } catch (Exception ignored) {
                 continue;
             }
@@ -338,7 +337,7 @@ public class BanItemConfig {
         if (raw.startsWith("#")) {
             String tag = normalizePrefixedRuleBody(raw);
             try {
-                return "#" + new ResourceLocation(tag);
+                return "#" + KineticResourceIds.parse(tag);
             } catch (Exception e) {
                 logLimitedWarn("无效标签规则=" + raw, e);
                 return "";
@@ -351,7 +350,7 @@ public class BanItemConfig {
         String cleanId = idPart.trim().toLowerCase(Locale.ROOT);
         if (cleanId.isEmpty()) return "";
         try {
-            cleanId = new ResourceLocation(cleanId).toString();
+            cleanId = KineticResourceIds.parse(cleanId).toString();
         } catch (Exception e) {
             logLimitedWarn("无效物品 ID=" + raw, e);
             return "";
@@ -422,7 +421,7 @@ public class BanItemConfig {
         String base = bracket == -1 ? raw : raw.substring(0, bracket);
         if (base.startsWith("@") || base.startsWith("#")) return base.toLowerCase(Locale.ROOT);
         try {
-            return new ResourceLocation(base.trim().toLowerCase(Locale.ROOT)).toString();
+            return KineticResourceIds.parse(base.trim().toLowerCase(Locale.ROOT)).toString();
         } catch (Exception ignored) {
             return "";
         }
@@ -431,14 +430,14 @@ public class BanItemConfig {
 
     public static void load() {
         try {
-            if (Files.exists(PATH)) {
-                String json = Files.readString(PATH);
+            if (KineticPaths.configFileExists("kineticcore/banitem.json")) {
+                String json = KineticPaths.readConfigText("kineticcore/banitem.json");
                 data = readDataFromJson(json, "load");
             } else {
                 data = new Data();
             }
             normalizeData();
-            if (!Files.exists(PATH)) writeConfigOnly();
+            if (!KineticPaths.configFileExists("kineticcore/banitem.json")) writeConfigOnly();
         } catch (Throwable e) {
             LOGGER.error("配置加载失败，已备份异常文件并使用空白安全配置", e);
             backupBrokenConfig();
@@ -521,24 +520,22 @@ public class BanItemConfig {
 
     private static void writeConfigOnly() {
         try {
-            if (PATH.getParent() != null) Files.createDirectories(PATH.getParent());
-            Path tempPath = PATH.resolveSibling(PATH.getFileName() + ".tmp");
-            Files.writeString(tempPath, GSON.toJson(data == null ? new Data() : data));
-            try {
-                Files.move(tempPath, PATH, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (Throwable ignored) {
-                Files.move(tempPath, PATH, StandardCopyOption.REPLACE_EXISTING);
-            }
+            KineticPaths.writeConfigTextsAtomic(Map.of(
+                    "kineticcore/banitem.json",
+                    GSON.toJson(data == null ? new Data() : data)
+            ));
         } catch (Throwable e) {
-            throw new IllegalStateException("写入 " + PATH.getFileName() + " 失败", e);
+            throw new IllegalStateException("写入 banitem.json 失败", e);
         }
     }
 
     private static void backupBrokenConfig() {
         try {
-            if (!Files.exists(PATH)) return;
-            if (BACKUP_PATH.getParent() != null) Files.createDirectories(BACKUP_PATH.getParent());
-            Files.copy(PATH, BACKUP_PATH, StandardCopyOption.REPLACE_EXISTING);
+            if (!KineticPaths.configFileExists("kineticcore/banitem.json")) return;
+            KineticPaths.writeConfigText(
+                    "kineticcore/banitem.old.json",
+                    KineticPaths.readConfigText("kineticcore/banitem.json")
+            );
             LOGGER.warn("已备份异常配置到 {}", BACKUP_PATH);
         } catch (Throwable e) {
             LOGGER.error("备份异常配置失败", e);
@@ -751,7 +748,7 @@ public class BanItemConfig {
 
     public static String getItemIdentifier(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return "";
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = KineticRegistries.items().id(stack.getItem());
         if (id == null) return "";
         String base = id.toString();
         CompoundTag tag = stack.getTag();
@@ -770,12 +767,12 @@ public class BanItemConfig {
             try {
                 int bracket = clean.indexOf('{');
                 if (bracket == -1) {
-                    Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(clean));
+                    Item item = KineticRegistries.items().get(KineticResourceIds.parse(clean));
                     if (item != null) result[0] = new ItemStack(item);
                 } else {
                     String id = clean.substring(0, bracket);
                     String nbt = clean.substring(bracket);
-                    Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(id));
+                    Item item = KineticRegistries.items().get(KineticResourceIds.parse(id));
                     if (item != null) {
                         CompoundTag tag = safeParseTagForRule(clean, nbt);
                         if (tag != null) {

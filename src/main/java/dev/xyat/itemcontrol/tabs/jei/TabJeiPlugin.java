@@ -14,7 +14,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
+import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -26,7 +27,7 @@ public class TabJeiPlugin implements IModPlugin {
 
     @Override
     public @NotNull ResourceLocation getPluginUid() {
-        return new ResourceLocation("itemcontrol", "tabs_jei");
+        return KineticResourceIds.of("itemcontrol", "tabs_jei");
     }
 
     @Override
@@ -37,7 +38,7 @@ public class TabJeiPlugin implements IModPlugin {
         for (TabConfig.TabAddition add : TabConfig.data.additions) {
             for (TabConfig.TabItem item : add.items) {
                 if (item.matchNbt && !item.nbt.equals("{}")) {
-                    Item mcItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(item.id));
+                    Item mcItem = KineticRegistries.items().get(KineticResourceIds.parse(item.id));
                     if (mcItem != null) itemsWithCustomNBT.add(mcItem);
                 }
             }

@@ -1,28 +1,22 @@
 package dev.xyat.itemcontrol.cleaner;
 
 import com.mojang.logging.LogUtils;
-import dev.xyat.itemcontrol.cleaner.CleanerInit;
 import dev.xyat.itemcontrol.cleaner.Network.CleanerNetwork;
 import dev.xyat.itemcontrol.cleaner.client.gui.InventoryButtonEventHandler;
 import dev.xyat.itemcontrol.cleaner.command.CleanerCommandExtension;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfigGui;
-import dev.xyat.kineticcore.config.server.KTServerConfigApi;
-import dev.xyat.kineticcore.config.server.KTServerConfigSpec;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import dev.xyat.kineticcore.api.config.server.KTServerConfigApi;
+import dev.xyat.kineticcore.api.config.server.KTServerConfigSpec;
 import org.slf4j.Logger;
+import dev.xyat.kineticcore.api.runtime.KineticPlatform;
+import dev.xyat.itemcontrol.cleaner.client.CleanerSetup;
 
 public final class CleanerModule {
     public static final String MODID = "itemcontrol";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public CleanerModule(FMLJavaModLoadingContext context) {
-        IEventBus modEventBus = context.getModEventBus();
-
+    public CleanerModule() {
         CleanerConfig.load();
         KTServerConfigApi.register(KTServerConfigSpec.builder("itemcontrol:cleaner")
                 .booleanValue("enable_cleaner", () -> CleanerConfig.enableCleaner, value -> CleanerConfig.enableCleaner = value)
@@ -43,11 +37,12 @@ public final class CleanerModule {
                 .doubleValue("protected_area_ray_trace_distance", () -> CleanerConfig.protectedAreaRayTraceDistance, value -> CleanerConfig.protectedAreaRayTraceDistance = value, -Double.MAX_VALUE, Double.MAX_VALUE)
                 .onSave(CleanerConfig::saveServerSettings)
                 .build());
-        CleanerInit.register(modEventBus);
+        CleanerInit.register();
         CleanerNetwork.register();
         CleanerCommandExtension.install();
 
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+        KineticPlatform.runOnClient(() -> () -> {
+            CleanerSetup.register();
             CleanerConfigGui.load();
             InventoryButtonEventHandler.register();
         });

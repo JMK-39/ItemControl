@@ -11,7 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
@@ -91,14 +91,14 @@ public class ItemEntityDamageEventJS extends EntityEventJS {
         Entity entity = getDirectEntity();
         if (entity == null) return "none";
 
-        ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        ResourceLocation id = KineticRegistries.entityTypes().id(entity.getType());
         return id != null ? id.toString() : "none";
     }
     public String getSourceEntityType() {
         Entity entity = getSourceEntity();
         if (entity == null) return "none";
 
-        ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        ResourceLocation id = KineticRegistries.entityTypes().id(entity.getType());
         return id != null ? id.toString() : "none";
     }
     public boolean isDamageType(String id) {
@@ -114,14 +114,14 @@ public class ItemEntityDamageEventJS extends EntityEventJS {
         Entity entity = getDirectEntity();
         if (entity == null) return false;
 
-        ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        ResourceLocation id = KineticRegistries.entityTypes().id(entity.getType());
         return id != null && id.getNamespace().equals(modId);
     }
     public boolean isSourceEntityFromMod(String modId) {
         Entity entity = getSourceEntity();
         if (entity == null) return false;
 
-        ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        ResourceLocation id = KineticRegistries.entityTypes().id(entity.getType());
         return id != null && id.getNamespace().equals(modId);
     }
     public boolean isFire() {
