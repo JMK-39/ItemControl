@@ -224,7 +224,7 @@
   "gui.itemcontrol.tabs.tabs.notify.duplicate": "Blocked: Item already exists in target tab!",
   "gui.itemcontrol.tabs.tabs.notify.saved": "Saved and synchronized. Reopen the creative inventory; reload resources if a full refresh is needed.",
   "gui.itemcontrol.tabs.tabs.btn.back": "Back",
-  "gui.itemcontrol.tabs.tabs.btn.save_apply": "Save & Apply",
+  "gui.itemcontrol.tabs.tabs.btn.save_apply": "Save",
   "gui.itemcontrol.tabs.format.red": "§c%s",
   "gui.itemcontrol.tabs.format.white": "%s",
   "gui.itemcontrol.tabs.tabs.unified.left_title.colored": "§6Vanilla & Added Items",

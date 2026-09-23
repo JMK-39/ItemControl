@@ -6,7 +6,6 @@ import dev.xyat.kineticcore.api.client.theme.GuiTheme;
 import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.selector.KineticSelectors;
 import dev.xyat.kineticcore.api.client.screen.KineticScreen;
-import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -26,6 +25,10 @@ import java.util.function.Function;
 
 @OnlyIn(Dist.CLIENT)
 public final class CleanerItemRuleEditorScreen extends KineticScreen {
+    public Screen getParent() {
+        return parent;
+    }
+
     public enum Mode {
         CLEANER_WHITELIST(
                 "gui.itemcontrol.cleaner.item_rule_editor.whitelist.title",

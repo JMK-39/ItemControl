@@ -15,17 +15,11 @@ public final class TrashBinButtonEditorScreen extends KineticNativeScreen {
     private static final int DEFAULT_BUTTON_X = 148;
     private static final int DEFAULT_BUTTON_Y = 61;
 
-    private final Screen parent;
     private final HudPositionEditor editor = new HudPositionEditor();
     private boolean draftConfigured;
 
-    public TrashBinButtonEditorScreen() {
-        this(null);
-    }
-
     public TrashBinButtonEditorScreen(Screen parent) {
         super(Component.translatable("screen.itemcontrol.cleaner.trash_bin_button_editor.title"));
-        this.parent = parent;
         setParentScreen(parent);
         reserveStandaloneDraft();
     }
@@ -58,7 +52,7 @@ public final class TrashBinButtonEditorScreen extends KineticNativeScreen {
                 Component.translatable("gui.itemcontrol.cleaner.trash_bin_button_editor.save"),
                 Component.translatable("gui.itemcontrol.cleaner.trash_bin_button_editor.reset"),
                 Component.translatable("gui.itemcontrol.cleaner.trash_bin_button_editor.cancel"),
-                this::saveAndClose,
+                this::savePosition,
                 this::closeWithoutSaving
         );
     }
@@ -126,17 +120,12 @@ public final class TrashBinButtonEditorScreen extends KineticNativeScreen {
         return false;
     }
 
-    private void saveAndClose() {
+    private void savePosition() {
         CleanerConfig.setTrashBinButtonPosition(currentRelativeX(), currentRelativeY());
         commitDraft();
-        closeScreen();
     }
 
     private void closeWithoutSaving() {
-        closeScreen();
-    }
-
-    private void closeScreen() {
         navigateBack();
     }
 
@@ -147,4 +136,5 @@ public final class TrashBinButtonEditorScreen extends KineticNativeScreen {
     private int currentRelativeY() {
         return editor.getY() - HudPositionEditor.getInventoryTop(height);
     }
+
 }
