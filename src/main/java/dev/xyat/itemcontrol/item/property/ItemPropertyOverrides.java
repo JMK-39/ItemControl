@@ -114,11 +114,6 @@ public final class ItemPropertyOverrides {
         return rule == null || rule.enchantability() == null ? original : rule.enchantability();
     }
 
-    public static boolean fireResistant(Item item, boolean original) {
-        ItemPropertyRule rule = ItemPropertyConfig.active(item);
-        return rule == null || rule.fireResistant() == null ? original : rule.fireResistant();
-    }
-
     public static net.minecraft.world.item.Rarity rarity(Item item, ItemStack stack, net.minecraft.world.item.Rarity original) {
         ItemPropertyRule rule = active(stack);
         if (rule == null || rule.rarity() == null) return original;

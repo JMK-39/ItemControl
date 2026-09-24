@@ -38,11 +38,6 @@ public final class ItemPropertyMixins {
             cir.setReturnValue(ItemPropertyOverrides.enchantability((Item) (Object) this, cir.getReturnValue()));
         }
 
-        @Inject(method = "isFireResistant()Z", at = @At("RETURN"), cancellable = true)
-        private void itemcontrol$fireResistant(CallbackInfoReturnable<Boolean> cir) {
-            cir.setReturnValue(ItemPropertyOverrides.fireResistant((Item) (Object) this, cir.getReturnValue()));
-        }
-
         @Inject(method = "getRarity(Lnet/minecraft/world/item/ItemStack;)Lnet/minecraft/world/item/Rarity;", at = @At("RETURN"), cancellable = true)
         private void itemcontrol$rarity(ItemStack stack, CallbackInfoReturnable<net.minecraft.world.item.Rarity> cir) {
             cir.setReturnValue(ItemPropertyOverrides.rarity((Item) (Object) this, stack, cir.getReturnValue()));

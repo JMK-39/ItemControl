@@ -12,6 +12,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -31,7 +32,17 @@ public final class ItemPropertyConfig {
     private static final int MAX_JSON_CHARS = 2 * 1024 * 1024;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final AtomicReference<Map<String, JsonElement>> PENDING = new AtomicReference<>(Map.of());
-    private static final AtomicReference<Map<ResourceLocation, ItemPropertyRule>> ACTIVE = new AtomicReference<>(Map.of());
+    private static final AtomicReference<ActiveSnapshot> ACTIVE = new AtomicReference<>(ActiveSnapshot.empty());
+
+    private record ActiveSnapshot(
+            Map<ResourceLocation, ItemPropertyRule> items,
+            ItemProtectionPatternIndex patterns,
+            Map<String, JsonElement> document
+    ) {
+        private static ActiveSnapshot empty() {
+            return new ActiveSnapshot(Map.of(), ItemProtectionPatternIndex.empty(), Map.of());
+        }
+    }
 
     private ItemPropertyConfig() {
     }
@@ -42,7 +53,7 @@ public final class ItemPropertyConfig {
             String raw = KineticPaths.configFileExists(CONFIG_FILE)
                     ? KineticPaths.readConfigText(CONFIG_FILE)
                     : "{}";
-            Map<String, JsonElement> parsed = parseDocument(raw);
+            Map<String, JsonElement> parsed = migrateLegacyProtectionRules(parseDocument(raw));
             PENDING.set(immutableCopy(parsed));
             ACTIVE.set(buildActiveSnapshot(parsed));
             if (!KineticPaths.configFileExists(CONFIG_FILE)) writePending(parsed);
@@ -53,7 +64,7 @@ public final class ItemPropertyConfig {
 
     /** Current process rules; saving pending edits never mutates this map. */
     public static ItemPropertyRule active(ResourceLocation itemId) {
-        return itemId == null ? null : ACTIVE.get().get(itemId);
+        return itemId == null ? null : ACTIVE.get().items().get(itemId);
     }
 
     /** Current process rules for a registered item. */
@@ -65,7 +76,7 @@ public final class ItemPropertyConfig {
 
     /** Immutable copy of the active startup snapshot for login synchronization. */
     public static Map<ResourceLocation, ItemPropertyRule> activeSnapshot() {
-        return ACTIVE.get();
+        return ACTIVE.get().items();
     }
 
     /** Rebuilds the process snapshot after vanilla and mod registries have finished registering. */
@@ -80,9 +91,7 @@ public final class ItemPropertyConfig {
 
     /** Current process snapshot serialized in the same plain ID-to-properties shape. */
     public static synchronized String activeJson() {
-        JsonObject root = new JsonObject();
-        ACTIVE.get().forEach((id, rule) -> root.add(id.toString(), writeRule(rule)));
-        return GSON.toJson(root);
+        return GSON.toJson(toJsonObject(ACTIVE.get().document()));
     }
 
     /**
@@ -113,6 +122,27 @@ public final class ItemPropertyConfig {
         } catch (Exception e) {
             ItemModule.LOGGER.warn("Rejected item property snapshots received from server", e);
         }
+    }
+
+    /** Protection-only rules may target an exact item, an NBT variant, a tag, or a mod namespace. */
+    public static ItemPropertyRule activeProtection(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+        ActiveSnapshot snapshot = ACTIVE.get();
+        ItemPropertyRule nbt = snapshot.patterns().matchingNbt(stack);
+        if (nbt != null) return nbt;
+        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ItemPropertyRule exact = id == null ? null : snapshot.items().get(id);
+        if (exact != null && exact.hasProtectionFields()) return exact;
+        return snapshot.patterns().matchingScope(stack);
+    }
+
+    public static boolean isProtectionPattern(String key) {
+        return ItemProtectionPatternIndex.isPatternKey(key)
+                && ItemProtectionPatternIndex.isValidPatternKey(key);
+    }
+
+    public static boolean isProtectionSelectorCandidate(String key) {
+        return ItemProtectionPatternIndex.isPatternKey(key);
     }
 
     /** Pending rows, including IDs or fields that cannot currently be interpreted. */
@@ -157,6 +187,71 @@ public final class ItemPropertyConfig {
         return entries;
     }
 
+    private static Map<String, JsonElement> migrateLegacyProtectionRules(Map<String, JsonElement> current) {
+        List<String> legacy = ItemProtectionConfig.indestructibleItemsRaw;
+        if (legacy.isEmpty()) return current;
+        if (!ItemProtectionConfig.areValidProtectionRules(legacy)) {
+            ItemModule.LOGGER.warn("Legacy item protection list contains invalid entries; migration was skipped");
+            return current;
+        }
+        LinkedHashMap<String, JsonElement> merged = new LinkedHashMap<>(current);
+        for (String entry : legacy) {
+            String[] parts = entry.split(";", 5);
+            String id = parts[0].trim();
+            // The old matcher ignored NBT on tag and mod selectors. Keep that behavior when migrating.
+            int nbtStart = id.indexOf('{');
+            if (nbtStart >= 0 && (id.startsWith("#") || id.startsWith("@"))) {
+                id = id.substring(0, nbtStart).trim();
+            }
+            if (isProtectionSelectorCandidate(id) && !isProtectionPattern(id)) {
+                ItemModule.LOGGER.warn("Cannot migrate invalid protection selector {}", id);
+                return current;
+            }
+            JsonElement existing = merged.get(id);
+            if (existing != null && !existing.isJsonObject()) {
+                ItemModule.LOGGER.warn("Cannot migrate protection rule {} over a malformed property rule", id);
+                return current;
+            }
+            JsonObject rule = existing == null ? new JsonObject() : existing.getAsJsonObject().deepCopy();
+            addIfAbsent(rule, "fire_resistant", Boolean.parseBoolean(parts[1].trim()));
+            addIfAbsent(rule, "explosion_immune", Boolean.parseBoolean(parts[2].trim()));
+            addIfAbsent(rule, "glowing", Boolean.parseBoolean(parts[3].trim()));
+            addIfAbsent(rule, "no_gravity", Boolean.parseBoolean(parts[4].trim()));
+            addIfAbsent(rule, "persistent", true);
+            merged.put(id, rule);
+        }
+        try {
+            parseDocument(GSON.toJson(toJsonObject(merged)));
+            if (!validateKnownEntries(merged)) {
+                ItemModule.LOGGER.warn("Cannot migrate legacy protection rules into invalid property rules");
+                return current;
+            }
+            writePending(merged);
+            ItemProtectionConfig.setProtectionRules(List.of());
+            ItemProtectionConfig.save();
+            ItemModule.LOGGER.info("Migrated {} legacy item protection rules into item_properties.json", legacy.size());
+            return merged;
+        } catch (Exception exception) {
+            try {
+                ItemProtectionConfig.setProtectionRules(legacy);
+                ItemProtectionConfig.save();
+            } catch (Exception rollbackFailure) {
+                exception.addSuppressed(rollbackFailure);
+            }
+            try {
+                writePending(current);
+            } catch (IOException rollbackFailure) {
+                exception.addSuppressed(rollbackFailure);
+            }
+            ItemModule.LOGGER.error("Could not migrate legacy item protection rules", exception);
+            return current;
+        }
+    }
+
+    private static void addIfAbsent(JsonObject rule, String key, boolean value) {
+        if (!rule.has(key)) rule.addProperty(key, value);
+    }
+
     private static void writePending(Map<String, JsonElement> entries) throws IOException {
         KineticPaths.writeConfigTextsAtomic(Map.of(CONFIG_FILE, GSON.toJson(toJsonObject(entries))));
     }
@@ -173,9 +268,21 @@ public final class ItemPropertyConfig {
         return Collections.unmodifiableMap(copy);
     }
 
-    private static Map<ResourceLocation, ItemPropertyRule> buildActiveSnapshot(Map<String, JsonElement> entries) {
+    private static ActiveSnapshot buildActiveSnapshot(Map<String, JsonElement> entries) {
         LinkedHashMap<ResourceLocation, ItemPropertyRule> result = new LinkedHashMap<>();
+        LinkedHashMap<String, ItemPropertyRule> patternRules = new LinkedHashMap<>();
         entries.forEach((rawId, rawRule) -> {
+            if (ItemProtectionPatternIndex.isPatternKey(rawId)) {
+                if (!isProtectionPattern(rawId) || !hasOnlyProtectionFields(rawRule)) {
+                    ItemModule.LOGGER.warn("Ignoring invalid item protection selector {}", rawId);
+                    return;
+                }
+                ArrayList<String> errors = new ArrayList<>();
+                ItemPropertyRule rule = parseRule(rawRule, errors);
+                if (rule != null && rule.hasProtectionFields() && errors.isEmpty()) patternRules.put(rawId, rule);
+                if (!errors.isEmpty()) ItemModule.LOGGER.warn("Ignoring invalid protection fields for {}: {}", rawId, errors);
+                return;
+            }
             ResourceLocation id = ResourceLocation.tryParse(rawId);
             if (id == null) {
                 ItemModule.LOGGER.warn("Ignoring invalid item property ID {}", rawId);
@@ -186,12 +293,20 @@ public final class ItemPropertyConfig {
             if (rule != null && !rule.isEmpty()) result.put(id, rule);
             if (!errors.isEmpty()) ItemModule.LOGGER.warn("Some item properties were ignored for {}: {}", rawId, errors);
         });
-        return Collections.unmodifiableMap(result);
+        return new ActiveSnapshot(Collections.unmodifiableMap(result),
+                ItemProtectionPatternIndex.build(patternRules), immutableCopy(entries));
     }
 
     private static boolean validateKnownEntries(Map<String, JsonElement> entries) {
         java.util.HashSet<ResourceLocation> seen = new java.util.HashSet<>();
         for (Map.Entry<String, JsonElement> entry : entries.entrySet()) {
+            if (ItemProtectionPatternIndex.isPatternKey(entry.getKey())) {
+                if (!isProtectionPattern(entry.getKey()) || !hasOnlyProtectionFields(entry.getValue())) return false;
+                ArrayList<String> errors = new ArrayList<>();
+                parseRule(entry.getValue(), errors);
+                if (!errors.isEmpty()) return false;
+                continue;
+            }
             ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
             Item item = id == null ? null : ForgeRegistries.ITEMS.getValue(id);
             if (item == null || item == Items.AIR) continue;
@@ -199,6 +314,16 @@ public final class ItemPropertyConfig {
             ArrayList<String> errors = new ArrayList<>();
             parseRule(entry.getValue(), errors);
             if (!errors.isEmpty()) return false;
+        }
+        return true;
+    }
+
+    private static boolean hasOnlyProtectionFields(JsonElement raw) {
+        if (raw == null || !raw.isJsonObject()) return false;
+        for (String key : raw.getAsJsonObject().keySet()) {
+            if (!key.equals("fire_resistant") && !key.equals("explosion_immune")
+                    && !key.equals("glowing") && !key.equals("no_gravity")
+                    && !key.equals("persistent")) return false;
         }
         return true;
     }
@@ -226,11 +351,14 @@ public final class ItemPropertyConfig {
                 readInteger(json, "max_stack_size", errors),
                 readInteger(json, "max_damage", errors),
                 readInteger(json, "enchantability", errors),
-                readString(json, "rarity", errors),
+                readString(json, errors),
                 readBoolean(json, "fire_resistant", errors),
                 readNumber(json, "block_hardness", errors),
                 readNumber(json, "block_explosion_resistance", errors),
-                readBoolean(json, "explosion_immune", errors)
+                readBoolean(json, "explosion_immune", errors),
+                readBoolean(json, "glowing", errors),
+                readBoolean(json, "no_gravity", errors),
+                readBoolean(json, "persistent", errors)
         );
     }
 
@@ -270,8 +398,7 @@ public final class ItemPropertyConfig {
                 errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
                 continue;
             }
-            if (attributeId == null || amount < -2048 || amount > 2048
-                    || ForgeRegistries.ATTRIBUTES.getValue(attributeId) == null) {
+            if (attributeId == null || ForgeRegistries.ATTRIBUTES.getValue(attributeId) == null) {
                 errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
                 continue;
             }
@@ -311,24 +438,26 @@ public final class ItemPropertyConfig {
         return null;
     }
 
-    private static String readString(JsonObject json, String key, List<String> errors) {
-        if (!json.has(key)) return null;
-        String value = primitiveString(json.get(key));
+    private static String readString(JsonObject json, List<String> errors) {
+        if (!json.has("rarity")) return null;
+        String value = primitiveString(json.get("rarity"));
         if (value != null && !value.isBlank()) {
             String normalized = value.toLowerCase(Locale.ROOT);
-            if (key.equals("rarity") && List.of("common", "uncommon", "rare", "epic").contains(normalized)) return normalized;
+            if ("rarity".equals("rarity") && List.of("common", "uncommon", "rare", "epic").contains(normalized)) return normalized;
         }
-        errors.add("gui.itemcontrol.item_property.error.invalid_string:" + key);
+        errors.add("gui.itemcontrol.item_property.error.invalid_string:" + "rarity");
         return null;
     }
 
     private static boolean inRange(String key, double value) {
         return switch (key) {
-            case "mining_speed" -> value >= 0 && value <= 1_000_000;
+            // Stored values are item modifiers; the editor presents player base damage (1) and speed (4).
+            case "attack_damage" -> value >= -1 && value <= Integer.MAX_VALUE - 1D;
+            case "attack_speed" -> value >= -4;
+            case "mining_speed", "block_explosion_resistance" -> value >= 0 && value <= 1_000_000;
             case "saturation" -> value >= 0 && value <= 1024;
             case "eat_seconds" -> value >= 0.05 && value <= 3600;
             case "block_hardness" -> value >= -1 && value <= 1_000_000;
-            case "block_explosion_resistance" -> value >= 0 && value <= 1_000_000;
             default -> value >= -2048 && value <= 2048;
         };
     }
@@ -391,6 +520,9 @@ public final class ItemPropertyConfig {
         putNumber(json, "block_hardness", rule.blockHardness());
         putNumber(json, "block_explosion_resistance", rule.blockExplosionResistance());
         putBoolean(json, "explosion_immune", rule.explosionImmune());
+        putBoolean(json, "glowing", rule.glowing());
+        putBoolean(json, "no_gravity", rule.noGravity());
+        putBoolean(json, "persistent", rule.persistent());
         return json;
     }
 

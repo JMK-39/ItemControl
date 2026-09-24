@@ -42,12 +42,6 @@ public class ItemProtectionConfigGui {
                         true,
                         KineticI18n.translatable("cfg.itemcontrol.item.prot.void_salvage.tooltip")
                 )
-                .action(
-                        "open_protection_editor",
-                        KineticI18n.translatable("cfg.itemcontrol.item.editor.protection"),
-                        () -> ItemClientProxy.requestOpenEditorFromCurrentScreen(ItemNetwork.EDITOR_PROTECTION_ITEM),
-                        KineticI18n.translatable("cfg.itemcontrol.item.editor.protection.tooltip")
-                )
                 .booleanValue(
                         "global_damage_immunity_enabled",
                         KineticI18n.translatable("cfg.itemcontrol.item.prot.global.damage.immunity.enable"),

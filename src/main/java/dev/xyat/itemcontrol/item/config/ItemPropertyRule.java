@@ -23,7 +23,10 @@ public record ItemPropertyRule(
         Boolean fireResistant,
         Double blockHardness,
         Double blockExplosionResistance,
-        Boolean explosionImmune
+        Boolean explosionImmune,
+        Boolean glowing,
+        Boolean noGravity,
+        Boolean persistent
 ) {
     public ItemPropertyRule {
         attributes = attributes == null ? List.of() : List.copyOf(attributes);
@@ -49,7 +52,22 @@ public record ItemPropertyRule(
                 && fireResistant == null
                 && blockHardness == null
                 && blockExplosionResistance == null
-                && explosionImmune == null;
+                && explosionImmune == null
+                && glowing == null
+                && noGravity == null
+                && persistent == null;
+
+    }
+
+    public boolean hasProtectionFields() {
+        return fireResistant != null || explosionImmune != null || glowing != null
+                || noGravity != null || persistent != null;
+    }
+
+    public boolean hasEnabledProtection() {
+        return Boolean.TRUE.equals(fireResistant) || Boolean.TRUE.equals(explosionImmune)
+                || Boolean.TRUE.equals(glowing) || Boolean.TRUE.equals(noGravity)
+                || Boolean.TRUE.equals(persistent);
     }
 
     /** A generic replacement modifier for one registered attribute and equipment slot. */

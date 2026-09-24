@@ -5,11 +5,13 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.mixin.ItemPropertyMixins.BlockPropertyAccess;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.screen.KineticScreen;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
+import dev.xyat.kineticcore.api.client.search.KineticItemSearch.ItemCategory;
 import dev.xyat.kineticcore.api.client.theme.GuiTheme;
 import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
 import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticEditBox;
@@ -31,26 +33,19 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.DiggerItem;
-import net.minecraft.world.item.FishingRodItem;
-import net.minecraft.world.item.FlintAndSteelItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.ProjectileWeaponItem;
-import net.minecraft.world.item.ShearsItem;
-import net.minecraft.world.item.ShieldItem;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.Tier;
 import net.minecraft.world.item.TieredItem;
-import net.minecraft.world.item.TridentItem;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,27 +62,30 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private static final int GRID_X = 12;
     private static final int GRID_Y = 44;
     private static final int GRID_W = 222;
-    private static final int GRID_H = 285;
+    private static final int GRID_H = 284;
     private static final int PANEL_X = 246;
     private static final int PANEL_RIGHT = 626;
     private static final int FIELD_WIDTH = 92;
+    private static final BigDecimal BASE_ATTACK_DAMAGE = BigDecimal.ONE;
+    private static final BigDecimal BASE_ATTACK_SPEED = BigDecimal.valueOf(4);
+
+    private enum EditorCategory {
+        COMBAT(ItemCategory.COMBAT),
+        TOOL(ItemCategory.TOOL),
+        FOOD(ItemCategory.FOOD),
+        GENERAL(ItemCategory.GENERAL),
+        BLOCK(ItemCategory.BLOCK),
+        PROTECTION(ItemCategory.GENERAL);
+
+        private final ItemCategory itemCategory;
+
+        EditorCategory(ItemCategory itemCategory) {
+            this.itemCategory = itemCategory;
+        }
+    }
 
     public Screen getParent() {
         return parent;
-    }
-
-    private enum Category {
-        COMBAT("combat"),
-        TOOL("tool"),
-        FOOD("food"),
-        GENERAL("general"),
-        BLOCK("block");
-
-        private final String key;
-
-        Category(String key) {
-            this.key = key;
-        }
     }
 
     private final Screen parent;
@@ -97,13 +95,12 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private final Map<String, KineticEditBox> fields = new HashMap<>();
     private final Map<String, FieldSpec> fieldSpecs = new HashMap<>();
     private final Map<String, int[]> fieldLabels = new HashMap<>();
-    private final Map<String, Boolean> categoryMatches = new HashMap<>();
     private final List<String> visibleIds = new ArrayList<>();
 
     private KineticEditBox searchBox;
     private KineticMultiLineEditBox attributesBox;
     private ScrollableItemGrid itemGrid;
-    private Category category = Category.COMBAT;
+    private EditorCategory category = EditorCategory.COMBAT;
     private String selectedId;
     private String searchQuery = "";
     private String transientMessage = "";
@@ -168,7 +165,8 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         gridScrollOffset = 0;
 
         addCompactButton(12, 337, 80,
-                Component.translatable("gui.itemcontrol.item_property.add_rule"), null,
+                Component.translatable("gui.itemcontrol.item_property.add_rule"),
+                Component.translatable("gui.itemcontrol.item_property.add_rule.tooltip"),
                 this::addSelectedRule);
         addCompactButton(98, 337, 80,
                 Component.translatable("gui.itemcontrol.item_property.reset_item"), null,
@@ -190,7 +188,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     private List<KineticDropdowns.Option> categoryOptions() {
         List<KineticDropdowns.Option> options = new ArrayList<>();
-        for (Category value : Category.values()) {
+        for (EditorCategory value : EditorCategory.values()) {
             options.add(new KineticDropdowns.Option(
                     categoryDropdownValue(value),
                     Component.empty(),
@@ -200,12 +198,13 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         return List.copyOf(options);
     }
 
-    private String categoryDropdownValue(Category value) {
-        return Component.translatable("gui.itemcontrol.item_property.category.current." + value.key).getString();
+    private String categoryDropdownValue(EditorCategory value) {
+        return Component.translatable("gui.itemcontrol.item_property.category.current."
+                + value.name().toLowerCase(Locale.ROOT)).getString();
     }
 
     private void changeCategoryByValue(String selectedValue) {
-        for (Category value : Category.values()) {
+        for (EditorCategory value : EditorCategory.values()) {
             if (categoryDropdownValue(value).equals(selectedValue)) {
                 changeCategory(value);
                 return;
@@ -216,8 +215,8 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private void buildCategoryFields() {
         switch (category) {
             case COMBAT -> {
-                addNumericField("attack_damage", false, -2048, 2048, 0);
-                addNumericField("attack_speed", false, -2048, 2048, 1);
+                addNumericField("attack_damage", false, 0, Integer.MAX_VALUE, 0);
+                addNumericField("attack_speed", false, 0, Double.MAX_VALUE, 1);
                 addNumericField("armor", false, -2048, 2048, 2);
                 addNumericField("armor_toughness", false, -2048, 2048, 3);
                 addNumericField("knockback_resistance", false, -2048, 2048, 4);
@@ -229,8 +228,8 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 fieldLabels.put("attributes", new int[]{PANEL_X, 178});
             }
             case TOOL -> {
-                addNumericField("attack_damage", false, -2048, 2048, 0);
-                addNumericField("attack_speed", false, -2048, 2048, 1);
+                addNumericField("attack_damage", false, 0, Integer.MAX_VALUE, 0);
+                addNumericField("attack_speed", false, 0, Double.MAX_VALUE, 1);
                 addNumericField("mining_speed", false, 0, 1_000_000, 2);
                 addNumericField("mining_level", true, 0, 255, 3);
             }
@@ -245,13 +244,17 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 addNumericField("max_damage", true, 0, Integer.MAX_VALUE, 1);
                 addNumericField("enchantability", true, 0, 100_000, 2);
                 addStringField(this::validRarity);
-                addBooleanButton("fire_resistant", 4);
-                addBooleanButton("explosion_immune", 5);
             }
             case BLOCK -> {
                 addNumericField("block_hardness", false, -1, 1_000_000, 0);
                 addNumericField("block_explosion_resistance", false, 0, 1_000_000, 1);
-                addBooleanButton("explosion_immune", 2);
+            }
+            case PROTECTION -> {
+                addBooleanButton("fire_resistant", 0);
+                addBooleanButton("explosion_immune", 1);
+                addBooleanButton("glowing", 2);
+                addBooleanButton("no_gravity", 3);
+                addBooleanButton("persistent", 4);
             }
         }
     }
@@ -304,7 +307,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         boolean overridden = current.has(key);
         String state = overridden ? current.get(key).getAsBoolean() ? "true" : "false" : originalBooleanValue(key);
         Component label;
-        if (selectedId == null || !isRegistered(selectedId)) {
+        if (!canEditSelected()) {
             label = Component.empty();
         } else if (overridden) {
             label = Component.translatable("gui.itemcontrol.item_property.boolean." + state)
@@ -320,7 +323,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 Component.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip"),
                 () -> cycleBoolean(key)
         );
-        button.active = selectedId != null && isRegistered(selectedId);
+        button.active = canEditSelected();
     }
 
     private int[] fieldBounds(int index) {
@@ -336,9 +339,9 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             for (Map.Entry<String, KineticEditBox> entry : fields.entrySet()) {
                 JsonElement value = rule.get(entry.getKey());
                 KineticEditBox field = entry.getValue();
-                field.setValue(value == null || value.isJsonNull() ? "" : value.getAsString());
+                field.setValue(displayValue(entry.getKey(), value));
                 field.setPlaceholder(Component.literal(originalValue(entry.getKey())));
-                field.setEnabled(selectedId != null && isFieldApplicable(entry.getKey()));
+                field.setEnabled(canEditSelected() && isFieldApplicable(entry.getKey()));
                 updateFieldColor(field);
             }
             if (attributesBox != null) {
@@ -356,6 +359,27 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 : GuiTheme.indicatorColor(GuiTheme.Indicator.SUCCESS));
     }
 
+    private static String displayValue(String key, JsonElement value) {
+        if (value == null || value.isJsonNull()) return "";
+        String raw = value.getAsString();
+        BigDecimal base = attackBase(key);
+        if (base == null) return raw;
+        try {
+            return new BigDecimal(raw).add(base).setScale(6, RoundingMode.HALF_UP)
+                    .stripTrailingZeros().toPlainString();
+        } catch (NumberFormatException ignored) {
+            return raw;
+        }
+    }
+
+    private static BigDecimal attackBase(String key) {
+        return switch (key) {
+            case "attack_damage" -> BASE_ATTACK_DAMAGE;
+            case "attack_speed" -> BASE_ATTACK_SPEED;
+            default -> null;
+        };
+    }
+
     private boolean isFieldApplicable(String key) {
         if (selectedId == null || !isRegistered(selectedId)) return false;
         if (key.equals("armor") || key.equals("armor_toughness") || key.equals("knockback_resistance")) {
@@ -364,8 +388,14 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         return true;
     }
 
+    private boolean canEditSelected() {
+        return selectedId != null && (isRegistered(selectedId)
+                || category == EditorCategory.PROTECTION && ItemPropertyConfig.isProtectionPattern(selectedId));
+    }
+
     private String originalBooleanValue(String key) {
-        if (selectedId == null || !isRegistered(selectedId)) return "inherit";
+        if (selectedId == null) return "inherit";
+        if (!isRegistered(selectedId)) return ItemPropertyConfig.isProtectionPattern(selectedId) ? "false" : "inherit";
         ItemStack stack = stackForId(selectedId);
         boolean value = switch (key) {
             case "always_eat" -> {
@@ -374,6 +404,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             }
             case "fire_resistant" -> stack.getItem().isFireResistant();
             case "explosion_immune" -> stack.is(Items.NETHER_STAR);
+            case "glowing", "no_gravity", "persistent" -> false;
             default -> false;
         };
         return value ? "true" : "false";
@@ -385,8 +416,8 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         Item item = stack.getItem();
         FoodProperties food = stack.getFoodProperties(null);
         return switch (key) {
-            case "attack_damage" -> number(attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_DAMAGE));
-            case "attack_speed" -> number(attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_SPEED));
+            case "attack_damage" -> number(1 + attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_DAMAGE));
+            case "attack_speed" -> number(4 + attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_SPEED));
             case "armor" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.ARMOR));
             case "armor_toughness" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.ARMOR_TOUGHNESS));
             case "knockback_resistance" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.KNOCKBACK_RESISTANCE));
@@ -429,14 +460,14 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     private static String number(double value) {
-        return Double.isFinite(value) ? BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() : "";
+        return Double.isFinite(value) ? BigDecimal.valueOf(value).setScale(6, RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString() : "";
     }
 
-    private void changeCategory(Category next) {
+    private void changeCategory(EditorCategory next) {
         if (!flushFields()) return;
         category = next;
         selectedId = null;
-        categoryMatches.clear();
         if (itemGrid != null) itemGrid.setScrollOffset(0);
         rebuildEditor();
     }
@@ -462,26 +493,45 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         Set<String> usedIds = new HashSet<>();
 
         for (String id : drafts.keySet()) {
-            if (!isRegistered(id) && matches(id, query)) {
+            boolean selector = ItemPropertyConfig.isProtectionSelectorCandidate(id);
+            if (selector && category != EditorCategory.PROTECTION) continue;
+            if ((!selector && !isRegistered(id)
+                    || selector && !ItemPropertyConfig.isProtectionPattern(id)) && matches(id, query)) {
                 rows.add(new GridEntry(id, new ItemStack(Items.BARRIER), true));
                 usedIds.add(id);
             }
         }
 
         for (String id : baseline.keySet()) {
+            if (ItemPropertyConfig.isProtectionSelectorCandidate(id)) {
+                if (category == EditorCategory.PROTECTION && ItemPropertyConfig.isProtectionPattern(id)
+                        && hasProperties(baseline.get(id)) && matches(id, query)) {
+                    rows.add(new GridEntry(id, specialStack(id), false));
+                    usedIds.add(id);
+                }
+                continue;
+            }
             if (!hasProperties(baseline.get(id))
                     || usedIds.contains(id)
                     || !isRegistered(id)
                     || !matches(id, query)
-                    || !matchesCategory(id, stackForId(id))) continue;
+                    || !KineticItemSearch.matchesCategory(stackForId(id), category.itemCategory)) continue;
             rows.add(new GridEntry(id, stackForId(id), false));
             usedIds.add(id);
         }
 
+        if (category == EditorCategory.PROTECTION) {
+            for (String id : drafts.keySet()) {
+                if (usedIds.contains(id) || !ItemPropertyConfig.isProtectionPattern(id)
+                        || !matches(id, query)) continue;
+                rows.add(new GridEntry(id, specialStack(id), false));
+                usedIds.add(id);
+            }
+        }
+
         for (KineticItemSearch.CachedItem cached : allItems) {
             String id = cached.id();
-            if (id.isBlank() || usedIds.contains(id) || !matches(cached, query)
-                    || !matchesCategory(id, cached.stack())) continue;
+            if (id.isBlank() || usedIds.contains(id) || !cached.matches(query, category.itemCategory)) continue;
             rows.add(new GridEntry(id, cached.stack(), false));
             usedIds.add(id);
         }
@@ -502,36 +552,10 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         return List.copyOf(items);
     }
 
-    private boolean matchesCategory(String id, ItemStack stack) {
-        return categoryMatches.computeIfAbsent(id, ignored -> matchesCategory(stack));
-    }
-
-    private boolean matchesCategory(ItemStack stack) {
-        Item item = stack.getItem();
-        return switch (category) {
-            case COMBAT -> item instanceof ArmorItem
-                    || item instanceof SwordItem
-                    || item instanceof ProjectileWeaponItem
-                    || item instanceof TridentItem
-                    || item instanceof ShieldItem
-                    || !(item instanceof BlockItem)
-                    && !isTool(item)
-                    && stack.getFoodProperties(null) == null
-                    && (!stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_DAMAGE).isEmpty()
-                    || !stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_SPEED).isEmpty());
-            case TOOL -> isTool(item);
-            case FOOD -> stack.getFoodProperties(null) != null;
-            case GENERAL -> true;
-            case BLOCK -> item instanceof BlockItem;
-        };
-    }
-
-    private static boolean isTool(Item item) {
-        return item instanceof DiggerItem
-                || item instanceof TieredItem && !(item instanceof SwordItem)
-                || item instanceof ShearsItem
-                || item instanceof FishingRodItem
-                || item instanceof FlintAndSteelItem;
+    private ItemStack specialStack(String id) {
+        if (id.startsWith("@")) return new ItemStack(Items.COMMAND_BLOCK);
+        if (id.startsWith("#")) return new ItemStack(Items.NAME_TAG);
+        return stackForId(id.substring(0, id.indexOf('{')));
     }
 
     private boolean hasCurrentPropertiesInput() {
@@ -543,10 +567,6 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     private boolean matches(String value, String query) {
         return query.isEmpty() || value.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT));
-    }
-
-    private boolean matches(KineticItemSearch.CachedItem item, String query) {
-        return query.isEmpty() || item.matches(query);
     }
 
     private boolean isRegistered(String id) {
@@ -564,8 +584,17 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     private void addSelectedRule() {
+        if (selectedId == null && category == EditorCategory.PROTECTION) {
+            String candidate = searchQuery.trim();
+            if (ItemPropertyConfig.isProtectionPattern(candidate)) {
+                selectedId = candidate;
+                drafts.putIfAbsent(candidate, new JsonObject());
+                rebuildEditor();
+                return;
+            }
+        }
         if (selectedId == null || !flushFields()) return;
-        if (!isRegistered(selectedId)) {
+        if (!canEditSelected()) {
             setMessage("gui.itemcontrol.item_property.error.unknown_item");
             return;
         }
@@ -575,7 +604,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     private void resetSelectedRule() {
         if (selectedId == null || !flushFields()) return;
-        if (isRegistered(selectedId)) drafts.put(selectedId, new JsonObject());
+        if (canEditSelected()) drafts.put(selectedId, new JsonObject());
         rebuildEditor();
     }
 
@@ -613,7 +642,11 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             }
             if (spec.stringValue()) rule.addProperty(key, value.toLowerCase(Locale.ROOT));
             else if (spec.integer()) rule.addProperty(key, Integer.parseInt(value));
-            else rule.addProperty(key, Double.parseDouble(value));
+            else {
+                BigDecimal base = attackBase(key);
+                rule.addProperty(key, base == null ? Double.parseDouble(value)
+                        : new BigDecimal(value).subtract(base).doubleValue());
+            }
         }
         if (attributesBox != null) {
             String raw = attributesBox.getValue().trim();
@@ -680,6 +713,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     @Override
     protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         GuiTheme.panel(graphics, 0, 0, canvasWidth(), canvasHeight());
+        GuiTheme.verticalSeparator(graphics, 240, 10, 318);
         String attributesValue = attributesBox == null ? "" : attributesBox.getValue();
         if (!attributesValue.equals(lastAttributesValue)) {
             lastAttributesValue = attributesValue;
@@ -704,7 +738,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     @Override
     protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        showHoveredVanillaTooltip();
+        showHoveredVanillaTooltip(mouseX, mouseY);
         if (transientMessage != null && !transientMessage.isBlank()) {
             graphics.drawString(font, Component.translatable(transientMessage), PANEL_X, 302, 0xFFFF7777, false);
         } else {
@@ -712,8 +746,16 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         }
     }
 
-    private void showHoveredVanillaTooltip() {
+    private void showHoveredVanillaTooltip(int mouseX, int mouseY) {
         if (itemGrid == null) return;
+        int index = itemGrid.itemAt(mouseX, mouseY);
+        if (index >= 0 && index < visibleIds.size()) {
+            String id = visibleIds.get(index);
+            if (!isRegistered(id)) {
+                showTooltip(List.of(Component.literal(id)), null);
+                return;
+            }
+        }
         ItemStack hoveredStack = itemGrid.hoveredStack();
         if (hoveredStack != null && !hoveredStack.isEmpty()) showItemTooltip(hoveredStack);
     }

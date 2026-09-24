@@ -31,7 +31,6 @@ public final class ItemModule {
         KTServerConfigApi.register(KTServerConfigSpec.builder("itemcontrol:item_protection")
                 .booleanValue("enable_item_protection", () -> ItemProtectionConfig.enableItemProtection, value -> ItemProtectionConfig.enableItemProtection = value)
                 .booleanValue("enable_void_salvage", () -> ItemProtectionConfig.enableVoidSalvage, value -> ItemProtectionConfig.enableVoidSalvage = value)
-                .stringList("indestructible_items", () -> new java.util.ArrayList<>(ItemProtectionConfig.indestructibleItemsRaw), ItemProtectionConfig::setProtectionRules)
                 .booleanValue("global_damage_immunity_enabled", () -> ItemProtectionConfig.enableGlobalItemDamageImmunity, value -> ItemProtectionConfig.enableGlobalItemDamageImmunity = value)
                 .stringList("global_damage_immunity", () -> new java.util.ArrayList<>(ItemProtectionConfig.globalItemDamageImmunityRaw), ItemProtectionConfig::setDamageSources)
                 .booleanValue("global_direct_entity_immunity_enabled", () -> ItemProtectionConfig.enableGlobalDirectEntityImmunity, value -> ItemProtectionConfig.enableGlobalDirectEntityImmunity = value)

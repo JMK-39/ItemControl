@@ -159,7 +159,9 @@ public class ItemNetwork {
             } else if (editorType == EDITOR_MERGE_ITEM) {
                 CHANNEL.sendToPlayer(player, new OpenMergeGuiPacket());
             } else if (editorType == EDITOR_PROTECTION_ITEM) {
-                CHANNEL.sendToPlayer(player, new OpenProtectionEditorPacket(ItemProtectionConfig.indestructibleItemsRaw));
+                CHANNEL.sendToPlayer(player, new OpenItemPropertyEditorPacket(
+                        ItemPropertyConfig.pendingJson(), ItemPropertyConfig.activeJson()
+                ));
             } else if (editorType == EDITOR_DAMAGE_IMMUNITY) {
                 CHANNEL.sendToPlayer(player, new OpenDamageTypeEditorPacket(ItemProtectionConfig.globalItemDamageImmunityRaw));
             } else if (editorType == EDITOR_DIRECT_ENTITY_IMMUNITY) {
@@ -365,51 +367,8 @@ public class ItemNetwork {
         public void handleServer(ServerPacketContext ctx) {
             ServerPlayer player = ctx.sender();
             if (player == null) return;
-            if (!player.hasPermissions(2)) {
-                sendEditorSaveResult(
-                        player,
-                        EDITOR_PROTECTION_ITEM,
-                        false,
-                        ItemProtectionConfig.indestructibleItemsRaw,
-                        "msg.itemcontrol.item.editor.no_permission"
-                );
-                return;
-            }
-            if (!ItemProtectionConfig.areValidProtectionRules(rules)) {
-                sendEditorSaveResult(
-                        player,
-                        EDITOR_PROTECTION_ITEM,
-                        false,
-                        ItemProtectionConfig.indestructibleItemsRaw,
-                        "msg.itemcontrol.item.protection_editor.save_invalid"
-                );
-                return;
-            }
-
-            List<String> previous = new ArrayList<>(ItemProtectionConfig.indestructibleItemsRaw);
-            try {
-                ItemProtectionConfig.setProtectionRules(rules);
-                ItemProtectionConfig.save();
-                sendEditorSaveResult(
-                        player,
-                        EDITOR_PROTECTION_ITEM,
-                        true,
-                        ItemProtectionConfig.indestructibleItemsRaw,
-                        "msg.itemcontrol.item.protection_editor.save_success"
-                );
-            } catch (Throwable e) {
-                ItemProtectionConfig.indestructibleItemsRaw = previous;
-                ItemProtectionConfig.load();
-                LOGGER.error("Failed to save item protection rules", e);
-                sendEditorSaveResult(
-                        player,
-                        EDITOR_PROTECTION_ITEM,
-                        false,
-                        ItemProtectionConfig.indestructibleItemsRaw,
-                        "msg.itemcontrol.item.protection_editor.save_failed"
-                );
-            }
-        
+            sendEditorSaveResult(player, EDITOR_PROTECTION_ITEM, false, List.of(),
+                    "msg.itemcontrol.item_property.legacy_editor_retired");
         }
     }
 

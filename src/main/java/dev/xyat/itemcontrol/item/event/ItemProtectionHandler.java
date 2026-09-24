@@ -2,9 +2,9 @@ package dev.xyat.itemcontrol.item.event;
 
 import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
+import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.util.ItemProtectionList;
 import dev.xyat.itemcontrol.item.config.ItemPropertyRule;
-import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
 import dev.xyat.kineticcore.api.event.KineticEventPriority;
 import dev.xyat.kineticcore.api.event.KineticExternalEvents;
 import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
@@ -39,19 +39,24 @@ public final class ItemProtectionHandler {
             if (stack.isEmpty()) return;
 
             ItemProtectionConfig.ProtectionRule rule = ItemProtectionConfig.getProtectionRule(stack);
-            if (rule != null) {
-                itemEntity.setUnlimitedLifetime();
+            ItemPropertyRule propertyRule = ItemPropertyConfig.activeProtection(stack);
+            if (rule != null || propertyRule != null) {
+                if (rule != null || Boolean.TRUE.equals(propertyRule.persistent())) {
+                    itemEntity.setUnlimitedLifetime();
+                }
 
                 CompoundTag entityData = new CompoundTag();
                 itemEntity.saveWithoutId(entityData);
                 boolean hasOwner = entityData.hasUUID("Owner") || entityData.hasUUID("Thrower");
 
                 if (!hasOwner) {
-                    if (rule.noGravity) {
+                    if ((rule != null && rule.noGravity)
+                            || (propertyRule != null && Boolean.TRUE.equals(propertyRule.noGravity()))) {
                         itemEntity.setNoGravity(true);
                         itemEntity.setDeltaMovement(Vec3.ZERO);
                     }
-                    if (rule.glowing) {
+                    if ((rule != null && rule.glowing)
+                            || (propertyRule != null && Boolean.TRUE.equals(propertyRule.glowing()))) {
                         itemEntity.setGlowingTag(true);
                     }
                 }
@@ -76,10 +81,12 @@ public final class ItemProtectionHandler {
             return;
         }
 
-        ItemPropertyRule propertyRule = ItemPropertyOverrides.active(stack);
-        if (propertyRule != null
-                && Boolean.TRUE.equals(propertyRule.explosionImmune())
-                && source.is(DamageTypeTags.IS_EXPLOSION)) {
+        ItemPropertyRule propertyRule = ItemProtectionConfig.enableItemProtection
+                ? ItemPropertyConfig.activeProtection(stack) : null;
+        if (propertyRule != null && (Boolean.TRUE.equals(propertyRule.fireResistant())
+                && source.is(DamageTypeTags.IS_FIRE)
+                || Boolean.TRUE.equals(propertyRule.explosionImmune())
+                && source.is(DamageTypeTags.IS_EXPLOSION))) {
             event.setCanceled(true);
             return;
         }
@@ -88,7 +95,9 @@ public final class ItemProtectionHandler {
         String damageId = ItemProtectionConfig.getDamageSourceId(source);
 
         ItemProtectionConfig.ProtectionRule rule = ItemProtectionConfig.getProtectionRule(stack);
-        boolean isProtected = (rule != null) || ItemProtectionList.isFireImmune(stack);
+        boolean isProtected = rule != null
+                || propertyRule != null && propertyRule.hasEnabledProtection()
+                || ItemProtectionList.isFireImmune(stack);
 
         if (!isProtected) return;
 
