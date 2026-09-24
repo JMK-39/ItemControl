@@ -1,5 +1,6 @@
 package dev.xyat.itemcontrol.item.property;
 
+import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.config.ItemPropertyRule;
 import dev.xyat.itemcontrol.item.mixin.ItemPropertyMixins.BlockPropertyAccess;
@@ -17,6 +18,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.nio.charset.StandardCharsets;
@@ -28,6 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /** Runtime lookups and vanilla-facing adapters for the active per-item property snapshot. */
+@Mod.EventBusSubscriber(modid = ItemModule.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ItemPropertyOverrides {
     private static final Map<Block, Float> ORIGINAL_EXPLOSION_RESISTANCE = new IdentityHashMap<>();
 
@@ -66,6 +70,7 @@ public final class ItemPropertyOverrides {
         }
     }
 
+    @SubscribeEvent
     public static void onCommonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             ItemPropertyConfig.activatePendingSnapshot();

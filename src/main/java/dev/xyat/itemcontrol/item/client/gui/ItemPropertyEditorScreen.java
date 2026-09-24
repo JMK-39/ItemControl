@@ -5,11 +5,13 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.xyat.itemcontrol.item.mixin.ItemPropertyMixins.BlockPropertyAccess;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.screen.KineticScreen;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
 import dev.xyat.kineticcore.api.client.theme.GuiTheme;
+import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
 import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticEditBox;
 import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticMultiLineEditBox;
 import dev.xyat.kineticcore.api.client.widget.selection.KineticDropdowns;
@@ -17,29 +19,45 @@ import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridDens
 import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridItem;
 import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridOutline;
 import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ScrollableItemGrid;
-import dev.xyat.kineticcore.api.client.widget.state.EditedEntryTracker;
-import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import dev.xyat.kineticcore.api.text.KineticI18n;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.DiggerItem;
+import net.minecraft.world.item.FishingRodItem;
+import net.minecraft.world.item.FlintAndSteelItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.ProjectileWeaponItem;
+import net.minecraft.world.item.ShearsItem;
+import net.minecraft.world.item.ShieldItem;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.Tier;
+import net.minecraft.world.item.TieredItem;
+import net.minecraft.world.item.TridentItem;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -49,7 +67,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private static final int GRID_X = 12;
     private static final int GRID_Y = 44;
     private static final int GRID_W = 222;
-    private static final int GRID_H = 268;
+    private static final int GRID_H = 285;
     private static final int PANEL_X = 246;
     private static final int PANEL_RIGHT = 626;
     private static final int FIELD_WIDTH = 92;
@@ -75,11 +93,11 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private final Screen parent;
     private final Map<String, JsonElement> drafts = new LinkedHashMap<>();
     private final Map<String, JsonElement> baseline = new LinkedHashMap<>();
-    private final EditedEntryTracker<String> editedTracker = new EditedEntryTracker<>();
     private final List<KineticItemSearch.CachedItem> allItems = new ArrayList<>();
     private final Map<String, KineticEditBox> fields = new HashMap<>();
     private final Map<String, FieldSpec> fieldSpecs = new HashMap<>();
     private final Map<String, int[]> fieldLabels = new HashMap<>();
+    private final Map<String, Boolean> categoryMatches = new HashMap<>();
     private final List<String> visibleIds = new ArrayList<>();
 
     private KineticEditBox searchBox;
@@ -87,8 +105,10 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private ScrollableItemGrid itemGrid;
     private Category category = Category.COMBAT;
     private String selectedId;
+    private String searchQuery = "";
     private String transientMessage = "";
     private String lastAttributesValue;
+    private int gridScrollOffset;
     private boolean saving;
     private boolean populatingFields;
 
@@ -99,8 +119,6 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         useCanvas(640F, 360F, 6);
         restoreDraft(pendingJson);
         allItems.addAll(ItemSearchCache.getAllItems());
-        selectInitialEntry();
-        refreshEditedEntries();
     }
 
     private void restoreDraft(String json) {
@@ -117,14 +135,6 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         drafts.forEach((id, value) -> baseline.put(id, value.deepCopy()));
     }
 
-    private void selectInitialEntry() {
-        if (!drafts.isEmpty()) {
-            selectedId = drafts.keySet().iterator().next();
-        } else if (!allItems.isEmpty()) {
-            selectedId = allItems.get(0).id();
-        }
-    }
-
     @Override
     protected void buildUi() {
         fields.clear();
@@ -135,61 +145,72 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         searchBox = addTextField(12, 10, 220, Component.empty());
         searchBox.setPlaceholder(Component.translatable("gui.itemcontrol.item_property.search"));
         searchBox.setMaxLength(1024);
-        searchBox.setResponder(value -> refreshGrid(false));
+        searchBox.setValue(searchQuery);
+        searchBox.setResponder(value -> {
+            searchQuery = value;
+            refreshGrid();
+        });
 
         addDropdown(
                 PANEL_RIGHT - 142, 12, 142,
-                categoryOptions(), category.key,
+                categoryOptions(), categoryDropdownValue(category),
                 Component.translatable("gui.itemcontrol.item_property.category.tooltip"),
                 ignored -> true,
-                value -> changeCategory(categoryFromKey(value))
+                this::changeCategoryByValue
         );
 
         buildCategoryFields();
         itemGrid = addScrollableItemGrid(
                 GRID_X, GRID_Y, GRID_W, GRID_H,
-                ItemGridDensity.COMPACT, buildGridItems(), 0,
+                ItemGridDensity.COMPACT, buildGridItems(), gridScrollOffset,
                 this::selectGridIndex
         );
+        gridScrollOffset = 0;
 
-        addCompactButton(12, 318, 80,
+        addCompactButton(12, 337, 80,
                 Component.translatable("gui.itemcontrol.item_property.add_rule"), null,
                 this::addSelectedRule);
-        addCompactButton(98, 318, 80,
+        addCompactButton(98, 337, 80,
                 Component.translatable("gui.itemcontrol.item_property.reset_item"), null,
                 this::resetSelectedRule);
-        addCompactButton(184, 318, 52,
+        addCompactButton(184, 337, 52,
                 Component.translatable("gui.itemcontrol.item_property.delete"), null,
                 this::deleteSelectedRule);
-        addButton(478, 318, 70,
+        addButton(478, 337, 70,
                 Component.translatable("gui.itemcontrol.item_property.save"),
                 Component.translatable("gui.itemcontrol.item_property.save.tooltip"),
                 this::save);
-        addButton(554, 318, 72,
+        addButton(554, 337, 72,
                 Component.translatable("gui.itemcontrol.item_property.cancel"), null,
                 this::onClose);
 
         populateFields();
-        refreshGrid(false);
+        refreshGrid();
     }
 
     private List<KineticDropdowns.Option> categoryOptions() {
         List<KineticDropdowns.Option> options = new ArrayList<>();
         for (Category value : Category.values()) {
             options.add(new KineticDropdowns.Option(
-                    value.key,
-                    Component.translatable("gui.itemcontrol.item_property.category." + value.key),
+                    categoryDropdownValue(value),
+                    Component.empty(),
                     Component.empty()
             ));
         }
         return List.copyOf(options);
     }
 
-    private Category categoryFromKey(String key) {
+    private String categoryDropdownValue(Category value) {
+        return Component.translatable("gui.itemcontrol.item_property.category.current." + value.key).getString();
+    }
+
+    private void changeCategoryByValue(String selectedValue) {
         for (Category value : Category.values()) {
-            if (value.key.equals(key)) return value;
+            if (categoryDropdownValue(value).equals(selectedValue)) {
+                changeCategory(value);
+                return;
+            }
         }
-        return Category.COMBAT;
     }
 
     private void buildCategoryFields() {
@@ -208,8 +229,10 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 fieldLabels.put("attributes", new int[]{PANEL_X, 178});
             }
             case TOOL -> {
-                addNumericField("mining_speed", false, 0, 1_000_000, 0);
-                addNumericField("mining_level", true, 0, 255, 1);
+                addNumericField("attack_damage", false, -2048, 2048, 0);
+                addNumericField("attack_speed", false, -2048, 2048, 1);
+                addNumericField("mining_speed", false, 0, 1_000_000, 2);
+                addNumericField("mining_level", true, 0, 255, 3);
             }
             case FOOD -> {
                 addNumericField("nutrition", true, 0, 1024, 0);
@@ -223,6 +246,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 addNumericField("enchantability", true, 0, 100_000, 2);
                 addStringField(this::validRarity);
                 addBooleanButton("fire_resistant", 4);
+                addBooleanButton("explosion_immune", 5);
             }
             case BLOCK -> {
                 addNumericField("block_hardness", false, -1, 1_000_000, 0);
@@ -240,11 +264,14 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         KineticEditBox field = addTextField(
                 bounds[0], bounds[1], FIELD_WIDTH, Component.empty(),
                 Component.translatable("gui.itemcontrol.item_property.inherit"),
-                value -> value == null || value.isBlank() || spec.accepts(value),
+                spec::acceptsOrBlank,
                 Component.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip")
         );
         field.setResponder(value -> {
-            if (!populatingFields) refreshGrid(false);
+            if (!populatingFields) {
+                updateFieldColor(field);
+                refreshGrid();
+            }
         });
         field.setMaxLength(32);
         fields.put(key, field);
@@ -257,11 +284,14 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         KineticEditBox field = addTextField(
                 bounds[0], bounds[1], FIELD_WIDTH, Component.empty(),
                 Component.translatable("gui.itemcontrol.item_property.inherit"),
-                value -> value == null || value.isBlank() || validator.test(value),
+                validator.or(String::isBlank),
                 Component.translatable("gui.itemcontrol.item_property.field." + "rarity" + ".tooltip")
         );
         field.setResponder(value -> {
-            if (!populatingFields) refreshGrid(false);
+            if (!populatingFields) {
+                updateFieldColor(field);
+                refreshGrid();
+            }
         });
         field.setMaxLength(24);
         fields.put("rarity", field);
@@ -271,13 +301,26 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         int[] bounds = fieldBounds(index);
         fieldLabels.put(key, new int[]{bounds[0], bounds[1] - 11});
         JsonObject current = currentRuleObject();
-        String state = current.has(key) ? current.get(key).getAsBoolean() ? "true" : "false" : "inherit";
-        addButton(
+        boolean overridden = current.has(key);
+        String state = overridden ? current.get(key).getAsBoolean() ? "true" : "false" : originalBooleanValue(key);
+        Component label;
+        if (selectedId == null || !isRegistered(selectedId)) {
+            label = Component.empty();
+        } else if (overridden) {
+            label = Component.translatable("gui.itemcontrol.item_property.boolean." + state)
+                    .withStyle(style -> style.withColor(GuiTheme.indicatorColor(GuiTheme.Indicator.SUCCESS)));
+        } else {
+            label = Component.translatable("gui.itemcontrol.item_property.boolean.original",
+                    Component.translatable("gui.itemcontrol.item_property.boolean." + state))
+                    .withStyle(style -> style.withColor(GuiTheme.current().mutedText()));
+        }
+        StateButton button = addButton(
                 bounds[0], bounds[1], FIELD_WIDTH,
-                Component.translatable("gui.itemcontrol.item_property.boolean." + state),
+                label,
                 Component.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip"),
                 () -> cycleBoolean(key)
         );
+        button.active = selectedId != null && isRegistered(selectedId);
     }
 
     private int[] fieldBounds(int index) {
@@ -292,7 +335,11 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             JsonObject rule = currentRuleObject();
             for (Map.Entry<String, KineticEditBox> entry : fields.entrySet()) {
                 JsonElement value = rule.get(entry.getKey());
-                entry.getValue().setValue(value == null || value.isJsonNull() ? "" : value.getAsString());
+                KineticEditBox field = entry.getValue();
+                field.setValue(value == null || value.isJsonNull() ? "" : value.getAsString());
+                field.setPlaceholder(Component.literal(originalValue(entry.getKey())));
+                field.setEnabled(selectedId != null && isFieldApplicable(entry.getKey()));
+                updateFieldColor(field);
             }
             if (attributesBox != null) {
                 JsonElement attributes = rule.get("attributes");
@@ -303,19 +350,109 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         }
     }
 
+    private void updateFieldColor(KineticEditBox field) {
+        field.setTextColor(field.getValue().isBlank()
+                ? GuiTheme.current().mutedText()
+                : GuiTheme.indicatorColor(GuiTheme.Indicator.SUCCESS));
+    }
+
+    private boolean isFieldApplicable(String key) {
+        if (selectedId == null || !isRegistered(selectedId)) return false;
+        if (key.equals("armor") || key.equals("armor_toughness") || key.equals("knockback_resistance")) {
+            return stackForId(selectedId).getItem() instanceof ArmorItem;
+        }
+        return true;
+    }
+
+    private String originalBooleanValue(String key) {
+        if (selectedId == null || !isRegistered(selectedId)) return "inherit";
+        ItemStack stack = stackForId(selectedId);
+        boolean value = switch (key) {
+            case "always_eat" -> {
+                FoodProperties food = stack.getFoodProperties(null);
+                yield food != null && food.canAlwaysEat();
+            }
+            case "fire_resistant" -> stack.getItem().isFireResistant();
+            case "explosion_immune" -> stack.is(Items.NETHER_STAR);
+            default -> false;
+        };
+        return value ? "true" : "false";
+    }
+
+    private String originalValue(String key) {
+        if (selectedId == null || !isRegistered(selectedId) || !isFieldApplicable(key)) return "";
+        ItemStack stack = stackForId(selectedId);
+        Item item = stack.getItem();
+        FoodProperties food = stack.getFoodProperties(null);
+        return switch (key) {
+            case "attack_damage" -> number(attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_DAMAGE));
+            case "attack_speed" -> number(attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_SPEED));
+            case "armor" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.ARMOR));
+            case "armor_toughness" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.ARMOR_TOUGHNESS));
+            case "knockback_resistance" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.KNOCKBACK_RESISTANCE));
+            case "mining_speed" -> number(miningSpeed(stack));
+            case "mining_level" -> item instanceof TieredItem tiered ? Integer.toString(numericMiningLevel(tiered.getTier())) : "";
+            case "nutrition" -> food == null ? "" : Integer.toString(food.getNutrition());
+            case "saturation" -> food == null ? "" : number(food.getSaturationModifier());
+            case "eat_seconds" -> food == null ? "" : number(stack.getUseDuration() / 20.0);
+            case "max_stack_size" -> Integer.toString(stack.getMaxStackSize());
+            case "max_damage" -> Integer.toString(stack.getMaxDamage());
+            case "enchantability" -> Integer.toString(stack.getEnchantmentValue());
+            case "rarity" -> stack.getRarity().name().toLowerCase(Locale.ROOT);
+            case "block_hardness" -> number(((BlockItem) item).getBlock().defaultBlockState()
+                    .getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
+            case "block_explosion_resistance" -> number(((BlockPropertyAccess) ((BlockItem) item).getBlock())
+                    .itemcontrol$getExplosionResistance());
+            default -> "";
+        };
+    }
+
+    private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attribute attribute) {
+        return stack.getAttributeModifiers(slot).get(attribute).stream()
+                .filter(modifier -> modifier.getOperation() == AttributeModifier.Operation.ADDITION)
+                .mapToDouble(AttributeModifier::getAmount)
+                .sum();
+    }
+
+    private static double miningSpeed(ItemStack stack) {
+        Item item = stack.getItem();
+        if (item instanceof TieredItem tiered) return tiered.getTier().getSpeed();
+        return Math.max(stack.getDestroySpeed(Blocks.STONE.defaultBlockState()),
+                Math.max(stack.getDestroySpeed(Blocks.DIRT.defaultBlockState()),
+                        stack.getDestroySpeed(Blocks.OAK_LOG.defaultBlockState())));
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int numericMiningLevel(Tier tier) {
+        // ItemControl's numeric mining-level override intentionally follows vanilla tier levels.
+        return tier.getLevel();
+    }
+
+    private static String number(double value) {
+        return Double.isFinite(value) ? BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() : "";
+    }
+
     private void changeCategory(Category next) {
-        if (flushFields()) return;
+        if (!flushFields()) return;
         category = next;
-        rebuildUi();
+        selectedId = null;
+        categoryMatches.clear();
+        if (itemGrid != null) itemGrid.setScrollOffset(0);
+        rebuildEditor();
     }
 
     private void selectGridIndex(int index) {
-        if (index < 0 || index >= visibleIds.size() || flushFields()) return;
+        if (index < 0 || index >= visibleIds.size() || !flushFields()) return;
         selectedId = visibleIds.get(index);
+        rebuildEditor();
+    }
+
+    private void rebuildEditor() {
+        if (itemGrid != null) gridScrollOffset = itemGrid.scrollOffset();
         rebuildUi();
     }
 
-    private void refreshGrid(boolean resetScroll) {
+    private void refreshGrid() {
         if (itemGrid != null) itemGrid.setItems(buildGridItems());
     }
 
@@ -331,21 +468,20 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             }
         }
 
-        List<String> configured = new ArrayList<>(drafts.keySet());
-        configured.removeIf(id -> usedIds.contains(id) || !isRegistered(id) || !matches(id, query));
-        if (selectedId != null && isRegistered(selectedId) && matches(selectedId, query)) {
-            rows.add(new GridEntry(selectedId, stackForId(selectedId), false));
-            usedIds.add(selectedId);
-        }
-        configured.sort(editedTracker.comparator(Comparator.comparing(id -> id.toLowerCase(Locale.ROOT))));
-        for (String id : configured) {
+        for (String id : baseline.keySet()) {
+            if (!hasProperties(baseline.get(id))
+                    || usedIds.contains(id)
+                    || !isRegistered(id)
+                    || !matches(id, query)
+                    || !matchesCategory(id, stackForId(id))) continue;
             rows.add(new GridEntry(id, stackForId(id), false));
             usedIds.add(id);
         }
 
         for (KineticItemSearch.CachedItem cached : allItems) {
             String id = cached.id();
-            if (id.isBlank() || usedIds.contains(id) || !matches(cached, query)) continue;
+            if (id.isBlank() || usedIds.contains(id) || !matches(cached, query)
+                    || !matchesCategory(id, cached.stack())) continue;
             rows.add(new GridEntry(id, cached.stack(), false));
             usedIds.add(id);
         }
@@ -357,12 +493,45 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             visibleIds.add(entry.id());
             boolean modified = hasProperties(drafts.get(entry.id()))
                     || entry.id().equals(selectedId) && selectedHasInput;
-            ItemGridOutline outline = modified && entry.id().equals(selectedId)
+            ItemGridOutline outline = modified
                     ? ItemGridOutline.SUCCESS
                     : ItemGridOutline.NONE;
-            items.add(new ItemGridItem(entry.stack(), null, true, false, entry.invalid(), outline));
+            items.add(new ItemGridItem(entry.stack(), null, true,
+                    entry.id().equals(selectedId), entry.invalid(), outline));
         }
         return List.copyOf(items);
+    }
+
+    private boolean matchesCategory(String id, ItemStack stack) {
+        return categoryMatches.computeIfAbsent(id, ignored -> matchesCategory(stack));
+    }
+
+    private boolean matchesCategory(ItemStack stack) {
+        Item item = stack.getItem();
+        return switch (category) {
+            case COMBAT -> item instanceof ArmorItem
+                    || item instanceof SwordItem
+                    || item instanceof ProjectileWeaponItem
+                    || item instanceof TridentItem
+                    || item instanceof ShieldItem
+                    || !(item instanceof BlockItem)
+                    && !isTool(item)
+                    && stack.getFoodProperties(null) == null
+                    && (!stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_DAMAGE).isEmpty()
+                    || !stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_SPEED).isEmpty());
+            case TOOL -> isTool(item);
+            case FOOD -> stack.getFoodProperties(null) != null;
+            case GENERAL -> true;
+            case BLOCK -> item instanceof BlockItem;
+        };
+    }
+
+    private static boolean isTool(Item item) {
+        return item instanceof DiggerItem
+                || item instanceof TieredItem && !(item instanceof SwordItem)
+                || item instanceof ShearsItem
+                || item instanceof FishingRodItem
+                || item instanceof FlintAndSteelItem;
     }
 
     private boolean hasCurrentPropertiesInput() {
@@ -395,45 +564,40 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     private void addSelectedRule() {
-        if (selectedId == null || flushFields()) return;
+        if (selectedId == null || !flushFields()) return;
         if (!isRegistered(selectedId)) {
             setMessage("gui.itemcontrol.item_property.error.unknown_item");
             return;
         }
         drafts.putIfAbsent(selectedId, new JsonObject());
-        refreshEditedEntries();
-        refreshGrid(false);
+        refreshGrid();
     }
 
     private void resetSelectedRule() {
-        if (selectedId == null || flushFields()) return;
+        if (selectedId == null || !flushFields()) return;
         if (isRegistered(selectedId)) drafts.put(selectedId, new JsonObject());
-        refreshEditedEntries();
-        rebuildUi();
+        rebuildEditor();
     }
 
     private void deleteSelectedRule() {
-        if (selectedId == null || flushFields()) return;
+        if (selectedId == null || !flushFields()) return;
         drafts.remove(selectedId);
-        baseline.remove(selectedId);
-        selectedId = allItems.isEmpty() ? null : allItems.get(0).id();
-        refreshEditedEntries();
-        rebuildUi();
+        selectedId = null;
+        rebuildEditor();
     }
 
     private void cycleBoolean(String key) {
-        if (selectedId == null) return;
+        if (selectedId == null || !flushFields()) return;
         JsonObject rule = currentRuleObject();
         if (!rule.has(key)) rule.addProperty(key, true);
         else if (rule.get(key).getAsBoolean()) rule.addProperty(key, false);
         else rule.remove(key);
         drafts.put(selectedId, rule);
-        refreshEditedEntries();
-        rebuildUi();
+        rebuildEditor();
     }
 
     private boolean flushFields() {
-        if (selectedId == null) return false;
+        if (selectedId == null) return true;
         JsonObject rule = currentRuleObject();
         for (Map.Entry<String, KineticEditBox> entry : fields.entrySet()) {
             String key = entry.getKey();
@@ -445,7 +609,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             FieldSpec spec = fieldSpecs.get(key);
             if (spec == null || !spec.accepts(value)) {
                 setMessage("gui.itemcontrol.item_property.error.invalid_value");
-                return true;
+                return false;
             }
             if (spec.stringValue()) rule.addProperty(key, value.toLowerCase(Locale.ROOT));
             else if (spec.integer()) rule.addProperty(key, Integer.parseInt(value));
@@ -462,27 +626,20 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                     rule.add("attributes", parsed);
                 } catch (RuntimeException exception) {
                     setMessage("gui.itemcontrol.item_property.error.invalid_attributes");
-                    return true;
+                    return false;
                 }
             }
         }
-        drafts.put(selectedId, rule);
-        refreshEditedEntries();
-        return false;
+        if (!rule.entrySet().isEmpty() || drafts.containsKey(selectedId)) {
+            drafts.put(selectedId, rule);
+        }
+        return true;
     }
 
     private JsonObject currentRuleObject() {
         if (selectedId == null) return new JsonObject();
         JsonElement current = drafts.get(selectedId);
         return current != null && current.isJsonObject() ? current.getAsJsonObject().deepCopy() : new JsonObject();
-    }
-
-    private void refreshEditedEntries() {
-        editedTracker.refresh(drafts.keySet(), id -> !jsonEquals(baseline.get(id), drafts.get(id)));
-    }
-
-    private boolean jsonEquals(JsonElement left, JsonElement right) {
-        return left == null ? right == null : left.equals(right);
     }
 
     private boolean hasProperties(JsonElement value) {
@@ -498,7 +655,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     private void save() {
-        if (saving || flushFields()) return;
+        if (saving || !flushFields()) return;
         JsonObject root = new JsonObject();
         drafts.forEach((id, value) -> root.add(id, value.deepCopy()));
         saving = true;
@@ -509,8 +666,8 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         saving = false;
         if (success) {
             restoreDraft(pendingJson);
-            refreshEditedEntries();
-            refreshGrid(false);
+            refreshGrid();
+            if (itemGrid != null) itemGrid.setScrollOffset(0);
         }
         transientMessage = messageKey == null ? "" : messageKey;
     }
@@ -522,11 +679,11 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     @Override
     protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        GuiTheme.canvasBackground(graphics, canvasWidth(), canvasHeight());
+        GuiTheme.panel(graphics, 0, 0, canvasWidth(), canvasHeight());
         String attributesValue = attributesBox == null ? "" : attributesBox.getValue();
         if (!attributesValue.equals(lastAttributesValue)) {
             lastAttributesValue = attributesValue;
-            refreshGrid(false);
+            refreshGrid();
         }
         graphics.drawCenteredString(font, title, canvasWidth() / 2, 2, 0xFFFFFF);
         graphics.drawString(font, Component.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31, 0xFFFFFF, false);
@@ -543,18 +700,11 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                     false
             );
         }
-        if (selectedId != null) {
-            ItemStack selectedStack = stackForId(selectedId);
-            String name = selectedStack.isEmpty() || selectedStack.getItem() == Items.BARRIER
-                    ? Component.translatable("gui.itemcontrol.item_property.item.unresolved").getString()
-                    : selectedStack.getHoverName().getString();
-            graphics.drawString(font, font.plainSubstrByWidth(name, PANEL_RIGHT - PANEL_X), PANEL_X, 50, 0xFFFFFFFF, false);
-        }
     }
 
     @Override
     protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderHoveredItemTooltip(graphics, mouseX, mouseY);
+        showHoveredVanillaTooltip();
         if (transientMessage != null && !transientMessage.isBlank()) {
             graphics.drawString(font, Component.translatable(transientMessage), PANEL_X, 302, 0xFFFF7777, false);
         } else {
@@ -562,34 +712,20 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         }
     }
 
-    private void renderHoveredItemTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void showHoveredVanillaTooltip() {
         if (itemGrid == null) return;
-        int index = itemGrid.itemAt(mouseX, mouseY);
-        if (index < 0 || index >= visibleIds.size() || index >= itemGrid.items().size()) return;
-
-        String id = visibleIds.get(index);
-        ItemGridItem entry = itemGrid.items().get(index);
-        ItemStack stack = entry.stack();
-        if (stack == null || stack.isEmpty()) stack = new ItemStack(Items.BARRIER);
-        List<Component> tooltip = new ArrayList<>(stack.getTooltipLines(
-                KineticClientRuntime.localPlayer(), TooltipFlag.Default.NORMAL
-        ));
-        tooltip.add(Component.translatable("gui.itemcontrol.item_property.tooltip.id", id));
-        if (entry.error()) {
-            tooltip.add(Component.translatable("gui.itemcontrol.item_property.tooltip.invalid"));
-        } else if (hasProperties(drafts.get(id)) || id.equals(selectedId) && hasCurrentPropertiesInput()) {
-            tooltip.add(Component.translatable("gui.itemcontrol.item_property.tooltip.configured"));
-        } else {
-            tooltip.add(Component.translatable("gui.itemcontrol.item_property.tooltip.default"));
-        }
-        tooltip.add(Component.translatable("gui.itemcontrol.item_property.tooltip.click"));
-        graphics.renderTooltip(font, tooltip, Optional.empty(), mouseX, mouseY);
+        ItemStack hoveredStack = itemGrid.hoveredStack();
+        if (hoveredStack != null && !hoveredStack.isEmpty()) showItemTooltip(hoveredStack);
     }
 
     private record GridEntry(String id, ItemStack stack, boolean invalid) {
     }
 
     private record FieldSpec(String key, boolean integer, double minimum, double maximum, boolean stringValue) {
+        private boolean acceptsOrBlank(String raw) {
+            return raw == null || raw.isBlank() || accepts(raw);
+        }
+
         private boolean accepts(String raw) {
             if (stringValue) {
                 return key.equals("rarity")

@@ -13,12 +13,10 @@ import dev.xyat.itemcontrol.item.event.VoidItemEventHandler;
 import dev.xyat.itemcontrol.item.event.WorldLoadEventHandler;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.itemcontrol.item.property.ItemPropertyEventHandler;
-import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
 import dev.xyat.kineticcore.api.config.server.KTServerConfigApi;
 import dev.xyat.kineticcore.api.config.server.KTServerConfigSpec;
 import org.slf4j.Logger;
 import dev.xyat.kineticcore.api.runtime.KineticPlatform;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 public final class ItemModule {
     public static final String MODID = "itemcontrol";
@@ -29,7 +27,6 @@ public final class ItemModule {
         BanItemConfig.load();
         ItemProtectionConfig.load();
         ItemPropertyConfig.load();
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(ItemPropertyOverrides::onCommonSetup);
         KTServerConfigApi.registerActionPage(ItemPropertyConfigGui.PAGE_ID);
         KTServerConfigApi.register(KTServerConfigSpec.builder("itemcontrol:item_protection")
                 .booleanValue("enable_item_protection", () -> ItemProtectionConfig.enableItemProtection, value -> ItemProtectionConfig.enableItemProtection = value)

@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.config.ItemPropertyRule;
 import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -65,8 +66,8 @@ public final class ItemPropertyMixins {
             if (original != null) {
                 if (original.isMeat()) builder.meat();
                 if (original.isFastFood()) builder.fast();
-                for (Pair<net.minecraft.world.effect.MobEffectInstance, Float> effect : original.getEffects()) {
-                    builder.effect(effect.getFirst(), effect.getSecond());
+                for (Pair<MobEffectInstance, Float> effect : original.getEffects()) {
+                    builder.effect(() -> new MobEffectInstance(effect.getFirst()), effect.getSecond());
                 }
             }
             cir.setReturnValue(builder.build());
@@ -75,7 +76,7 @@ public final class ItemPropertyMixins {
         @Inject(method = "getUseDuration(Lnet/minecraft/world/item/ItemStack;)I", at = @At("RETURN"), cancellable = true)
         private void itemcontrol$useDuration(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
             ItemPropertyRule rule = ItemPropertyOverrides.active(stack);
-            if (rule != null && rule.eatSeconds() != null && ((Item) (Object) this).getFoodProperties() != null) {
+            if (rule != null && rule.eatSeconds() != null && stack.getFoodProperties(null) != null) {
                 cir.setReturnValue(Math.max(1, Math.min(72_000, Math.round(rule.eatSeconds().floatValue() * 20.0F))));
             }
         }
