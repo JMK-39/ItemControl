@@ -3,6 +3,8 @@ package dev.xyat.itemcontrol.item.event;
 import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
 import dev.xyat.itemcontrol.item.util.ItemProtectionList;
+import dev.xyat.itemcontrol.item.config.ItemPropertyRule;
+import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
 import dev.xyat.kineticcore.api.event.KineticEventPriority;
 import dev.xyat.kineticcore.api.event.KineticExternalEvents;
 import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
@@ -70,6 +72,14 @@ public final class ItemProtectionHandler {
         }
 
         if (ItemProtectionConfig.isGlobalItemDamageImmune(source)) {
+            event.setCanceled(true);
+            return;
+        }
+
+        ItemPropertyRule propertyRule = ItemPropertyOverrides.active(stack);
+        if (propertyRule != null
+                && Boolean.TRUE.equals(propertyRule.explosionImmune())
+                && source.is(DamageTypeTags.IS_EXPLOSION)) {
             event.setCanceled(true);
             return;
         }

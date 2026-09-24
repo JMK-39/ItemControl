@@ -7,6 +7,10 @@
     "ItemManagementMixins$SlotMixin",
     "ItemManagementMixins$ItemStackMixin",
     "ItemManagementMixins$SimpleJsonResourceReloadListenerMixin",
+    "ItemPropertyMixins$ItemProperties",
+    "ItemPropertyMixins$ItemStackProperties",
+    "ItemPropertyMixins$BlockStateProperties",
+    "ItemPropertyMixins$BlockPropertyAccess",
     "ItemProtectionMixins$ItemEntityTweaks",
     "ItemProtectionMixins$EntityTweaks"
   ],

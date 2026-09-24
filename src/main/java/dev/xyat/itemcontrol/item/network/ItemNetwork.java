@@ -12,6 +12,7 @@ import dev.xyat.kineticcore.api.event.KineticEventPriority;
 import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
+import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,7 +22,7 @@ import java.util.List;
 
 public class ItemNetwork {
     private static final Logger LOGGER = LogManager.getLogger("itemcontrol/ItemNetwork");
-    private static final String PROTOCOL_VERSION = "4";
+    private static final String PROTOCOL_VERSION = "5";
 
     private static final int MAX_COMPRESSED_BYTES = 2 * 1024 * 1024;
     private static final int MAX_DECOMPRESSED_BYTES = 8 * 1024 * 1024;
@@ -38,6 +39,7 @@ public class ItemNetwork {
     public static final int EDITOR_DAMAGE_IMMUNITY = 3;
     public static final int EDITOR_DIRECT_ENTITY_IMMUNITY = 4;
     public static final int EDITOR_ITEM_TAG = 5;
+    public static final int EDITOR_ITEM_PROPERTIES = 6;
 
     private static final int MAX_PROTECTION_RULES = 4096;
     private static final int MAX_PROTECTION_RULE_LENGTH = 32767;
@@ -50,10 +52,10 @@ public class ItemNetwork {
 
         CHANNEL.registerClientbound(0, OpenBannedGuiPacket.class,
                 NetworkCodec.of((buffer, packet) -> { }, buffer -> new OpenBannedGuiPacket()),
-                packet -> packet.handleClient());
+                OpenBannedGuiPacket::handleClient);
         CHANNEL.registerClientbound(1, OpenMergeGuiPacket.class,
                 NetworkCodec.of((buffer, packet) -> { }, buffer -> new OpenMergeGuiPacket()),
-                packet -> packet.handleClient());
+                OpenMergeGuiPacket::handleClient);
         CHANNEL.registerClientbound(2, OpenProtectionEditorPacket.class,
                 NetworkCodec.of(OpenProtectionEditorPacket::encode, OpenProtectionEditorPacket::decode),
                 OpenProtectionEditorPacket::handleClient);
@@ -65,7 +67,7 @@ public class ItemNetwork {
                 OpenDirectEntityImmunityEditorPacket::handleClient);
         CHANNEL.registerClientbound(5, OpenItemTagEditorPacket.class,
                 NetworkCodec.of((buffer, packet) -> { }, buffer -> new OpenItemTagEditorPacket()),
-                packet -> packet.handleClient());
+                OpenItemTagEditorPacket::handleClient);
         CHANNEL.registerServerbound(6, SaveBanConfigPacket.class,
                 NetworkCodec.of(SaveBanConfigPacket::encode, SaveBanConfigPacket::decode),
                 SaveBanConfigPacket::handleServer);
@@ -88,6 +90,18 @@ public class ItemNetwork {
         CHANNEL.registerClientbound(12, EditorSaveResultPacket.class,
                 NetworkCodec.of(EditorSaveResultPacket::encode, EditorSaveResultPacket::decode),
                 EditorSaveResultPacket::handleClient);
+        CHANNEL.registerClientbound(13, OpenItemPropertyEditorPacket.class,
+                NetworkCodec.of(OpenItemPropertyEditorPacket::encode, OpenItemPropertyEditorPacket::decode),
+                OpenItemPropertyEditorPacket::handleClient);
+        CHANNEL.registerClientbound(14, SyncItemPropertySnapshotPacket.class,
+                NetworkCodec.of(SyncItemPropertySnapshotPacket::encode, SyncItemPropertySnapshotPacket::decode),
+                SyncItemPropertySnapshotPacket::handleClient);
+        CHANNEL.registerServerbound(15, SaveItemPropertyConfigPacket.class,
+                NetworkCodec.of(SaveItemPropertyConfigPacket::encode, SaveItemPropertyConfigPacket::decode),
+                SaveItemPropertyConfigPacket::handleServer);
+        CHANNEL.registerClientbound(16, ItemPropertySaveResultPacket.class,
+                NetworkCodec.of(ItemPropertySaveResultPacket::encode, ItemPropertySaveResultPacket::decode),
+                ItemPropertySaveResultPacket::handleClient);
 
         KineticServerEvents.onPlayerLogin(KineticEventPriority.NORMAL, player -> sendServerConfigToPlayer(player, true));
         KineticServerEvents.onDatapackSync(KineticEventPriority.NORMAL, (server, player) -> {
@@ -114,6 +128,10 @@ public class ItemNetwork {
 
     public static void saveDirectEntitySources(List<String> entries) {
         CHANNEL.sendToServer(new SaveDirectEntitySourcesPacket(entries));
+    }
+
+    public static void saveItemPropertyConfig(String json) {
+        CHANNEL.sendToServer(new SaveItemPropertyConfigPacket(json));
     }
 
     private static void writeStringList(NetworkBuffer buf, List<String> values, int maxCount, int maxLength) {
@@ -148,6 +166,10 @@ public class ItemNetwork {
                 CHANNEL.sendToPlayer(player, new OpenDirectEntityImmunityEditorPacket(ItemProtectionConfig.globalDirectEntityImmunityRaw));
             } else if (editorType == EDITOR_ITEM_TAG) {
                 CHANNEL.sendToPlayer(player, new OpenItemTagEditorPacket());
+            } else if (editorType == EDITOR_ITEM_PROPERTIES) {
+                CHANNEL.sendToPlayer(player, new OpenItemPropertyEditorPacket(
+                        ItemPropertyConfig.pendingJson(), ItemPropertyConfig.activeJson()
+                ));
             }
         
         }
@@ -158,6 +180,9 @@ public class ItemNetwork {
         try {
             if (reloadFromFile) BanItemConfig.load();
             CHANNEL.sendToPlayer(player, new SyncBanConfigPacket(BanItemConfig.getNetworkJson()));
+            CHANNEL.sendToPlayer(player, new SyncItemPropertySnapshotPacket(
+                    ItemPropertyConfig.pendingJson(), ItemPropertyConfig.activeJson()
+            ));
         } catch (Throwable e) {
             LOGGER.error("Failed to sync item configuration to player {}", player.getGameProfile().getName(), e);
         }
@@ -168,6 +193,16 @@ public class ItemNetwork {
             CHANNEL.broadcast(new SyncBanConfigPacket(BanItemConfig.getNetworkJson()));
         } catch (Throwable e) {
             LOGGER.error("Failed to sync item configuration to all players", e);
+        }
+    }
+
+    private static void syncItemPropertiesToAllPlayers() {
+        try {
+            CHANNEL.broadcast(new SyncItemPropertySnapshotPacket(
+                    ItemPropertyConfig.pendingJson(), ItemPropertyConfig.activeJson()
+            ));
+        } catch (Throwable e) {
+            LOGGER.error("Failed to sync item property overrides to players", e);
         }
     }
 
@@ -584,5 +619,150 @@ public class ItemNetwork {
         public void handleClient() {
             dev.xyat.itemcontrol.item.client.ItemClientProxy.handleSyncBanConfig(jsonData);
         }
+    }
+
+    public static final class OpenItemPropertyEditorPacket {
+        private final String pendingJson;
+        private final String activeJson;
+
+        public OpenItemPropertyEditorPacket(String pendingJson, String activeJson) {
+            this.pendingJson = pendingJson == null ? "{}" : pendingJson;
+            this.activeJson = activeJson == null ? "{}" : activeJson;
+        }
+
+        public static void encode(NetworkBuffer buf, OpenItemPropertyEditorPacket packet) {
+            writeCompressedJson(buf, packet.pendingJson);
+            writeCompressedJson(buf, packet.activeJson);
+        }
+
+        public static OpenItemPropertyEditorPacket decode(NetworkBuffer buf) {
+            try {
+                return new OpenItemPropertyEditorPacket(readCompressedJson(buf), readCompressedJson(buf));
+            } catch (Throwable e) {
+                LOGGER.error("Failed to decode item property editor snapshot", e);
+                return new OpenItemPropertyEditorPacket("{}", "{}");
+            }
+        }
+
+        public void handleClient() {
+            dev.xyat.itemcontrol.item.client.ItemClientProxy.openItemPropertyEditor(pendingJson, activeJson);
+        }
+    }
+
+    public static final class SyncItemPropertySnapshotPacket {
+        private final String pendingJson;
+        private final String activeJson;
+
+        public SyncItemPropertySnapshotPacket(String pendingJson, String activeJson) {
+            this.pendingJson = pendingJson == null ? "{}" : pendingJson;
+            this.activeJson = activeJson == null ? "{}" : activeJson;
+        }
+
+        public static void encode(NetworkBuffer buf, SyncItemPropertySnapshotPacket packet) {
+            writeCompressedJson(buf, packet.pendingJson);
+            writeCompressedJson(buf, packet.activeJson);
+        }
+
+        public static SyncItemPropertySnapshotPacket decode(NetworkBuffer buf) {
+            try {
+                return new SyncItemPropertySnapshotPacket(readCompressedJson(buf), readCompressedJson(buf));
+            } catch (Throwable e) {
+                LOGGER.error("Failed to decode item property synchronization", e);
+                return new SyncItemPropertySnapshotPacket("{}", "{}");
+            }
+        }
+
+        public void handleClient() {
+            ItemPropertyConfig.applyServerSnapshots(pendingJson, activeJson);
+        }
+    }
+
+    public static final class SaveItemPropertyConfigPacket {
+        private final String json;
+
+        public SaveItemPropertyConfigPacket(String json) {
+            this.json = json == null ? "{}" : json;
+        }
+
+        public static void encode(NetworkBuffer buf, SaveItemPropertyConfigPacket packet) {
+            writeCompressedJson(buf, packet.json);
+        }
+
+        public static SaveItemPropertyConfigPacket decode(NetworkBuffer buf) {
+            try {
+                return new SaveItemPropertyConfigPacket(readCompressedJson(buf));
+            } catch (Throwable e) {
+                LOGGER.error("Failed to decode item property save packet", e);
+                return new SaveItemPropertyConfigPacket("");
+            }
+        }
+
+        public void handleServer(ServerPacketContext ctx) {
+            ServerPlayer player = ctx.sender();
+            if (player == null) return;
+            if (!player.hasPermissions(2)) {
+                CHANNEL.sendToPlayer(player, new ItemPropertySaveResultPacket(
+                        false, ItemPropertyConfig.pendingJson(), "msg.itemcontrol.item.editor.no_permission"
+                ));
+                return;
+            }
+            ItemPropertyConfig.SaveResult result = ItemPropertyConfig.savePending(json);
+            if (!result.success()) {
+                CHANNEL.sendToPlayer(player, new ItemPropertySaveResultPacket(
+                        false, ItemPropertyConfig.pendingJson(), result.messageKey()
+                ));
+                return;
+            }
+            syncItemPropertiesToAllPlayers();
+            CHANNEL.sendToPlayer(player, new ItemPropertySaveResultPacket(
+                    true, ItemPropertyConfig.pendingJson(), "msg.itemcontrol.item_property.saved_restart"
+            ));
+        }
+    }
+
+    public static final class ItemPropertySaveResultPacket {
+        private final boolean success;
+        private final String pendingJson;
+        private final String messageKey;
+
+        public ItemPropertySaveResultPacket(boolean success, String pendingJson, String messageKey) {
+            this.success = success;
+            this.pendingJson = pendingJson == null ? "{}" : pendingJson;
+            this.messageKey = messageKey == null ? "" : messageKey;
+        }
+
+        public static void encode(NetworkBuffer buf, ItemPropertySaveResultPacket packet) {
+            buf.writeBoolean(packet.success);
+            buf.writeUtf(packet.messageKey, 256);
+            writeCompressedJson(buf, packet.pendingJson);
+        }
+
+        public static ItemPropertySaveResultPacket decode(NetworkBuffer buf) {
+            boolean success = buf.readBoolean();
+            String message = buf.readUtf(256);
+            try {
+                return new ItemPropertySaveResultPacket(success, readCompressedJson(buf), message);
+            } catch (Throwable e) {
+                LOGGER.error("Failed to decode item property save result", e);
+                return new ItemPropertySaveResultPacket(false, "{}", "gui.kineticcore.config.save_failed");
+            }
+        }
+
+        public void handleClient() {
+            dev.xyat.itemcontrol.item.client.ItemClientProxy.applyItemPropertySaveResult(
+                    success, pendingJson, messageKey
+            );
+        }
+    }
+
+    private static void writeCompressedJson(NetworkBuffer buf, String json) {
+        buf.writeByteArray(
+                KineticCompression.compressUtf8(json, MAX_COMPRESSED_BYTES, MAX_DECOMPRESSED_BYTES),
+                MAX_COMPRESSED_BYTES
+        );
+    }
+
+    private static String readCompressedJson(NetworkBuffer buf) {
+        return KineticCompression.decompressUtf8(buf.readByteArray(MAX_COMPRESSED_BYTES), MAX_DECOMPRESSED_BYTES);
     }
 }

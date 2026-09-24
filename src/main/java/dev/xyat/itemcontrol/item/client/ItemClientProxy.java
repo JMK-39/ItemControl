@@ -7,6 +7,7 @@ import dev.xyat.itemcontrol.item.client.gui.DirectEntityImmunityEditorScreen;
 import dev.xyat.itemcontrol.item.client.gui.ItemSearchCache;
 import dev.xyat.itemcontrol.item.client.gui.ItemCacheHudRenderer;
 import dev.xyat.itemcontrol.item.client.gui.ItemTagEditorScreen;
+import dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorScreen;
 import dev.xyat.itemcontrol.item.client.gui.MergeItemScreen;
 import dev.xyat.itemcontrol.item.client.gui.ProtectionItemEditorScreen;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
@@ -67,6 +68,12 @@ public final class ItemClientProxy {
         );
     }
 
+    public static void openItemPropertyEditor(String pendingJson, String activeJson) {
+        dev.xyat.itemcontrol.item.config.ItemPropertyConfig.applyServerSnapshots(pendingJson, activeJson);
+        Screen parent = takeEditorReturnScreen();
+        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new ItemPropertyEditorScreen(parent, pendingJson)));
+    }
+
     public static void openDamageTypeEditor(java.util.List<String> entries) {
         Screen parent = takeEditorReturnScreen();
         KineticClientRuntime.openScreen(new DamageTypeEditorScreen(parent, entries));
@@ -109,6 +116,21 @@ public final class ItemClientProxy {
         }
     }
 
+    public static void applyItemPropertySaveResult(boolean success, String pendingJson, String messageKey) {
+        Screen current = KineticClientRuntime.currentScreen();
+        if (current instanceof ItemPropertyEditorScreen screen) {
+            screen.applySaveResult(success, pendingJson, messageKey);
+        }
+        if (success) {
+            KineticOverlays.toast(
+                    "itemcontrol_item_property_save",
+                    KineticI18n.translatable("msg.itemcontrol.item_property.saved_restart")
+            );
+        } else if (messageKey != null && !messageKey.isBlank()) {
+            KineticOverlays.toast("itemcontrol_item_property_save", KineticI18n.translatable(messageKey));
+        }
+    }
+
     private static String getEditorSaveSuccessKey(int editorType) {
         return switch (editorType) {
             case ItemNetwork.EDITOR_BAN_ITEM -> "msg.itemcontrol.item.banitem.save_success";
@@ -137,6 +159,8 @@ public final class ItemClientProxy {
     private static void onClientLogout() {
         try {
             BanItemConfig.load();
+            dev.xyat.itemcontrol.item.config.ItemPropertyConfig.load();
+            dev.xyat.itemcontrol.item.property.ItemPropertyOverrides.applyBlockOverrides();
             ItemSearchCache.clear();
         } catch (Throwable e) {
             LOGGER.error("离开服务器后重载本地物品封禁配置失败", e);

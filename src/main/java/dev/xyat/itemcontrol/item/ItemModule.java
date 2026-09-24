@@ -6,14 +6,19 @@ import dev.xyat.itemcontrol.item.client.ItemClientProxy;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfigGui;
+import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
+import dev.xyat.itemcontrol.item.config.ItemPropertyConfigGui;
 import dev.xyat.itemcontrol.item.event.ItemProtectionHandler;
 import dev.xyat.itemcontrol.item.event.VoidItemEventHandler;
 import dev.xyat.itemcontrol.item.event.WorldLoadEventHandler;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
+import dev.xyat.itemcontrol.item.property.ItemPropertyEventHandler;
+import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
 import dev.xyat.kineticcore.api.config.server.KTServerConfigApi;
 import dev.xyat.kineticcore.api.config.server.KTServerConfigSpec;
 import org.slf4j.Logger;
 import dev.xyat.kineticcore.api.runtime.KineticPlatform;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 public final class ItemModule {
     public static final String MODID = "itemcontrol";
@@ -23,6 +28,9 @@ public final class ItemModule {
         InitItems.register();
         BanItemConfig.load();
         ItemProtectionConfig.load();
+        ItemPropertyConfig.load();
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(ItemPropertyOverrides::onCommonSetup);
+        KTServerConfigApi.registerActionPage(ItemPropertyConfigGui.PAGE_ID);
         KTServerConfigApi.register(KTServerConfigSpec.builder("itemcontrol:item_protection")
                 .booleanValue("enable_item_protection", () -> ItemProtectionConfig.enableItemProtection, value -> ItemProtectionConfig.enableItemProtection = value)
                 .booleanValue("enable_void_salvage", () -> ItemProtectionConfig.enableVoidSalvage, value -> ItemProtectionConfig.enableVoidSalvage = value)
@@ -39,6 +47,7 @@ public final class ItemModule {
                 .build());
         ItemNetwork.register();
         ItemProtectionHandler.register();
+        ItemPropertyEventHandler.register();
         VoidItemEventHandler.register();
         WorldLoadEventHandler.register();
         ItemCommandExtension.install();
@@ -46,6 +55,7 @@ public final class ItemModule {
         KineticPlatform.runOnClient(() -> () -> {
             ItemClientProxy.install();
             ItemProtectionConfigGui.load();
+            ItemPropertyConfigGui.load();
         });
     }
 }
