@@ -6,11 +6,11 @@
 
 ## English
 
-Item Control provides item bans and unification, dropped-item protection, scheduled cleanup with recoverable trash history, and creative inventory management. It is designed for modpacks that need consistent item rules and for servers that need configurable cleanup.
+Item Control is built around highly visual in-game management. Few item-management mods combine this breadth of controls in one place: item bans and unification, per-item property editing, dropped-item protection, cleanup with recoverable trash history, and creative-tab curation. Dedicated editors make these rules practical to browse and maintain without treating manual file editing as the main workflow.
 
 ### Installation and access
 
-- Current build target: **Minecraft 1.20.1**, **Forge 47.4.2+**, and **KineticCore 26.9.20+**.
+- Current build target: **Minecraft 1.20.1**, **Forge 47.4.2+**, and **KineticCore 26.9.25+**.
 - Install Item Control and KineticCore on the client and server for multiplayer use.
 - Optional integrations: **KubeJS** for dropped-item events and **JEI** for ingredient visibility integration.
 - Enter a world and press **F6**, then choose **Item Control** in KineticCore. The key is configurable in Controls.
@@ -37,16 +37,26 @@ NBT matching checks the specified data rather than requiring the entire stack ta
 
 Example workflow: choose the ingot your pack should keep, add the other ingots as merge sources, save, then inspect recipes and newly obtained stacks. Creative-tab hiding is a separate presentation setting; it does not itself impose an item ban.
 
-### Dropped-item protection
+### Item properties and dropped-item protection
 
-Per-item rules independently control **fire immunity**, **explosion immunity**, **glowing**, and **no gravity**. Rules accept item IDs, tags, mod namespaces, and item-specific NBT.
+The **Item Property Editor** is the main visual workspace for changing item behavior. Its category selector filters the left-hand list to relevant items, and the property panel shows the selected item's original values. Unchanged values appear gray; edited values appear green. The Drop Protection category can also target all registered items, item tags, mod namespaces, and item NBT variants.
 
-- Enable void salvage to move protected drops falling into the void to safe ground or world spawn.
-- Global damage immunity can match registered damage types and damage tags.
-- Global direct-entity immunity can match the entity delivering the damage or an entity tag.
-- Damage-immunity checks use saved rules immediately. Previously spawned drops do not have all their initial protection/display flags retroactively reset.
+| Category | Available controls |
+| --- | --- |
+| Combat | Attack damage and speed, armor, toughness, knockback resistance, and durability |
+| Tools | Attack damage and speed, mining speed and level, and durability |
+| Food | Nutrition, saturation, eating time, full-hunger eating, and whether eating consumes the item |
+| General | Stack size, durability, enchantability, and localized rarity choices |
+| Blocks | Hardness and explosion resistance |
+| Drop Protection | Fire and explosion immunity, glowing, no gravity, and persistence for dropped items |
 
-A protection entry in `protection.toml` uses `Identifier;FireImmune;ExplosionImmune;Glowing;NoGravity`, for example `minecraft:nether_star;true;true;true;false`.
+Attack damage accepts **-1** for effectively unlimited damage; maximum durability accepts **-1** to make the item unbreakable. A non-consumable food still grants its normal effects. Block hardness and explosion resistance are block-wide settings: changing one item changes every placed instance of its block.
+
+Property rules are saved as plain entries in `config/itemcontrol/item_properties.json`. Save changes and fully restart the game to apply them; the current session continues using its active values. Reset clears the pending override and immediately refreshes the editor preview, while the game itself changes after restart.
+
+Drop protection controls only dropped item entities. It does not change a block's explosion resistance or an item's normal fire behavior. Existing per-item entries in `protection.toml` are migrated into the property file on startup. The remaining protection settings include void salvage, global damage-source immunity, and direct-entity immunity. Those immunity checks use saved rules immediately, while initial display and physics flags on already spawned drops are not all retroactively reset.
+
+The old separate protection editor has been retired; maintain per-item drop rules in the **Drop Protection** category here.
 
 ### Automatic and manual cleanup
 
@@ -98,33 +108,29 @@ Hide entire tabs or selected contents, restore hidden entries, and add custom it
 
 ### Configuration and integrations
 
-| File under `config/kineticcore/` | Contents |
+| File below the instance's `config/` directory | Contents |
 | --- | --- |
-| `banitem.json` | Banned items, merge mappings, and manually added tags |
-| `banitem.old.json` | Companion backup used by the item-rule save flow |
-| `protection.toml` | Dropped-item flags, void salvage, and immunity rules |
-| `cleaner.toml` | Cleanup schedule, lists, protected areas, and trash settings |
-| `creative_tabs.json` | Tab hiding, content removals, and additions |
+| `kineticcore/banitem.json` | Banned items, merge mappings, and manually added tags |
+| `itemcontrol/item_properties.json` | Per-item properties and dropped-item protection rules |
+| `kineticcore/protection.toml` | Void salvage, global damage-source immunity, and direct-entity immunity |
+| `kineticcore/cleaner.toml` | Cleanup schedule, lists, protected areas, and trash settings |
+| `kineticcore/creative_tabs.json` | Tab hiding, content removals, and additions |
 
 Trash records are world saved data named `itemcontrol_trashbin`. Protected areas are also world data. The trash-button visibility and position controls are local client preferences, independent of server cleanup rules.
 
 Most cleaner rule changes are immediately usable. After changing the interval or enabling a previously disabled schedule through configuration, use `/kt reload` or reload the world; reopen trash screens after changing their layout. Item and tab reload handlers reload and synchronize their configuration. JSON recipe/data rewrites run during data loading, so `/kt reload` alone should not be treated as a complete recipe rebuild.
 
-With KubeJS installed, the mod registers `itemcontrolEvents.itemHurt`, `itemcontrolEvents.itemSpawn`, and `itemcontrolEvents.itemRemoved`, plus the `ItemProtection` binding. The events expose dropped-item behavior and support cancellation results; consult the [integration classes](src/main/java/dev/xyat/itemcontrol/item/kubejs) for scripting details.
-
-### Project
-
-Mod ID: `itemcontrol`. Author: **XYAT**. License: [LGPLv3](LICENSE.txt). Implementation: [source](src/main/java/dev/xyat/itemcontrol). Declared dependencies: [mods.toml](src/main/resources/META-INF/mods.toml).
+With KubeJS installed, scripts can listen for dropped-item hurt, spawn, and removal events through `itemcontrolEvents`, or use the `ItemProtection` binding. These hooks are optional; ordinary item and drop rules are managed in the in-game editors.
 
 <a id="chinese"></a>
 
 ## 简体中文
 
-Item Control 提供物品封禁与统一、掉落物保护、带历史回收功能的定时清理，以及创造模式物品栏管理。适合需要统一物品规则的整合包和需要可配置清理机制的服务器。
+Item Control 以极致的游戏内可视化操作为核心，将物品封禁与统一、单物品属性编辑、掉落物保护、带历史回收的清理以及创造标签页管理放在同一套工具中。它的功能覆盖面很广，在同类模组中少见地把这些物品与掉落物管理流程集中到可视化编辑器里。
 
 ### 安装与入口
 
-- 当前构建目标：**Minecraft 1.20.1**、**Forge 47.4.2+**、**KineticCore 26.9.20+**。
+- 当前构建目标：**Minecraft 1.20.1**、**Forge 47.4.2+**、**KineticCore 26.9.25+**。
 - 多人游戏时，客户端和服务端均安装 Item Control 与 KineticCore。
 - 可选兼容：**KubeJS** 提供掉落物事件脚本接口；**JEI** 提供配方查看器中的物品可见性兼容。
 - 进入世界后按 **F6**，在 KineticCore 中选择 **Item Control**；可在按键设置中修改入口快捷键。
@@ -151,16 +157,26 @@ NBT 匹配检查指定的数据，不要求整个物品标签完全一致。需�
 
 典型流程：选择整合包要保留的锭，将其他锭加入合并来源，保存后检查配方和新获取物品。创造标签页隐藏是独立的展示设置，本身不会封禁物品。
 
-### 掉落物保护
+### 物品属性与掉落物保护
 
-每条规则分别控制**防火**、**防爆**、**发光**和**无重力**，支持物品 ID、标签、模组命名空间及物品专属 NBT。
+**物品属性编辑器**是主要的可视化工作台：分类菜单会筛选左侧物品，右侧显示所选物品的原始数值。未修改的值显示灰色，覆盖值显示绿色。“掉落物保护”分类可面向所有已注册物品，也支持物品标签、模组命名空间和带 NBT 的物品规则。
 
-- 开启虚空救援后，受保护掉落物落入虚空时会转移到安全地面或世界出生点。
-- 全局伤害免疫支持已注册伤害类型及伤害标签。
-- 全局直接实体免疫可匹配造成伤害的直接实体及实体标签。
-- 伤害免疫判断在保存后立即使用新规则，但不会追溯重设所有已有掉落物的初始保护和显示标记。
+| 分类 | 可调整内容 |
+| --- | --- |
+| 战斗类 | 攻击伤害、攻速、护甲、护甲韧性、击退抗性和耐久 |
+| 工具类 | 攻击伤害、攻速、挖掘速度、挖掘等级和耐久 |
+| 食物类 | 饱食度、饱和度、食用时间、满饥饿时可食用，以及食用后是否消耗 |
+| 通用类 | 堆叠上限、耐久、附魔能力和本地化稀有度选项 |
+| 方块类 | 硬度和爆炸抗性 |
+| 掉落物保护 | 掉落物免火、免爆炸、发光、无重力和不消失 |
 
-`protection.toml` 的保护条目格式为 `标识符;防火;防爆;发光;无重力`，例如 `minecraft:nether_star;true;true;true;false`。
+攻击伤害填 **-1** 表示实战无限伤害；最大耐久填 **-1** 表示物品不会损坏。设置为不消耗的食物仍会正常产生效果。方块硬度和爆炸抗性作用于该方块的所有实例，修改物品规则会影响已经放置的同种方块。
+
+属性规则以普通 ID 到属性对象的 JSON 格式保存在 `config/itemcontrol/item_properties.json`。保存后需完整重启游戏；重启前，当前游戏继续使用原有活动值。重置会立即更新编辑器预览并清除待保存覆盖，实际游戏内数值在重启后恢复。
+
+掉落物保护只控制掉落实体，不改变方块爆炸抗性或物品本身的抗火行为。启动时会把 `protection.toml` 中的旧版单物品保护条目迁移到属性文件。当前保护配置还保留虚空救援、全局伤害来源免疫和直接实体免疫；免疫规则保存后即可使用，但不会追溯重设所有已有掉落物的初始外观和物理状态。
+
+旧版独立保护编辑入口已停用；请在这里的**掉落物保护**分类中维护单物品掉落规则。
 
 ### 自动与手动清理
 
@@ -212,20 +228,16 @@ NBT 匹配检查指定的数据，不要求整个物品标签完全一致。需�
 
 ### 配置文件与兼容接口
 
-| `config/kineticcore/` 下的文件 | 内容 |
+| 游戏实例 `config/` 目录下的文件 | 内容 |
 | --- | --- |
-| `banitem.json` | 物品封禁、合并关系和手动标签 |
-| `banitem.old.json` | 物品规则保存流程使用的配套备份 |
-| `protection.toml` | 掉落物标记、虚空救援与免疫规则 |
-| `cleaner.toml` | 清理计划、名单、保护区域和垃圾桶设置 |
-| `creative_tabs.json` | 标签页隐藏、内容移除和新增 |
+| `kineticcore/banitem.json` | 物品封禁、合并关系和手动标签 |
+| `itemcontrol/item_properties.json` | 单物品属性和掉落物保护规则 |
+| `kineticcore/protection.toml` | 虚空救援、全局伤害来源免疫和直接实体免疫 |
+| `kineticcore/cleaner.toml` | 清理计划、名单、保护区域和垃圾桶设置 |
+| `kineticcore/creative_tabs.json` | 标签页隐藏、内容移除和新增 |
 
 垃圾桶记录使用名为 `itemcontrol_trashbin` 的世界存储数据；保护区域也随世界保存。垃圾桶按钮的显示与位置是本地客户端偏好，独立于服务端清理规则。
 
 大多数清理规则可立即使用。通过配置修改间隔，或重新启用已关闭的自动计划后，使用 `/kt reload` 或重新加载世界；更改垃圾桶布局后需重新打开界面。物品与标签页重载处理会读取并同步配置。JSON 配方与数据替换在数据加载阶段执行，因此 `/kt reload` 本身不应视为完整的配方重建。
 
-安装 KubeJS 后注册 `itemcontrolEvents.itemHurt`、`itemcontrolEvents.itemSpawn`、`itemcontrolEvents.itemRemoved` 以及 `ItemProtection` 绑定。这些事件暴露掉落物行为并支持取消结果；脚本细节见[兼容接口源码](src/main/java/dev/xyat/itemcontrol/item/kubejs)。
-
-### 项目信息
-
-模组 ID：`itemcontrol`。作者：**XYAT**。许可证：[LGPLv3](LICENSE.txt)。实现见[源码](src/main/java/dev/xyat/itemcontrol)，依赖声明见 [mods.toml](src/main/resources/META-INF/mods.toml)。
+安装 KubeJS 后，可用 `itemcontrolEvents` 监听掉落物受击、生成和移除事件，或使用 `ItemProtection` 绑定。这些脚本接口是可选扩展；普通物品规则仍通过游戏内编辑器管理。
