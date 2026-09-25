@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /** Persistence and immutable startup snapshot for per-item property overrides. */
 public final class ItemPropertyConfig {
@@ -33,6 +34,7 @@ public final class ItemPropertyConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final AtomicReference<Map<String, JsonElement>> PENDING = new AtomicReference<>(Map.of());
     private static final AtomicReference<ActiveSnapshot> ACTIVE = new AtomicReference<>(ActiveSnapshot.empty());
+    private static final ThreadLocal<Boolean> PREVIEW_ORIGINAL = ThreadLocal.withInitial(() -> false);
 
     private record ActiveSnapshot(
             Map<ResourceLocation, ItemPropertyRule> items,
@@ -64,7 +66,18 @@ public final class ItemPropertyConfig {
 
     /** Current process rules; saving pending edits never mutates this map. */
     public static ItemPropertyRule active(ResourceLocation itemId) {
-        return itemId == null ? null : ACTIVE.get().items().get(itemId);
+        return itemId == null || PREVIEW_ORIGINAL.get() ? null : ACTIVE.get().items().get(itemId);
+    }
+
+    /** Reads an item's original values while temporarily excluding ItemControl's active overrides. */
+    public static <T> T previewOriginal(Supplier<T> read) {
+        boolean previous = PREVIEW_ORIGINAL.get();
+        PREVIEW_ORIGINAL.set(true);
+        try {
+            return read.get();
+        } finally {
+            PREVIEW_ORIGINAL.set(previous);
+        }
     }
 
     /** Current process rules for a registered item. */
@@ -348,6 +361,7 @@ public final class ItemPropertyConfig {
                 readNumber(json, "saturation", errors),
                 readNumber(json, "eat_seconds", errors),
                 readBoolean(json, "always_eat", errors),
+                readBoolean(json, "non_consumable", errors),
                 readInteger(json, "max_stack_size", errors),
                 readInteger(json, "max_damage", errors),
                 readInteger(json, "enchantability", errors),
@@ -443,7 +457,7 @@ public final class ItemPropertyConfig {
         String value = primitiveString(json.get("rarity"));
         if (value != null && !value.isBlank()) {
             String normalized = value.toLowerCase(Locale.ROOT);
-            if ("rarity".equals("rarity") && List.of("common", "uncommon", "rare", "epic").contains(normalized)) return normalized;
+            if (List.of("common", "uncommon", "rare", "epic").contains(normalized)) return normalized;
         }
         errors.add("gui.itemcontrol.item_property.error.invalid_string:" + "rarity");
         return null;
@@ -452,7 +466,8 @@ public final class ItemPropertyConfig {
     private static boolean inRange(String key, double value) {
         return switch (key) {
             // Stored values are item modifiers; the editor presents player base damage (1) and speed (4).
-            case "attack_damage" -> value >= -1 && value <= Integer.MAX_VALUE - 1D;
+            // -2 stores the editor's -1 (infinite damage) without colliding with zero damage.
+            case "attack_damage" -> value == -2 || value >= -1 && value <= Integer.MAX_VALUE - 1D;
             case "attack_speed" -> value >= -4;
             case "mining_speed", "block_explosion_resistance" -> value >= 0 && value <= 1_000_000;
             case "saturation" -> value >= 0 && value <= 1024;
@@ -467,7 +482,7 @@ public final class ItemPropertyConfig {
             case "mining_level" -> value >= 0 && value <= 255;
             case "nutrition" -> value >= 0 && value <= 1024;
             case "max_stack_size" -> value >= 1 && value <= 99;
-            case "max_damage" -> value >= 0;
+            case "max_damage" -> value >= -1;
             case "enchantability" -> value >= 0 && value <= 100_000;
             default -> true;
         };
@@ -512,6 +527,7 @@ public final class ItemPropertyConfig {
         putNumber(json, "saturation", rule.saturation());
         putNumber(json, "eat_seconds", rule.eatSeconds());
         putBoolean(json, "always_eat", rule.alwaysEat());
+        putBoolean(json, "non_consumable", rule.nonConsumable());
         putNumber(json, "max_stack_size", rule.maxStackSize());
         putNumber(json, "max_damage", rule.maxDamage());
         putNumber(json, "enchantability", rule.enchantability());

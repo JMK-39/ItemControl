@@ -16,6 +16,7 @@ public record ItemPropertyRule(
         Double saturation,
         Double eatSeconds,
         Boolean alwaysEat,
+        Boolean nonConsumable,
         Integer maxStackSize,
         Integer maxDamage,
         Integer enchantability,
@@ -45,6 +46,7 @@ public record ItemPropertyRule(
                 && saturation == null
                 && eatSeconds == null
                 && alwaysEat == null
+                && nonConsumable == null
                 && maxStackSize == null
                 && maxDamage == null
                 && enchantability == null

@@ -4,6 +4,7 @@ import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.config.ItemPropertyRule;
 import dev.xyat.itemcontrol.item.mixin.ItemPropertyMixins.BlockPropertyAccess;
+import dev.xyat.kineticcore.api.minecraft.MinecraftAttributes;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
@@ -11,6 +12,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -33,6 +35,8 @@ import java.util.UUID;
 /** Runtime lookups and vanilla-facing adapters for the active per-item property snapshot. */
 @Mod.EventBusSubscriber(modid = ItemModule.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ItemPropertyOverrides {
+    // Keep the float passed through vanilla combat finite, including critical hits.
+    private static final double INFINITE_ATTACK_DAMAGE = Float.MAX_VALUE / 16.0D;
     private static final Map<Block, Float> ORIGINAL_EXPLOSION_RESISTANCE = new IdentityHashMap<>();
 
     private ItemPropertyOverrides() {
@@ -68,6 +72,12 @@ public final class ItemPropertyOverrides {
             ORIGINAL_EXPLOSION_RESISTANCE.putIfAbsent(block, access.itemcontrol$getExplosionResistance());
             access.itemcontrol$setExplosionResistance(rule.blockExplosionResistance().floatValue());
         }
+    }
+
+    /** Returns the resistance captured before ItemControl applied its block override. */
+    public static float originalBlockExplosionResistance(Block block) {
+        if (!(block instanceof BlockPropertyAccess access)) return 0.0F;
+        return ORIGINAL_EXPLOSION_RESISTANCE.getOrDefault(block, access.itemcontrol$getExplosionResistance());
     }
 
     @SubscribeEvent
@@ -106,7 +116,13 @@ public final class ItemPropertyOverrides {
 
     public static int maxDamage(Item item, int original) {
         ItemPropertyRule rule = ItemPropertyConfig.active(item);
-        return rule == null || rule.maxDamage() == null ? original : rule.maxDamage();
+        return rule == null || rule.maxDamage() == null || rule.maxDamage() == -1
+                ? original : rule.maxDamage();
+    }
+
+    public static boolean isUnbreakable(ItemStack stack) {
+        ItemPropertyRule rule = active(stack);
+        return rule != null && rule.maxDamage() != null && rule.maxDamage() == -1;
     }
 
     public static int enchantability(Item item, int original) {
@@ -132,7 +148,12 @@ public final class ItemPropertyOverrides {
 
         LinkedHashMap<Attribute, List<ModifierSpec>> replacements = new LinkedHashMap<>();
         if (eventSlot == EquipmentSlot.MAINHAND) {
-            addConvenience(replacements, Attributes.ATTACK_DAMAGE, rule.attackDamage(), eventSlot);
+            Double damage = rule.attackDamage();
+            if (damage != null) {
+                double amount = damage == -2.0D ? INFINITE_ATTACK_DAMAGE : damage;
+                widenAttackDamageRange(amount);
+                addConvenience(replacements, Attributes.ATTACK_DAMAGE, amount, eventSlot);
+            }
             addConvenience(replacements, Attributes.ATTACK_SPEED, rule.attackSpeed(), eventSlot);
         }
         if (stack.getItem() instanceof ArmorItem armor && armor.getEquipmentSlot() == eventSlot) {
@@ -161,6 +182,14 @@ public final class ItemPropertyOverrides {
                 event.addModifier(attribute, new AttributeModifier(id, modifier.name, modifier.amount, modifier.operation));
             }
         });
+    }
+
+    private static void widenAttackDamageRange(double amount) {
+        if (!(Attributes.ATTACK_DAMAGE instanceof RangedAttribute ranged)) return;
+        double requiredMaximum = Math.max(0, amount + 1);
+        if (requiredMaximum > ranged.getMaxValue()) {
+            MinecraftAttributes.setRange(ranged, ranged.getMinValue(), requiredMaximum);
+        }
     }
 
     private static void addConvenience(

@@ -6,8 +6,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
-import dev.xyat.itemcontrol.item.mixin.ItemPropertyMixins.BlockPropertyAccess;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
+import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
 import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.screen.KineticScreen;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
@@ -22,6 +22,7 @@ import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridItem
 import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridOutline;
 import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ScrollableItemGrid;
 import dev.xyat.kineticcore.api.text.KineticI18n;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -54,7 +55,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 
 /** Server-authoritative per-item vanilla-property editor. */
 public final class ItemPropertyEditorScreen extends KineticScreen {
@@ -169,7 +169,8 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 Component.translatable("gui.itemcontrol.item_property.add_rule.tooltip"),
                 this::addSelectedRule);
         addCompactButton(98, 337, 80,
-                Component.translatable("gui.itemcontrol.item_property.reset_item"), null,
+                Component.translatable("gui.itemcontrol.item_property.reset_item"),
+                Component.translatable("gui.itemcontrol.item_property.reset_item.tooltip"),
                 this::resetSelectedRule);
         addCompactButton(184, 337, 52,
                 Component.translatable("gui.itemcontrol.item_property.delete"), null,
@@ -215,11 +216,12 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private void buildCategoryFields() {
         switch (category) {
             case COMBAT -> {
-                addNumericField("attack_damage", false, 0, Integer.MAX_VALUE, 0);
+                addNumericField("attack_damage", false, -1, Integer.MAX_VALUE, 0);
                 addNumericField("attack_speed", false, 0, Double.MAX_VALUE, 1);
                 addNumericField("armor", false, -2048, 2048, 2);
                 addNumericField("armor_toughness", false, -2048, 2048, 3);
                 addNumericField("knockback_resistance", false, -2048, 2048, 4);
+                addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 5);
                 attributesBox = addMultiLineTextField(
                         PANEL_X, 190, 240, 72,
                         Component.empty(), Component.translatable("gui.itemcontrol.item_property.attributes.placeholder"),
@@ -228,22 +230,24 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 fieldLabels.put("attributes", new int[]{PANEL_X, 178});
             }
             case TOOL -> {
-                addNumericField("attack_damage", false, 0, Integer.MAX_VALUE, 0);
+                addNumericField("attack_damage", false, -1, Integer.MAX_VALUE, 0);
                 addNumericField("attack_speed", false, 0, Double.MAX_VALUE, 1);
                 addNumericField("mining_speed", false, 0, 1_000_000, 2);
                 addNumericField("mining_level", true, 0, 255, 3);
+                addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 4);
             }
             case FOOD -> {
                 addNumericField("nutrition", true, 0, 1024, 0);
                 addNumericField("saturation", false, 0, 1024, 1);
                 addNumericField("eat_seconds", false, 0.05, 3600, 2);
                 addBooleanButton("always_eat", 3);
+                addBooleanButton("non_consumable", 4);
             }
             case GENERAL -> {
                 addNumericField("max_stack_size", true, 1, 99, 0);
-                addNumericField("max_damage", true, 0, Integer.MAX_VALUE, 1);
+                addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 1);
                 addNumericField("enchantability", true, 0, 100_000, 2);
-                addStringField(this::validRarity);
+                addRarityDropdown();
             }
             case BLOCK -> {
                 addNumericField("block_hardness", false, -1, 1_000_000, 0);
@@ -261,7 +265,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     private void addNumericField(String key, boolean integer, double minimum, double maximum, int index) {
         int[] bounds = fieldBounds(index);
-        FieldSpec spec = new FieldSpec(key, integer, minimum, maximum, false);
+        FieldSpec spec = new FieldSpec(integer, minimum, maximum);
         fieldSpecs.put(key, spec);
         fieldLabels.put(key, new int[]{bounds[0], bounds[1] - 11});
         KineticEditBox field = addTextField(
@@ -280,24 +284,66 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         fields.put(key, field);
     }
 
-    private void addStringField(Predicate<String> validator) {
+    private void addRarityDropdown() {
         int[] bounds = fieldBounds(3);
-        fieldSpecs.put("rarity", new FieldSpec("rarity", false, 0, 0, true));
         fieldLabels.put("rarity", new int[]{bounds[0], bounds[1] - 11});
-        KineticEditBox field = addTextField(
-                bounds[0], bounds[1], FIELD_WIDTH, Component.empty(),
-                Component.translatable("gui.itemcontrol.item_property.inherit"),
-                validator.or(String::isBlank),
-                Component.translatable("gui.itemcontrol.item_property.field." + "rarity" + ".tooltip")
+        JsonElement saved = currentRuleObject().get("rarity");
+        String selected = saved == null ? "inherit" : saved.getAsString().toLowerCase(Locale.ROOT);
+        List<KineticDropdowns.Option> options = new ArrayList<>();
+        String original = originalValue("rarity");
+        options.add(new KineticDropdowns.Option(rarityDisplay("inherit", original),
+                Component.empty(),
+                Component.translatable("gui.itemcontrol.item_property.rarity.inherit.tooltip")));
+        for (String value : List.of("common", "uncommon", "rare", "epic")) {
+            options.add(new KineticDropdowns.Option(rarityDisplay(value, original),
+                    Component.empty(),
+                    Component.translatable("gui.itemcontrol.item_property.field.rarity.tooltip")));
+        }
+        KineticDropdowns.Dropdown dropdown = addDropdown(
+                bounds[0], bounds[1], 112, options, rarityDisplay(selected, original),
+                Component.translatable("gui.itemcontrol.item_property.field.rarity.tooltip"),
+                ignored -> true, this::changeRarity
         );
-        field.setResponder(value -> {
-            if (!populatingFields) {
-                updateFieldColor(field);
-                refreshGrid();
+        dropdown.active = canEditSelected();
+    }
+
+    private static Component rarityName(String value) {
+        if (List.of("common", "uncommon", "rare", "epic").contains(value)) {
+            return Component.translatable("gui.itemcontrol.item_property.rarity." + value);
+        }
+        return Component.literal(value);
+    }
+
+    private static String rarityDisplay(String value, String original) {
+        if ("inherit".equals(value)) {
+            return ChatFormatting.GRAY + Component.translatable("gui.itemcontrol.item_property.rarity.original",
+                    rarityName(original)).getString();
+        }
+        ChatFormatting color = switch (value) {
+            case "uncommon" -> ChatFormatting.GREEN;
+            case "rare" -> ChatFormatting.BLUE;
+            case "epic" -> ChatFormatting.DARK_PURPLE;
+            default -> ChatFormatting.GRAY;
+        };
+        return color + rarityName(value).getString();
+    }
+
+    private void changeRarity(String value) {
+        if (selectedId == null || !flushFields()) return;
+        JsonObject rule = currentRuleObject();
+        String original = originalValue("rarity");
+        if (value.equals(rarityDisplay("inherit", original))) {
+            rule.remove("rarity");
+        } else {
+            for (String candidate : List.of("common", "uncommon", "rare", "epic")) {
+                if (value.equals(rarityDisplay(candidate, original))) {
+                    rule.addProperty("rarity", candidate);
+                    break;
+                }
             }
-        });
-        field.setMaxLength(24);
-        fields.put("rarity", field);
+        }
+        drafts.put(selectedId, rule);
+        rebuildEditor();
     }
 
     private void addBooleanButton(String key, int index) {
@@ -365,7 +411,9 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         BigDecimal base = attackBase(key);
         if (base == null) return raw;
         try {
-            return new BigDecimal(raw).add(base).setScale(6, RoundingMode.HALF_UP)
+            BigDecimal stored = new BigDecimal(raw);
+            if ("attack_damage".equals(key) && stored.compareTo(BigDecimal.valueOf(-2)) == 0) return "-1";
+            return stored.add(base).setScale(6, RoundingMode.HALF_UP)
                     .stripTrailingZeros().toPlainString();
         } catch (NumberFormatException ignored) {
             return raw;
@@ -404,7 +452,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             }
             case "fire_resistant" -> stack.getItem().isFireResistant();
             case "explosion_immune" -> stack.is(Items.NETHER_STAR);
-            case "glowing", "no_gravity", "persistent" -> false;
+            case "glowing", "no_gravity", "persistent", "non_consumable" -> false;
             default -> false;
         };
         return value ? "true" : "false";
@@ -412,6 +460,10 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     private String originalValue(String key) {
         if (selectedId == null || !isRegistered(selectedId) || !isFieldApplicable(key)) return "";
+        return ItemPropertyConfig.previewOriginal(() -> originalValueWithoutOverride(key));
+    }
+
+    private String originalValueWithoutOverride(String key) {
         ItemStack stack = stackForId(selectedId);
         Item item = stack.getItem();
         FoodProperties food = stack.getFoodProperties(null);
@@ -432,8 +484,8 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             case "rarity" -> stack.getRarity().name().toLowerCase(Locale.ROOT);
             case "block_hardness" -> number(((BlockItem) item).getBlock().defaultBlockState()
                     .getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
-            case "block_explosion_resistance" -> number(((BlockPropertyAccess) ((BlockItem) item).getBlock())
-                    .itemcontrol$getExplosionResistance());
+            case "block_explosion_resistance" -> number(ItemPropertyOverrides.originalBlockExplosionResistance(
+                    ((BlockItem) item).getBlock()));
             default -> "";
         };
     }
@@ -604,7 +656,11 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     private void resetSelectedRule() {
         if (selectedId == null || !flushFields()) return;
-        if (canEditSelected()) drafts.put(selectedId, new JsonObject());
+        if (canEditSelected()) {
+            drafts.put(selectedId, new JsonObject());
+            KineticOverlays.toast("itemcontrol_item_property_reset",
+                    KineticI18n.translatable("msg.itemcontrol.item_property.reset_pending_restart"));
+        }
         rebuildEditor();
     }
 
@@ -640,11 +696,11 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 setMessage("gui.itemcontrol.item_property.error.invalid_value");
                 return false;
             }
-            if (spec.stringValue()) rule.addProperty(key, value.toLowerCase(Locale.ROOT));
-            else if (spec.integer()) rule.addProperty(key, Integer.parseInt(value));
+            if (spec.integer()) rule.addProperty(key, Integer.parseInt(value));
             else {
                 BigDecimal base = attackBase(key);
-                rule.addProperty(key, base == null ? Double.parseDouble(value)
+                rule.addProperty(key, "attack_damage".equals(key) && value.equals("-1") ? -2.0D
+                        : base == null ? Double.parseDouble(value)
                         : new BigDecimal(value).subtract(base).doubleValue());
             }
         }
@@ -678,13 +734,6 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private boolean hasProperties(JsonElement value) {
         if (value == null || !value.isJsonObject()) return value != null;
         return !value.getAsJsonObject().entrySet().isEmpty();
-    }
-
-    private boolean validRarity(String value) {
-        return switch (value.toLowerCase(Locale.ROOT)) {
-            case "common", "uncommon", "rare", "epic" -> true;
-            default -> false;
-        };
     }
 
     private void save() {
@@ -763,20 +812,12 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private record GridEntry(String id, ItemStack stack, boolean invalid) {
     }
 
-    private record FieldSpec(String key, boolean integer, double minimum, double maximum, boolean stringValue) {
+    private record FieldSpec(boolean integer, double minimum, double maximum) {
         private boolean acceptsOrBlank(String raw) {
             return raw == null || raw.isBlank() || accepts(raw);
         }
 
         private boolean accepts(String raw) {
-            if (stringValue) {
-                return key.equals("rarity")
-                        ? raw.length() <= 24 && switch (raw.toLowerCase(Locale.ROOT)) {
-                            case "common", "uncommon", "rare", "epic" -> true;
-                            default -> false;
-                        }
-                        : false;
-            }
             try {
                 double value = Double.parseDouble(raw);
                 return Double.isFinite(value)

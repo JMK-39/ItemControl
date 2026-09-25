@@ -79,6 +79,11 @@ public final class ItemPropertyMixins {
 
     @Mixin(ItemStack.class)
     public abstract static class ItemStackProperties {
+        @Inject(method = "isDamageableItem()Z", at = @At("HEAD"), cancellable = true)
+        private void itemcontrol$unbreakable(CallbackInfoReturnable<Boolean> cir) {
+            if (ItemPropertyOverrides.isUnbreakable((ItemStack) (Object) this)) cir.setReturnValue(false);
+        }
+
         @Inject(method = "getDestroySpeed(Lnet/minecraft/world/level/block/state/BlockState;)F", at = @At("RETURN"), cancellable = true)
         private void itemcontrol$miningSpeed(BlockState state, CallbackInfoReturnable<Float> cir) {
             cir.setReturnValue(ItemPropertyOverrides.miningSpeed((ItemStack) (Object) this, cir.getReturnValue()));
