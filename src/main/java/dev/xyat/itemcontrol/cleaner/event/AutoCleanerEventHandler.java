@@ -2,10 +2,9 @@ package dev.xyat.itemcontrol.cleaner.event;
 
 import dev.xyat.itemcontrol.cleaner.area.CleanerAreaSavedData;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.resources.ResourceLocation;
+import dev.xyat.kineticcore.api.command.CommandText;
 import dev.xyat.kineticcore.api.event.KineticEventPriority;
 import dev.xyat.kineticcore.api.player.KineticPlayerMessages;
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
@@ -316,13 +315,8 @@ public class AutoCleanerEventHandler {
         net.minecraft.network.chat.MutableComponent message = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.result.header").copy()
                 .append(resultLine);
         if (CleanerConfig.enableTrashBin && result.itemCount > 0) {
-            Component link = KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.link").copy()
-                    .withStyle(style -> style
-                            .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/kt clean bin"))
-                            .withHoverEvent(new HoverEvent(
-                                    HoverEvent.Action.SHOW_TEXT,
-                                    KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.hover")
-                            )));
+            Component link = CommandText.clickToRun(KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.link"),
+                    "/kt clean bin", KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.cleaner.hover"));
             message.append("\n").append(link);
         }
         server.getPlayerList().getPlayers().forEach(player -> KineticPlayerMessages.system(player, message));

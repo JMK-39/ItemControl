@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.xyat.itemcontrol.item.ItemModule;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.runtime.KineticPaths;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -14,7 +15,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -83,7 +83,7 @@ public final class ItemPropertyConfig {
     /** Current process rules for a registered item. */
     public static ItemPropertyRule active(Item item) {
         if (item == null || item == Items.AIR) return null;
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation itemId = KineticRegistries.items().id(item);
         return active(itemId);
     }
 
@@ -143,7 +143,7 @@ public final class ItemPropertyConfig {
         ActiveSnapshot snapshot = ACTIVE.get();
         ItemPropertyRule nbt = snapshot.patterns().matchingNbt(stack);
         if (nbt != null) return nbt;
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = KineticRegistries.items().id(stack.getItem());
         ItemPropertyRule exact = id == null ? null : snapshot.items().get(id);
         if (exact != null && exact.hasProtectionFields()) return exact;
         return snapshot.patterns().matchingScope(stack);
@@ -165,7 +165,7 @@ public final class ItemPropertyConfig {
             ArrayList<String> errors = new ArrayList<>();
             ItemPropertyRule parsed = parseRule(raw, errors);
             ResourceLocation location = ResourceLocation.tryParse(id);
-            Item item = location == null ? null : ForgeRegistries.ITEMS.getValue(location);
+            Item item = location == null ? null : KineticRegistries.items().get(location);
             boolean unresolved = location == null || item == null || item == Items.AIR;
             if (unresolved) errors.add("gui.itemcontrol.item_property.error.unknown_item");
             result.add(new PendingEntry(id, parsed, raw.deepCopy(), unresolved, List.copyOf(errors)));
@@ -321,7 +321,7 @@ public final class ItemPropertyConfig {
                 continue;
             }
             ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
-            Item item = id == null ? null : ForgeRegistries.ITEMS.getValue(id);
+            Item item = id == null ? null : KineticRegistries.items().get(id);
             if (item == null || item == Items.AIR) continue;
             if (!seen.add(id)) return false;
             ArrayList<String> errors = new ArrayList<>();
@@ -412,7 +412,7 @@ public final class ItemPropertyConfig {
                 errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
                 continue;
             }
-            if (attributeId == null || ForgeRegistries.ATTRIBUTES.getValue(attributeId) == null) {
+            if (attributeId == null || KineticRegistries.attributes().get(attributeId) == null) {
                 errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
                 continue;
             }

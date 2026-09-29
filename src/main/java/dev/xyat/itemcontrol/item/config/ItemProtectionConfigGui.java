@@ -5,7 +5,6 @@ import dev.xyat.kineticcore.api.config.client.KTConfigPage;
 import dev.xyat.kineticcore.api.config.client.KTConfigScope;
 import dev.xyat.itemcontrol.item.client.ItemClientProxy;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
-import net.minecraft.client.gui.screens.Screen;
 import dev.xyat.kineticcore.api.text.KineticI18n;
 
 
@@ -93,8 +92,9 @@ public class ItemProtectionConfigGui {
                 .build());
     }
 
-    public static Screen create(Screen parent) {
-        return KTConfigApi.createScreen(parent, PAGE_ID);
+    // 原 create(Screen parent)：以当前界面为父打开配置页 / Former create(Screen parent): opens the config page as a child of the current screen.
+    public static void open() {
+        KTConfigApi.openPage(PAGE_ID);
     }
 
 }

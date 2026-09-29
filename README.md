@@ -10,7 +10,7 @@ Item Control is built around highly visual in-game management. Few item-manageme
 
 ### Installation and access
 
-- Current build target: **Minecraft 1.20.1**, **Forge 47.4.2+**, and **KineticCore 26.9.25+**.
+- Current build target: **Minecraft 1.20.1**, **Forge 47.4.2+**, and **26.9.28+**.
 - Install Item Control and KineticCore on the client and server for multiplayer use.
 - Optional integrations: **KubeJS** for dropped-item events and **JEI** for ingredient visibility integration.
 - Enter a world and press **F6**, then choose **Item Control** in KineticCore. The key is configurable in Controls.
@@ -130,7 +130,7 @@ Item Control 以极致的游戏内可视化操作为核心，将物品封禁与�
 
 ### 安装与入口
 
-- 当前构建目标：**Minecraft 1.20.1**、**Forge 47.4.2+**、**KineticCore 26.9.25+**。
+- 当前构建目标：**Minecraft 1.20.1**、**Forge 47.4.2+**、**26.9.28+**。
 - 多人游戏时，客户端和服务端均安装 Item Control 与 KineticCore。
 - 可选兼容：**KubeJS** 提供掉落物事件脚本接口；**JEI** 提供配方查看器中的物品可见性兼容。
 - 进入世界后按 **F6**，在 KineticCore 中选择 **Item Control**；可在按键设置中修改入口快捷键。

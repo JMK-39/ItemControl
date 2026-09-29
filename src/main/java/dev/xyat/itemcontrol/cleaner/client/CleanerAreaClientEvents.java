@@ -1,15 +1,15 @@
 package dev.xyat.itemcontrol.cleaner.client;
 
+import dev.xyat.kineticcore.api.text.KineticI18n;
 import dev.xyat.itemcontrol.cleaner.Network.CleanerNetwork;
 import dev.xyat.itemcontrol.cleaner.area.CleanerArea;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
 import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
 import dev.xyat.kineticcore.api.client.input.KineticKeyBindings;
 import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.render.KineticWorldRender;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -109,7 +109,7 @@ public final class CleanerAreaClientEvents {
 
             if (area != null && !area.ownerId().equals(player.getUUID())) {
                 CleanerAreaClientState.clearSelection();
-                KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.owner", Component.literal(area.ownerName()).withStyle(ChatFormatting.GOLD)));
+                KineticOverlays.toast("cleaner_area", KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.area.owner", Component.literal(area.ownerName())));
                 return;
             }
 
@@ -130,7 +130,7 @@ public final class CleanerAreaClientEvents {
 
             if (area != null && !area.ownerId().equals(player.getUUID())) {
                 CleanerAreaClientState.clearSelection();
-                KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(area.ownerName()).withStyle(ChatFormatting.GOLD)));
+                KineticOverlays.toast("cleaner_area", KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(area.ownerName())));
                 return;
             }
 
@@ -142,7 +142,7 @@ public final class CleanerAreaClientEvents {
 
                 if (other != null) {
                     CleanerAreaClientState.clearSelection();
-                    KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(other.ownerName()).withStyle(ChatFormatting.GOLD)));
+                    KineticOverlays.toast("cleaner_area", KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.area.overlap_other", Component.literal(other.ownerName())));
                     return;
                 }
 
@@ -319,7 +319,7 @@ public final class CleanerAreaClientEvents {
         int cost = finalArea.gridCost();
         int remaining = Math.max(0, limit - realUsedAfterRemove);
 
-        KineticOverlays.toast("cleaner_area", Component.translatable("msg.itemcontrol.cleaner.cleaner.area.too_large", Component.literal(String.valueOf(realUsedAfterRemove)).withStyle(ChatFormatting.YELLOW), Component.literal(String.valueOf(cost)).withStyle(ChatFormatting.RED), Component.literal(String.valueOf(limit)).withStyle(ChatFormatting.YELLOW), Component.literal(String.valueOf(remaining)).withStyle(ChatFormatting.GREEN)));
+        KineticOverlays.toast("cleaner_area", KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.area.too_large", Component.literal(String.valueOf(realUsedAfterRemove)), Component.literal(String.valueOf(cost)), Component.literal(String.valueOf(limit)), Component.literal(String.valueOf(remaining))));
     }
 
     private static CleanerArea findAreaAt(ClientLevel level, BlockPos pos) {

@@ -2,7 +2,7 @@ package dev.xyat.itemcontrol.cleaner.Network;
 
 import dev.xyat.itemcontrol.cleaner.client.CleanerAreaClientState;
 import dev.xyat.itemcontrol.cleaner.client.gui.CleanerMenu;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import net.minecraft.client.player.LocalPlayer;
 

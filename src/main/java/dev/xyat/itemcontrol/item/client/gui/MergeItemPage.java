@@ -1,36 +1,37 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
-import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
-import dev.xyat.kineticcore.api.client.theme.GuiTheme;
+import dev.xyat.kineticcore.api.text.KineticI18n;
+import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
+import dev.xyat.kineticcore.api.client.gui.text.KineticText;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
+import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
+import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
+import dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors;
+import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
+import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
+import dev.xyat.kineticcore.api.client.gui.widget.*;
+import dev.xyat.kineticcore.api.client.gui.widget.list.*;
+
 import dev.xyat.kineticcore.api.client.search.KineticSearch;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
-import dev.xyat.kineticcore.api.client.screen.KineticScreen;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.itemcontrol.item.util.ItemBanControl;
-import dev.xyat.kineticcore.api.client.selector.KineticSelectors;
-import dev.xyat.kineticcore.api.client.widget.KineticControl;
-import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
-import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
-import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticEditBox;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class MergeItemScreen extends KineticScreen {
-    private final Screen parent;
-    private KineticEditBox searchBox;
-    private KineticEditBox leftSearchBox;
-    private StateButton addBtn, saveBtn, closeBtn, tagFilterBtn;
-    private final GridScrollController leftScroll = new GridScrollController();
-    private final GridScrollController rightScroll = new GridScrollController();
+public class MergeItemPage extends KineticPage {
+    private KineticTextField searchBox;
+    private KineticTextField leftSearchBox;
+    private KineticButton addBtn, saveBtn, closeBtn, tagFilterBtn;
+    private final KineticScrollController leftScroll = new KineticScrollController();
+    private final KineticScrollController rightScroll = new KineticScrollController();
     private int totalRightH = 0;
     private String selectedTarget = null;
     private boolean isCreatingRule = false;
@@ -53,16 +54,11 @@ public class MergeItemScreen extends KineticScreen {
     private boolean compactLayout;
     private int rightInfoY;
 
-    public MergeItemScreen() {
-        this(null);
-    }
-
-    public MergeItemScreen(Screen parent) {
-        super(Component.translatable("gui.itemcontrol.item.banitem.merge_overview_title"));
-        this.parent = parent;
+    public MergeItemPage() {
+        super(KineticI18n.translatable("gui.itemcontrol.item.banitem.merge_overview_title"));
         useCanvas(
-                640f,
-                360f,
+                640,
+                360,
                 4
         );
 
@@ -72,7 +68,6 @@ public class MergeItemScreen extends KineticScreen {
                 this.tempRules.put(entry.getKey(), new ArrayList<>(entry.getValue()));
             }
         }
-        setParentScreen(parent);
         configureDraft(this::snapshotTempRules, this::restoreTempRules);
     }
 
@@ -96,9 +91,9 @@ public class MergeItemScreen extends KineticScreen {
     }
 
     @Override
-    protected void buildUi() {
+    protected void build(KineticUi ui) {
         int sidePadding =
-                switch (layoutLevel()) {
+                switch (layoutMetrics().level()) {
                     case LARGE -> 14;
                     case NORMAL -> 10;
                     case SMALL -> 8;
@@ -111,7 +106,7 @@ public class MergeItemScreen extends KineticScreen {
         compactLayout =
                 isPortraitLayout()
                         || isCompactLayout()
-                        || canvasWidth() < 540;
+                        || width() < 540;
 
         if (compactLayout) {
             initCompactLayout(sidePadding, gap, buttonHeight);
@@ -127,14 +122,14 @@ public class MergeItemScreen extends KineticScreen {
         int searchY = 5;
         int panelY = 30;
         int rightGridTop = panelY + 28;
-        leftW = Math.max(120, Math.min(170, canvasWidth() / 4));
+        leftW = Math.max(120, Math.min(170, width() / 4));
         leftX = sidePadding;
         leftY = panelY;
-        leftH = Math.max(80, canvasHeight() - panelY - 8);
+        leftH = Math.max(80, height() - panelY - 8);
         rightX = leftX + leftW + gap;
         rightY = rightGridTop;
-        rightW = Math.max(SLOT_SIZE + 10, canvasWidth() - sidePadding - rightX);
-        rightH = Math.max(SLOT_PITCH * 2 - (SLOT_PITCH - SLOT_SIZE), canvasHeight() - rightY - 8);
+        rightW = Math.max(SLOT_SIZE + 10, width() - sidePadding - rightX);
+        rightH = Math.max(SLOT_PITCH * 2 - (SLOT_PITCH - SLOT_SIZE), height() - rightY - 8);
         gridCols = Math.max(1, (rightW - 10 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH);
         gridAreaH = rightH;
 
@@ -155,7 +150,7 @@ public class MergeItemScreen extends KineticScreen {
     }
 
     private void initCompactLayout(int sidePadding, int gap, int buttonHeight) {
-        int contentW = Math.max(120, canvasWidth() - sidePadding * 2);
+        int contentW = Math.max(120, width() - sidePadding * 2);
         leftX = sidePadding;
         leftW = contentW;
         leftSearchBox = createLeftSearchBox(leftX, 5, leftW);
@@ -168,8 +163,8 @@ public class MergeItemScreen extends KineticScreen {
 
         leftY = 56;
         int minimumRightHeight = SLOT_PITCH * 4 - (SLOT_PITCH - SLOT_SIZE);
-        int reservedForRight = 20 + 4 + font.lineHeight + 4 + minimumRightHeight + 8;
-        int availableForLeft = canvasHeight() - leftY - reservedForRight;
+        int reservedForRight = 20 + 4 + KineticText.lineHeight() + 4 + minimumRightHeight + 8;
+        int availableForLeft = height() - leftY - reservedForRight;
         leftH = Math.max(56, Math.min(120, availableForLeft));
 
         int rightSearchY = leftY + leftH + 4;
@@ -180,90 +175,72 @@ public class MergeItemScreen extends KineticScreen {
         searchBox = createRightSearchBox(rightX, rightSearchY, rightSearchWidth);
         tagFilterBtn = createTagFilterButton(rightX + rightSearchWidth + 4, rightSearchY, tagWidth);
         rightInfoY = rightSearchY + 25;
-        rightY = rightInfoY + font.lineHeight + 4;
-        rightH = Math.max(SLOT_PITCH * 2 - (SLOT_PITCH - SLOT_SIZE), canvasHeight() - rightY - 8);
+        rightY = rightInfoY + KineticText.lineHeight() + 4;
+        rightH = Math.max(SLOT_PITCH * 2 - (SLOT_PITCH - SLOT_SIZE), height() - rightY - 8);
         gridCols = Math.max(1, (rightW - 10 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH);
         gridAreaH = rightH;
     }
 
-    private KineticEditBox createLeftSearchBox(int x, int y, int width) {
-        KineticEditBox box = addTextField(x, y, width, Component.empty());
-        box.setPlaceholder(Component.translatable("gui.itemcontrol.item.banitem.search.hint"));
-        box.setResponder(query -> {
+    private KineticTextField createLeftSearchBox(int x, int y, int width) {
+        KineticTextField box = ui().textField(x, y, width).build();
+        box.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item.banitem.search.hint"));
+        box.onTextChange(query -> {
             rememberedLeftSearch = query == null ? "" : query;
             updateLeftEntries();
         });
-        box.setValue(rememberedLeftSearch);
+        box.setTextValue(rememberedLeftSearch);
+        box.setDefaultText(rememberedLeftSearch);
         return box;
     }
 
-    private KineticEditBox createRightSearchBox(int x, int y, int width) {
-        KineticEditBox box = addTextField(x, y, width, Component.empty());
-        box.setPlaceholder(Component.translatable("gui.itemcontrol.item.banitem.search.hint"));
-        box.setResponder(query -> {
+    private KineticTextField createRightSearchBox(int x, int y, int width) {
+        KineticTextField box = ui().textField(x, y, width).build();
+        box.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item.banitem.search.hint"));
+        box.onTextChange(query -> {
             rememberedRightSearch = query == null ? "" : query;
             updateRightPanel();
         });
-        box.setValue(rememberedRightSearch);
+        box.setTextValue(rememberedRightSearch);
+        box.setDefaultText(rememberedRightSearch);
         return box;
     }
 
-    private StateButton createTagFilterButton(int x, int y, int width) {
-        StateButton button = addButton(
-                x, y, width,
-                Component.translatable("gui.itemcontrol.item.banitem.merge_tag_filter"),
-                null,
-                () -> {
+    private KineticButton createTagFilterButton(int x, int y, int width) {
+        KineticButton button = ui().button(x, y, width).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.merge_tag_filter")).onClick(() -> {
                     targetTagFilterActive = !targetTagFilterActive;
                     updateRightPanel();
-                }
-        );
-        ((KineticControl) button).setVisible(false);
+                }).build();
+        button.setControlVisible(false);
         return button;
     }
 
-    private StateButton createAddButton(int x, int y, int width, int height) {
-        return addButton(
-                x, y, width,
-                Component.translatable("gui.itemcontrol.item.banitem.merge_add"),
-                null,
-                () -> {
+    private KineticButton createAddButton(int x, int y, int width, int height) {
+        return ui().button(x, y, width).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.merge_add")).onClick(() -> {
                     isCreatingRule = true;
                     selectedTarget = null;
                     targetTagFilterActive = false;
                     updateLeftEntries();
                     updateRightPanel();
-                }
-        );
+                }).build();
     }
 
-    private StateButton createSaveButton(int x, int y, int width, int height) {
-        return addButton(
-                x, y, width,
-                Component.translatable("gui.itemcontrol.item.banitem.btn.save"),
-                null,
-                () -> {
+    private KineticButton createSaveButton(int x, int y, int width, int height) {
+        return ui().button(x, y, width).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.save")).onClick(() -> {
                     BanItemConfig.Data data = new BanItemConfig.Data();
                     data.bannedItems = new ArrayList<>(BanItemConfig.data.bannedItems);
                     data.mergedItems.putAll(buildMergedRulesForSave());
                     ItemNetwork.CHANNEL.sendToServer(
                             new ItemNetwork.SaveBanConfigPacket(ItemNetwork.EDITOR_MERGE_ITEM, BanItemConfig.GSON.toJson(data))
                     );
-                }
-        );
+                }).build();
     }
 
     public void applySaveResult(boolean success) {
         if (success) commitDraft();
     }
 
-    private StateButton createCloseButton(int x, int y, int width, int height) {
-        return addButton(
-                x, y, width,
-                Component.translatable("gui.itemcontrol.item.banitem.btn.back"),
-                null,
-                this::onClose
-        );
+    private KineticButton createCloseButton(int x, int y, int width, int height) {
+        return ui().button(x, y, width).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.back")).onClick(this::close).build();
     }
 
     private String getSearchDataForId(String idStr) {
@@ -272,7 +249,7 @@ public class MergeItemScreen extends KineticScreen {
 
     private void updateLeftEntries() {
         leftEntries.clear();
-        String leftQuery = leftSearchBox != null ? leftSearchBox.getValue().toLowerCase(Locale.ROOT).trim() : "";
+        String leftQuery = leftSearchBox != null ? leftSearchBox.textValue().toLowerCase(Locale.ROOT).trim() : "";
 
         for (Map.Entry<String, List<String>> entry : tempRules.entrySet()) {
             String target = entry.getKey();
@@ -307,11 +284,11 @@ public class MergeItemScreen extends KineticScreen {
 
     private void updateRightPanel() {
         if (searchBox == null) return;
-        ((KineticControl) searchBox).setVisible(isCreatingRule || selectedTarget != null);
-        ((KineticControl) searchBox).setEnabled(((KineticControl) searchBox).isVisible());
+        searchBox.setControlVisible(isCreatingRule || selectedTarget != null);
+        searchBox.setEnabled(searchBox.controlVisible());
         updateTagFilterButton();
 
-        if (!((KineticControl) searchBox).isVisible()) {
+        if (!searchBox.controlVisible()) {
             rightDisplayList = new ArrayList<>();
             totalRightH = 0;
             rightScroll.reset();
@@ -319,7 +296,7 @@ public class MergeItemScreen extends KineticScreen {
             return;
         }
 
-        String query = searchBox.getValue().toLowerCase(Locale.ROOT).trim();
+        String query = searchBox.textValue().toLowerCase(Locale.ROOT).trim();
         Set<String> excluded = buildExcludedIdentifiers();
         Set<ItemUnificationHelper.MergeGroup> targetGroups = targetTagFilterActive && selectedTarget != null ? ItemSearchCache.getUnificationGroupsForId(selectedTarget) : Collections.emptySet();
         int sourceHash = 31 * ItemSearchCache.getAllItemsHash() + ItemSearchCache.hashStrings(excluded);
@@ -339,10 +316,10 @@ public class MergeItemScreen extends KineticScreen {
         if (tagFilterBtn == null) return;
         boolean show = selectedTarget != null && !isCreatingRule;
         Set<ItemUnificationHelper.MergeGroup> groups = show ? ItemSearchCache.getUnificationGroupsForId(selectedTarget) : Collections.emptySet();
-        ((KineticControl) tagFilterBtn).setVisible(show);
-        ((KineticControl) tagFilterBtn).setEnabled(show && !groups.isEmpty());
-        if (!((KineticControl) tagFilterBtn).isEnabled()) targetTagFilterActive = false;
-        ((KineticControl) tagFilterBtn).setText(Component.translatable(targetTagFilterActive ? "gui.itemcontrol.item.banitem.merge_tag_filter_on" : "gui.itemcontrol.item.banitem.merge_tag_filter"));
+        tagFilterBtn.setControlVisible(show);
+        tagFilterBtn.setEnabled(show && !groups.isEmpty());
+        if (!tagFilterBtn.isEnabled()) targetTagFilterActive = false;
+        tagFilterBtn.setText(KineticI18n.translatable(targetTagFilterActive ? "gui.itemcontrol.item.banitem.merge_tag_filter_on" : "gui.itemcontrol.item.banitem.merge_tag_filter"));
     }
 
     private Set<String> buildExcludedIdentifiers() {
@@ -414,8 +391,8 @@ public class MergeItemScreen extends KineticScreen {
             initNbt = idStr.substring(bracket);
         }
 
-        if (this.minecraft != null) {
-            KineticSelectors.openNbtEditor(this, initNbt, (savedNbt) -> {
+        {
+            KineticSelectors.openNbtEditor(initNbt, (savedNbt) -> {
                 String newIdStr = baseId + savedNbt;
                 switch (context) {
                     case 0:
@@ -443,16 +420,16 @@ public class MergeItemScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderCanvasBackground(@NotNull GuiGraphics g, int smx, int smy, float pt) {
-        GuiTheme.canvasBackground(g, canvasWidth(), canvasHeight());
-        GuiTheme.panel(g, leftX, leftY, leftW, leftH);
-        GuiTheme.panel(g, rightX, rightY, rightW, rightH);
+    protected void renderBackground(KineticGraphics g, int smx, int smy, float pt) {
+        KineticTheme.canvasBackground(g, width(), height());
+        KineticTheme.panel(g, leftX, leftY, leftW, leftH);
+        KineticTheme.panel(g, rightX, rightY, rightW, rightH);
     }
 
     @Override
-    protected void renderCanvasForeground(@NotNull GuiGraphics g, int smx, int smy, float pt) {
+    protected void renderForeground(KineticGraphics g, int smx, int smy, float pt) {
         int curY = leftY - (int) Math.round(leftScroll.smoothOffset());
-        enableCanvasScissor(g, leftX, leftY, leftX + leftW, leftY + leftH);
+        g.scissor(leftX, leftY, leftX + leftW, leftY + leftH);
         for (LeftEntry e : leftEntries) {
             if (curY + e.h >= leftY && curY <= leftY + leftH) {
                 e.x = leftX + 2;
@@ -460,10 +437,9 @@ public class MergeItemScreen extends KineticScreen {
             }
             curY += e.h + 1;
         }
-        disableCanvasScissor(g);
+        g.endScissor();
 
-        GuiTheme.scrollbar(
-                leftScroll,
+        leftScroll.render(
                 g,
                 smx,
                 smy,
@@ -476,16 +452,16 @@ public class MergeItemScreen extends KineticScreen {
 
         if (isCreatingRule || selectedTarget != null) {
             int countX = getRightCountX();
-            Component countText = Component.translatable(
+            Component countText = KineticI18n.translatable(
                     "gui.itemcontrol.item.banitem.merge_count",
                     rightDisplayList.size(),
                     allItemsCache.size()
             );
-            g.drawString(font, countText, countX, rightInfoY, 0xFFFFFF, false);
+            g.text(countText, countX, rightInfoY, 0xFFFFFF, false);
 
             int gridX = rightX + 2;
             int gridY = rightY;
-            enableCanvasScissor(g, rightX, gridY, rightX + rightW, gridY + gridAreaH);
+            g.scissor(rightX, gridY, rightX + rightW, gridY + gridAreaH);
             for (int i = 0; i < rightDisplayList.size(); i++) {
                 int col = i % gridCols;
                 int row = i / gridCols;
@@ -495,7 +471,7 @@ public class MergeItemScreen extends KineticScreen {
                     ItemStack stack = rightDisplayList.get(i).stack();
                     boolean hovered = smx >= rX && smx < rX + SLOT_SIZE
                             && smy >= rY && smy < rY + SLOT_SIZE;
-                    GuiTheme.itemSlot(
+                    KineticTheme.itemSlot(
                             g,
                             rX,
                             rY,
@@ -505,9 +481,8 @@ public class MergeItemScreen extends KineticScreen {
                     );
 
                     ItemBanControl.withSkip(() -> {
-                        GuiTheme.item(
+                        KineticTheme.item(
                                 g,
-                                font,
                                 stack,
                                 rX,
                                 rY,
@@ -519,10 +494,9 @@ public class MergeItemScreen extends KineticScreen {
                     });
                 }
             }
-            disableCanvasScissor(g);
+            g.endScissor();
 
-            GuiTheme.scrollbar(
-                    rightScroll,
+            rightScroll.render(
                     g,
                     smx,
                     smy,
@@ -540,26 +514,32 @@ public class MergeItemScreen extends KineticScreen {
         return rightX;
     }
 
-    private boolean isHoveringButton(StateButton btn, double mx, double my) { return btn != null && ((KineticControl) btn).isVisible() && mx >= btn.getX() && mx < btn.getX() + btn.getWidth() && my >= btn.getY() && my < btn.getY() + btn.getHeight();
+    private boolean isHoveringButton(KineticButton btn, double mx, double my) { return btn != null && btn.controlVisible() && btn.contains(mx, my);
     }
 
     @Override
-    protected void renderTooltips(@NotNull GuiGraphics g, int smx, int smy, int mx, int my) {
+    protected void renderTooltips(int smx, int smy) {
+        // 原实现按屏幕坐标请求提示并在上方区域下移 15 像素；这里用 GUI 缩放后的指针位置保持一致
+        // The old code requested tooltips in screen coordinates, shifted 15 px down above the lists; the GUI-scaled
+        // cursor position keeps that behaviour.
+        KineticClientRuntime.CursorPosition cursor = KineticClientRuntime.scaledCursorPosition();
+        int mx = (int) cursor.x();
+        int my = (int) cursor.y();
         int tooltipY = smy < leftY ? my + 15 : my;
 
-        if (isHoveringButton(addBtn, smx, smy)) { KineticOverlays.requestTooltip(Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.add"), mx, tooltipY); return;
+        if (isHoveringButton(addBtn, smx, smy)) { KineticOverlays.requestTooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.add"), mx, tooltipY); return;
         }
-        if (isHoveringButton(saveBtn, smx, smy)) { KineticOverlays.requestTooltip(Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.save"), mx, tooltipY); return;
+        if (isHoveringButton(saveBtn, smx, smy)) { KineticOverlays.requestTooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.save"), mx, tooltipY); return;
         }
-        if (isHoveringButton(closeBtn, smx, smy)) { KineticOverlays.requestTooltip(Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back"), mx, tooltipY); return;
+        if (isHoveringButton(closeBtn, smx, smy)) { KineticOverlays.requestTooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back"), mx, tooltipY); return;
         }
         if (isHoveringButton(tagFilterBtn, smx, smy)) {
             Set<ItemUnificationHelper.MergeGroup> groups = selectedTarget == null ? Collections.emptySet() : ItemSearchCache.getUnificationGroupsForId(selectedTarget);
             List<Component> tooltip = new ArrayList<>();
-            tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.merge_tag_filter.title"));
-            tooltip.add(Component.translatable(
+            tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.merge_tag_filter.title"));
+            tooltip.add(KineticI18n.translatable(
                     groups.isEmpty() ? "gui.itemcontrol.item.banitem.tooltip.merge_tag_filter.none" : "gui.itemcontrol.item.banitem.tooltip.merge_tag_filter.desc",
-                    Component.literal(String.valueOf(groups.size())).withStyle(ChatFormatting.AQUA)
+                    Component.literal(String.valueOf(groups.size()))
             ));
             KineticOverlays.requestTooltip(tooltip, mx, tooltipY);
             return;
@@ -567,15 +547,15 @@ public class MergeItemScreen extends KineticScreen {
 
         if (isCreatingRule || selectedTarget != null) {
             int countX = getRightCountX();
-            Component countText = Component.translatable(
+            Component countText = KineticI18n.translatable(
                     "gui.itemcontrol.item.banitem.merge_count",
                     rightDisplayList.size(),
                     allItemsCache.size()
             );
-            if (smx >= countX && smx < countX + font.width(countText) && smy >= rightInfoY && smy < rightInfoY + font.lineHeight) {
+            if (smx >= countX && smx < countX + KineticText.width(countText) && smy >= rightInfoY && smy < rightInfoY + KineticText.lineHeight()) {
                 List<Component> tooltip = new ArrayList<>();
-                tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.count.title"));
-                tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.count.merge.desc"));
+                tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.title"));
+                tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.merge.desc"));
                 KineticOverlays.requestTooltip(tooltip, mx, tooltipY);
                 return;
             }
@@ -585,7 +565,7 @@ public class MergeItemScreen extends KineticScreen {
             int currentY = leftY - (int) Math.round(leftScroll.smoothOffset());
             for (LeftEntry entry : leftEntries) {
                 if (currentY + entry.h >= leftY && currentY <= leftY + leftH) {
-                    if (smx >= entry.x && smx < entry.x + entry.w && smy >= currentY && smy < currentY + entry.h) { entry.requestTooltip(g, mx, my);
+                    if (smx >= entry.x && smx < entry.x + entry.w && smy >= currentY && smy < currentY + entry.h) { entry.requestTooltip(mx, my);
                         break; }
                 }
                 currentY += entry.h + 1;
@@ -607,18 +587,21 @@ public class MergeItemScreen extends KineticScreen {
                 tt.add(ItemCacheHudRenderer.getDisplayNameCustom(ci.stack()));
                 tt.add(Component.literal(ci.id()));
                 tt.add(Component.empty());
-                tt.add(Component.translatable(isCreatingRule ? "gui.itemcontrol.item.banitem.tooltip.set_target" : "gui.itemcontrol.item.banitem.tooltip.add_source"));
+                tt.add(KineticI18n.translatable(isCreatingRule ? "gui.itemcontrol.item.banitem.tooltip.set_target" : "gui.itemcontrol.item.banitem.tooltip.add_source"));
                 KineticOverlays.requestTooltip(tt, mx, my);
             }
         }
     }
 
     @Override
-    protected boolean canvasMouseClicked(double smx, double smy, int btn) {
-        if (KineticMouseButtons.isPrimary(btn)
-                && leftScroll.beginDrag(
+    protected boolean onMouseClickCapture(MouseInput input) {
+        // 原 canvasMouseClicked 全部在控件之前处理 / The old canvasMouseClicked handled all of this before controls.
+        double smx = input.x();
+        double smy = input.y();
+        if (leftScroll.beginDrag(
                         smx,
                         smy,
+                        input.button(),
                         leftX + leftW + 2,
                         leftY,
                         4,
@@ -631,10 +614,10 @@ public class MergeItemScreen extends KineticScreen {
 
         int gridY = rightY;
 
-        if (KineticMouseButtons.isPrimary(btn)
-                && rightScroll.beginDrag(
+        if (rightScroll.beginDrag(
                         smx,
                         smy,
+                        input.button(),
                         rightX + rightW - 6,
                         gridY,
                         4,
@@ -650,7 +633,7 @@ public class MergeItemScreen extends KineticScreen {
             for (LeftEntry entry : leftEntries) {
                 if (currentY + entry.h >= leftY && currentY <= leftY + leftH) {
                     if (smx >= entry.x && smx < entry.x + entry.w && smy >= currentY && smy < currentY + entry.h) {
-                        if (entry.mouseClicked(smx, smy, btn)) return true;
+                        if (entry.mouseClicked(input)) return true;
                     }
                 }
                 currentY += entry.h + 1;
@@ -666,7 +649,7 @@ public class MergeItemScreen extends KineticScreen {
                     && localX % SLOT_PITCH < SLOT_SIZE
                     && localY % SLOT_PITCH < SLOT_SIZE
                     && idx >= 0 && idx < rightDisplayList.size()) {
-                if (KineticMouseButtons.isPrimary(btn)) {
+                if (input.isLeft()) {
                     String id = rightDisplayList.get(idx).id();
                     if (isCreatingRule) { tempRules.putIfAbsent(id, new ArrayList<>()); selectedTarget = id; isCreatingRule = false; targetTagFilterActive = false; expandedTargets.add(id);
                     }
@@ -676,21 +659,19 @@ public class MergeItemScreen extends KineticScreen {
                 }
             }
         }
-        return super.canvasMouseClicked(smx, smy, btn);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseReleased(double smx, double smy, int btn) {
-        boolean released =
-                leftScroll.release(btn)
-                        | rightScroll.release(btn);
-
-        return released
-                || super.canvasMouseReleased(smx, smy, btn);
+    protected boolean onMouseRelease(MouseInput input) {
+        // 两个滚动条都要结束拖动（非短路或）/ Both scrollbars must end their drag (non-short-circuit or).
+        return leftScroll.release(input.button())
+                | rightScroll.release(input.button());
     }
 
     @Override
-    protected boolean canvasMouseDragged(double smx, double smy, int btn, double dx, double dy) {
+    protected boolean onMouseDrag(MouseDragInput input) {
+        double smy = input.y();
         if (leftScroll.drag(
                 smy,
                 leftY,
@@ -709,11 +690,14 @@ public class MergeItemScreen extends KineticScreen {
             return true;
         }
 
-        return super.canvasMouseDragged(smx, smy, btn, dx, dy);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseScrolled(double smx, double smy, double d) {
+    protected boolean onMouseScroll(ScrollInput input) {
+        double smx = input.x();
+        double smy = input.y();
+        double d = input.deltaY();
         if (smx >= leftX
                 && smx <= leftX + leftW
                 && smy >= leftY
@@ -730,43 +714,43 @@ public class MergeItemScreen extends KineticScreen {
             return true;
         }
 
-        return super.canvasMouseScrolled(smx, smy, d);
+        return false;
     }
 
     abstract static class LeftEntry { int x, y, w, h;
-        abstract void render(GuiGraphics g, int mx, int my); abstract boolean mouseClicked(double mx, double my, int btn);
-        abstract void requestTooltip(GuiGraphics g, int mx, int my); }
+        abstract void render(KineticGraphics g, int mx, int my); abstract boolean mouseClicked(MouseInput input);
+        abstract void requestTooltip(int mx, int my); }
 
     class TargetEntry extends LeftEntry {
         String id;
         ItemStack stack; int count;
         TargetEntry(String id, int count) { this.id = id; this.stack = BanItemConfig.parseItemStack(id); this.count = count;
         }
-        void render(GuiGraphics g, int mx, int my) {
+        void render(KineticGraphics g, int mx, int my) {
             boolean selected = id.equals(selectedTarget), hover = mx >= x && mx < x + w && my >= y && my < y + h;
-            GuiTheme.stateSurface(g, x, y, w, h, GuiTheme.Surface.PANEL_ALT, selected, hover, false);
-            GuiTheme.itemSlot(g, x, y + 1, 20, 4, hover);
-            ItemBanControl.withSkip(() -> { GuiTheme.item(g, font, stack, x, y + 1, 20, 1.0F, false); return null; });
-            g.drawString(font, ItemCacheHudRenderer.getDisplayNameCustom(stack), x + 24, y + 7, 0xFFFFFF, false);
-            g.drawString(font, Component.translatable("gui.itemcontrol.item.common.count_parentheses", Component.literal(String.valueOf(count)).withStyle(ChatFormatting.YELLOW)), x + w - 24, y + 7, 0xFFFFFF, false);
-            g.drawString(font, Component.translatable(expandedTargets.contains(id) ? "gui.itemcontrol.item.common.collapse" : "gui.itemcontrol.item.common.expand"), x + w - 36, y + 7, 0xFFFFFF, false);
+            KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, selected, hover, false);
+            KineticTheme.itemSlot(g, x, y + 1, 20, 4, hover);
+            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x, y + 1, 20, 1.0F, false); return null; });
+            g.text(ItemCacheHudRenderer.getDisplayNameCustom(stack), x + 24, y + 7, 0xFFFFFF, false);
+            g.text(KineticI18n.translatable("gui.itemcontrol.item.common.count_parentheses", Component.literal(String.valueOf(count))), x + w - 24, y + 7, 0xFFFFFF, false);
+            g.text(KineticI18n.translatable(expandedTargets.contains(id) ? "gui.itemcontrol.item.common.collapse" : "gui.itemcontrol.item.common.expand"), x + w - 36, y + 7, 0xFFFFFF, false);
         }
-        boolean mouseClicked(double mx, double my, int btn) {
-            if (KineticClientRuntime.shiftModifierDown() && KineticMouseButtons.isPrimary(btn)) { openNbtEditor(id, 2, "", stack);
+        boolean mouseClicked(MouseInput input) {
+            if (KineticClientRuntime.shiftModifierDown() && input.isLeft()) { openNbtEditor(id, 2, "", stack);
                 return true; }
-            if (KineticMouseButtons.isPrimary(btn)) { if (expandedTargets.contains(id)) expandedTargets.remove(id);
+            if (input.isLeft()) { if (expandedTargets.contains(id)) expandedTargets.remove(id);
             else expandedTargets.add(id); selectedTarget = id; isCreatingRule = false; targetTagFilterActive = false; updateLeftEntries(); updateRightPanel(); return true;
             }
-            else if (KineticMouseButtons.isSecondary(btn)) { tempRules.remove(id);
+            else if (input.isRight()) { tempRules.remove(id);
                 if (id.equals(selectedTarget)) { selectedTarget = null; targetTagFilterActive = false; } expandedTargets.remove(id); updateLeftEntries(); updateRightPanel(); return true;
             }
             return false;
         }
-        void requestTooltip(GuiGraphics g, int mx, int my) {
+        void requestTooltip(int mx, int my) {
             List<Component> tt = new ArrayList<>();
             tt.add(ItemCacheHudRenderer.getDisplayNameCustom(stack)); tt.add(Component.literal(id));
-            tt.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
-            tt.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.target_del"));
+            tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
+            tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.target_del"));
             KineticOverlays.requestTooltip(tt, mx, my);
         }
     }
@@ -776,25 +760,25 @@ public class MergeItemScreen extends KineticScreen {
         ItemStack stack;
         SourceEntry(String t, String s) { targetId = t; sourceId = s; stack = BanItemConfig.parseItemStack(s);
         }
-        void render(GuiGraphics g, int mx, int my) {
+        void render(KineticGraphics g, int mx, int my) {
             boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;
-            GuiTheme.stateSurface(g, x, y, w, h, GuiTheme.Surface.PANEL_ALT, false, hover, false);
-            GuiTheme.itemSlot(g, x + 10, y, 12, 3, hover);
-            ItemBanControl.withSkip(() -> { GuiTheme.item(g, font, stack, x + 10, y, 12, 0.5F, false); return null; });
-            g.pose().pushPose(); g.pose().translate(x + 24, y + 2.5f, 0); g.pose().scale(0.8f, 0.8f, 1.0f); g.drawString(font, ItemCacheHudRenderer.getDisplayNameCustom(stack), 0, 0, 0xFFAAAAAA, false); g.pose().popPose();
+            KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, false, hover, false);
+            KineticTheme.itemSlot(g, x + 10, y, 12, 3, hover);
+            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + 10, y, 12, 0.5F, false); return null; });
+            g.push(); g.translate(x + 24, y + 2.5f); g.scale(0.8f, 0.8f); g.text(ItemCacheHudRenderer.getDisplayNameCustom(stack), 0, 0, 0xFFAAAAAA, false); g.pop();
         }
-        boolean mouseClicked(double mx, double my, int btn) {
-            if (KineticClientRuntime.shiftModifierDown() && KineticMouseButtons.isPrimary(btn)) { openNbtEditor(sourceId, 3, targetId, stack);
+        boolean mouseClicked(MouseInput input) {
+            if (KineticClientRuntime.shiftModifierDown() && input.isLeft()) { openNbtEditor(sourceId, 3, targetId, stack);
                 return true; }
-            if (KineticMouseButtons.isSecondary(btn)) { tempRules.get(targetId).remove(sourceId);
+            if (input.isRight()) { tempRules.get(targetId).remove(sourceId);
                 updateLeftEntries(); updateRightPanel(); return true; }
             return false;
         }
-        void requestTooltip(GuiGraphics g, int mx, int my) {
+        void requestTooltip(int mx, int my) {
             List<Component> tt = new ArrayList<>();
             tt.add(ItemCacheHudRenderer.getDisplayNameCustom(stack)); tt.add(Component.literal(sourceId));
-            tt.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
-            tt.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.source_del"));
+            tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
+            tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.source_del"));
             KineticOverlays.requestTooltip(tt, mx, my);
         }
     }

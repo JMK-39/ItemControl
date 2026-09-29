@@ -1,27 +1,32 @@
 package dev.xyat.itemcontrol.tabs.gui;
 
+import dev.xyat.kineticcore.api.text.KineticI18n;
+import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
+import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
+import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
+import dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors;
+import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
+import dev.xyat.kineticcore.api.client.gui.state.DragStateController;
+import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
+import dev.xyat.kineticcore.api.client.gui.widget.*;
+import dev.xyat.kineticcore.api.client.gui.widget.list.*;
+
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
-import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
-import dev.xyat.kineticcore.api.client.theme.GuiTheme;
-import dev.xyat.kineticcore.api.client.selector.KineticSelectors;
-import dev.xyat.kineticcore.api.client.screen.KineticScreen;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
-import dev.xyat.kineticcore.api.client.widget.state.DragStateController;
-import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
 import dev.xyat.itemcontrol.tabs.network.TabNetwork;
 import dev.xyat.itemcontrol.tabs.TabClientEvents;
 import dev.xyat.itemcontrol.tabs.TabConfig;
 import dev.xyat.itemcontrol.tabs.TabModule;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class TabUnifiedScreen extends KineticScreen {
+public class TabUnifiedPage extends KineticPage {
     private enum ItemState {
         NORMAL,
         ADDED,
@@ -57,13 +62,13 @@ public class TabUnifiedScreen extends KineticScreen {
         ResourceLocation id;
     }
 
-    private static final int MAIN_X = 10;
-    private static final int MAIN_W = 360;
-    private static final int RIGHT_X = 380;
-    private static final int RIGHT_W = 90;
+    private static final int MAIN_X = 12;
+    private static final int MAIN_W = 468;
+    private static final int RIGHT_X = 500;
+    private static final int RIGHT_W = 126;
 
-    private static final int ARROW_W = 15;
-    private static final int TAB_SIZE = 22;
+    private static final int ARROW_W = 20;
+    private static final int TAB_SIZE = 24;
     private static final int TAB_INNER_PADDING = 0;
     private static final int TAB_VIEW_W = MAIN_W - ARROW_W * 2 - TAB_INNER_PADDING * 2;
     private static final int MAIN_TAB_COLS = TAB_VIEW_W / TAB_SIZE;
@@ -71,14 +76,14 @@ public class TabUnifiedScreen extends KineticScreen {
     private static final int TAB_CONTENT_X = MAIN_X + ARROW_W + TAB_INNER_PADDING + (TAB_VIEW_W - TAB_CONTENT_W) / 2;
 
     private static final int SLOT_SIZE = 18;
-    private static final int MAIN_ITEM_COLS = 20;
-    private static final int RIGHT_ITEM_COLS = 5;
+    private static final int MAIN_ITEM_COLS = 26;
+    private static final int RIGHT_ITEM_COLS = 7;
 
-    private static final int TAB_Y = 22;
-    private static final int TAB_SCROLL_Y = 46;
-    private static final int ITEM_Y = 58;
-    private static final int ITEM_H = 180;
-    private static final int ITEM_VISIBLE_ROWS = 10;
+    private static final int TAB_Y = 32;
+    private static final int TAB_SCROLL_Y = 60;
+    private static final int ITEM_Y = 72;
+    private static final int ITEM_H = 234;
+    private static final int ITEM_VISIBLE_ROWS = 13;
 
     private final List<TabInfo> allGameTabs =
             new ArrayList<>();
@@ -92,39 +97,31 @@ public class TabUnifiedScreen extends KineticScreen {
     private final List<DisplayItem> rightHiddenItems =
             new ArrayList<>();
 
-    private final GridScrollController mainTabScroll =
-            new GridScrollController();
+    private final KineticScrollController mainTabScroll =
+            new KineticScrollController();
 
-    private final GridScrollController mainItemScroll =
-            new GridScrollController();
+    private final KineticScrollController mainItemScroll =
+            new KineticScrollController();
 
-    private final GridScrollController rightItemScroll =
-            new GridScrollController();
+    private final KineticScrollController rightItemScroll =
+            new KineticScrollController();
 
     private final DragStateController<DragType> contentDrag =
             new DragStateController<>();
 
     private int mainSelectedTabIdx;
 
-    private final Screen parent;
     private TabInfo hoveredTabTooltip;
     private boolean hoveredTabBanned;
     private DisplayItem hoveredItemTooltip;
     private boolean hoveredItemHiddenPane;
 
-    public TabUnifiedScreen(Screen parent) {
-        super(Component.translatable(
+    public TabUnifiedPage() {
+        super(KineticI18n.translatable(
                 "gui.itemcontrol.tabs.tabs.unified.title"
         ));
 
-        this.parent = parent;
-        setParentScreen(parent);
-
-        useCanvas(
-                480f,
-                270f,
-                6
-        );
+        useCanvas(640, 360, 6);
 
         TabClientEvents.clearNotification();
 
@@ -365,38 +362,32 @@ public class TabUnifiedScreen extends KineticScreen {
     }
 
     @Override
-    protected void buildUi() {
+    protected void build(KineticUi ui) {
         int bottomY =
-                canvasHeight() - 22;
+                height() - 22;
 
-        addButton(
-                MAIN_X, bottomY, 120,
-                Component.translatable("gui.itemcontrol.tabs.tabs.unified.btn_add_item"),
-                null,
-                this::openItemSelector
-        );
+        ui.button(MAIN_X, TAB_Y + 4, ARROW_W)
+                .text(Component.literal("<"))
+                .onClick(() -> mainTabScroll.setOffset(mainTabScroll.offset() - 1))
+                .build();
+        ui.button(MAIN_X + MAIN_W - ARROW_W, TAB_Y + 4, ARROW_W)
+                .text(Component.literal(">"))
+                .onClick(() -> mainTabScroll.setOffset(mainTabScroll.offset() + 1))
+                .build();
 
-        addButton(
-                canvasWidth() / 2 - 30, bottomY, 60,
-                Component.translatable("gui.itemcontrol.tabs.tabs.btn.back"),
-                null,
-                this::returnToParent
-        );
+        ui.button(MAIN_X, bottomY, 160).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.unified.btn_add_item")).onClick(this::openItemSelector).build();
 
-        addButton(
-                RIGHT_X + RIGHT_W - 100, bottomY, 100,
-                Component.translatable("gui.itemcontrol.tabs.tabs.btn.save_apply"),
-                null,
-                () -> {
+        ui.button(width() / 2 - 40, bottomY, 80).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.back")).onClick(this::returnToParent).build();
+
+        ui.button(RIGHT_X, bottomY, RIGHT_W).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.save_apply")).onClick(() -> {
                     String json = TabConfig.GSON.toJson(TabConfig.currentEditing);
                     TabNetwork.saveTabs(json);
                     commitDraft();
-                }
-        );
+                }).build();
     }
 
     private void openItemSelector() {
-        if (minecraft == null
+        if (!isAttached()
                 || mainTabs.isEmpty()) {
             return;
         }
@@ -406,9 +397,7 @@ public class TabUnifiedScreen extends KineticScreen {
                         mainSelectedTabIdx
                 ).id.toString();
 
-        KineticSelectors.openItemSelector(
-                this,
-                selection -> {
+        KineticSelectors.openItemSelector(selection -> {
                             if (!selection.isItem()) {
                                 return;
                             }
@@ -492,8 +481,7 @@ public class TabUnifiedScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderCanvasBackground(
-            @NotNull GuiGraphics graphics,
+    protected void renderBackground(KineticGraphics graphics,
             int mouseX,
             int mouseY,
             float partialTick
@@ -501,29 +489,17 @@ public class TabUnifiedScreen extends KineticScreen {
         hoveredTabTooltip = null;
         hoveredItemTooltip = null;
 
-        GuiTheme.panel(graphics, 0, 0, canvasWidth(), canvasHeight());
+        KineticTheme.panel(graphics, 0, 0, width(), height());
 
-        GuiTheme.surface(graphics, 0, canvasHeight() - 30, canvasWidth(), 30, GuiTheme.Surface.PANEL_ALT);
+        KineticTheme.surface(graphics, 0, height() - 30, width(), 30, KineticTheme.Surface.PANEL_ALT);
 
-        graphics.drawString(
-                font,
-                Component.translatable(
+        graphics.text(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.left_title.colored"
-                ),
-                MAIN_X,
-                8,
-                0xFFFFFF
-        );
+                ), MAIN_X, 8, 0xFFFFFF, true);
 
-        graphics.drawString(
-                font,
-                Component.translatable(
+        graphics.text(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.right_title.colored"
-                ),
-                RIGHT_X,
-                8,
-                0xFFFFFF
-        );
+                ), RIGHT_X, 8, 0xFFFFFF, true);
 
         renderMainPane(
                 graphics,
@@ -539,70 +515,15 @@ public class TabUnifiedScreen extends KineticScreen {
     }
 
     private void renderMainPane(
-            GuiGraphics graphics,
+            KineticGraphics graphics,
             int mouseX,
             int mouseY
     ) {
-        GuiTheme.panel(graphics, MAIN_X, TAB_Y, MAIN_W, TAB_SIZE);
-
-        boolean leftArrowHovered =
-                GuiTheme.hovering(
-                        mouseX,
-                        mouseY,
-                        MAIN_X,
-                        TAB_Y,
-                        ARROW_W - 1,
-                        TAB_SIZE - 1
-                );
-
-        boolean rightArrowHovered =
-                GuiTheme.hovering(
-                        mouseX,
-                        mouseY,
-                        MAIN_X + MAIN_W - ARROW_W,
-                        TAB_Y,
-                        ARROW_W - 1,
-                        TAB_SIZE - 1
-                );
-
-        int leftColor =
-                mainTabScroll.offset() > 0
-                        ? leftArrowHovered
-                        ? 0xFF88FF88
-                        : 0xFF33FF33
-                        : 0xFF555555;
-
-        int rightColor =
-                mainTabScroll.offset()
-                        < mainTabScroll.maxOffset()
-                        ? rightArrowHovered
-                        ? 0xFF88FF88
-                        : 0xFF33FF33
-                        : 0xFF555555;
-
-        GuiTheme.panel(graphics, MAIN_X, TAB_Y, ARROW_W, TAB_SIZE);
-
-        graphics.drawCenteredString(
-                font,
-                "◀",
-                MAIN_X + ARROW_W / 2,
-                TAB_Y + 7,
-                leftColor
-        );
-
-        GuiTheme.panel(graphics, MAIN_X + MAIN_W - ARROW_W, TAB_Y, ARROW_W, TAB_SIZE);
-
-        graphics.drawCenteredString(
-                font,
-                "➤",
-                MAIN_X + MAIN_W - ARROW_W / 2,
-                TAB_Y + 7,
-                rightColor
-        );
+        KineticTheme.panel(graphics, MAIN_X, TAB_Y, MAIN_W, TAB_SIZE);
 
         int firstTab = mainTabScroll.smoothIndexOffset();
         int tabShift = mainTabScroll.visualShift(TAB_SIZE);
-        enableCanvasScissor(graphics, TAB_CONTENT_X, TAB_Y, TAB_CONTENT_X + TAB_CONTENT_W, TAB_Y + TAB_SIZE);
+        graphics.scissor(TAB_CONTENT_X, TAB_Y, TAB_CONTENT_X + TAB_CONTENT_W, TAB_Y + TAB_SIZE);
         for (int i = 0;
              i < MAIN_TAB_COLS + 1;
              i++) {
@@ -628,7 +549,7 @@ public class TabUnifiedScreen extends KineticScreen {
                     );
 
             boolean hovered =
-                    GuiTheme.hovering(
+                    KineticTheme.hovering(
                             mouseX,
                             mouseY,
                             tabX,
@@ -637,34 +558,23 @@ public class TabUnifiedScreen extends KineticScreen {
                             TAB_SIZE - 1
                     );
 
-            GuiTheme.itemSlot(
-                    graphics,
-                    tabX,
-                    TAB_Y,
-                    TAB_SIZE,
-                    4,
-                    hovered && !selected
-            );
+            KineticTheme.itemSlot(graphics, tabX, TAB_Y, TAB_SIZE, TAB_SIZE, 4,
+                    selected, hovered && !selected, false);
 
             if (banned) {
-                GuiTheme.indicatorFill(
+                KineticTheme.indicatorFill(
                         graphics,
                         tabX + 1,
                         TAB_Y + 1,
                         TAB_SIZE - 2,
                         TAB_SIZE - 2,
-                        GuiTheme.Indicator.DANGER,
+                        KineticTheme.Indicator.DANGER,
                         0.27F
                 );
             }
 
-            if (selected) {
-                GuiTheme.indicatorOutline(graphics, tabX, TAB_Y, TAB_SIZE, TAB_SIZE, GuiTheme.Indicator.SUCCESS);
-            }
-
-            GuiTheme.item(
+            KineticTheme.item(
                     graphics,
-                    font,
                     info.icon,
                     tabX,
                     TAB_Y,
@@ -680,6 +590,8 @@ public class TabUnifiedScreen extends KineticScreen {
             }
         }
 
+        graphics.endScissor();
+
         mainTabScroll.renderHorizontal(
                 graphics,
                 mouseX,
@@ -691,11 +603,9 @@ public class TabUnifiedScreen extends KineticScreen {
                 20
         );
 
-        GuiTheme.panel(graphics, MAIN_X - 2, ITEM_Y - 2, MAIN_W + 4, ITEM_H + 4);
+        KineticTheme.panel(graphics, MAIN_X - 2, ITEM_Y - 2, MAIN_W + 4, ITEM_H + 4);
 
-        disableCanvasScissor(graphics);
-
-        GuiTheme.surface(graphics, MAIN_X, ITEM_Y, MAIN_W, ITEM_H, GuiTheme.Surface.PANEL_ALT);
+        KineticTheme.surface(graphics, MAIN_X, ITEM_Y, MAIN_W, ITEM_H, KineticTheme.Surface.PANEL_ALT);
 
         renderItemGrid(
                 graphics,
@@ -721,13 +631,13 @@ public class TabUnifiedScreen extends KineticScreen {
     }
 
     private void renderRightPane(
-            GuiGraphics graphics,
+            KineticGraphics graphics,
             int mouseX,
             int mouseY
     ) {
-        GuiTheme.panel(graphics, RIGHT_X - 2, ITEM_Y - 2, RIGHT_W + 4, ITEM_H + 4);
+        KineticTheme.panel(graphics, RIGHT_X - 2, ITEM_Y - 2, RIGHT_W + 4, ITEM_H + 4);
 
-        GuiTheme.surface(graphics, RIGHT_X, ITEM_Y, RIGHT_W, ITEM_H, GuiTheme.Surface.PANEL_ALT);
+        KineticTheme.surface(graphics, RIGHT_X, ITEM_Y, RIGHT_W, ITEM_H, KineticTheme.Surface.PANEL_ALT);
 
         renderItemGrid(
                 graphics,
@@ -753,9 +663,9 @@ public class TabUnifiedScreen extends KineticScreen {
     }
 
     private void renderItemGrid(
-            GuiGraphics graphics,
+            KineticGraphics graphics,
             List<DisplayItem> items,
-            GridScrollController scroll,
+            KineticScrollController scroll,
             int gridX,
             int columns,
             boolean hiddenPane,
@@ -774,7 +684,7 @@ public class TabUnifiedScreen extends KineticScreen {
                         items.size()
                 );
 
-        enableCanvasScissor(graphics, gridX, ITEM_Y, gridX + columns * SLOT_SIZE, ITEM_Y + ITEM_H);
+        graphics.scissor(gridX, ITEM_Y, gridX + columns * SLOT_SIZE, ITEM_Y + ITEM_H);
         for (int i = startIndex;
              i < endIndex;
              i++) {
@@ -800,7 +710,7 @@ public class TabUnifiedScreen extends KineticScreen {
                             - itemShift;
 
             boolean hovered =
-                    GuiTheme.hovering(
+                    KineticTheme.hovering(
                             mouseX,
                             mouseY,
                             x,
@@ -809,7 +719,7 @@ public class TabUnifiedScreen extends KineticScreen {
                             SLOT_SIZE - 1
                     );
 
-            GuiTheme.itemSlot(
+            KineticTheme.itemSlot(
                     graphics,
                     x,
                     y,
@@ -818,9 +728,8 @@ public class TabUnifiedScreen extends KineticScreen {
                     hovered
             );
 
-            GuiTheme.item(
+            KineticTheme.item(
                     graphics,
-                    font,
                     item.stack,
                     x,
                     y,
@@ -833,9 +742,9 @@ public class TabUnifiedScreen extends KineticScreen {
                     y + SLOT_SIZE - 2;
 
             if (item.state == ItemState.ADDED) {
-                GuiTheme.indicatorFill(graphics, x + 2, itemBarY, SLOT_SIZE - 4, 1, GuiTheme.Indicator.SUCCESS);
+                KineticTheme.indicatorFill(graphics, x + 2, itemBarY, SLOT_SIZE - 4, 1, KineticTheme.Indicator.SUCCESS);
             } else if (item.state == ItemState.BANNED) {
-                GuiTheme.indicatorFill(graphics, x + 2, itemBarY, SLOT_SIZE - 4, 1, GuiTheme.Indicator.DANGER);
+                KineticTheme.indicatorFill(graphics, x + 2, itemBarY, SLOT_SIZE - 4, 1, KineticTheme.Indicator.DANGER);
             }
 
             if (hovered
@@ -844,21 +753,17 @@ public class TabUnifiedScreen extends KineticScreen {
                 hoveredItemHiddenPane = hiddenPane;
             }
         }
-        disableCanvasScissor(graphics);
+        graphics.endScissor();
     }
 
     private void renderTabTooltip(
-            GuiGraphics graphics,
             TabInfo info,
-            boolean banned,
-            int rawMouseX,
-            int rawMouseY
-    ) {
+            boolean banned) {
         List<Component> tooltip =
                 new ArrayList<>();
 
         tooltip.add(
-                Component.translatable(
+                KineticI18n.translatable(
                         banned
                                 ? "gui.itemcontrol.tabs.format.red"
                                 : "gui.itemcontrol.tabs.format.white",
@@ -868,63 +773,55 @@ public class TabUnifiedScreen extends KineticScreen {
 
         if (banned) {
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.right_tabs_title.colored"
                     )
             );
 
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.right_tab.1.colored"
                     )
             );
 
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.right_tab.2.colored"
                     )
             );
 
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.right_tab.3.colored"
                     )
             );
         } else {
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.left_tab.1.colored"
                     )
             );
 
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.left_tab.2.colored"
                     )
             );
 
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.left_tab.3.colored"
                     )
             );
         }
 
         renderRawTooltip(
-                graphics,
-                tooltip,
-                rawMouseX,
-                rawMouseY
-        );
+                tooltip);
     }
 
     private void renderItemTooltip(
-            GuiGraphics graphics,
             DisplayItem item,
-            boolean hiddenPane,
-            int rawMouseX,
-            int rawMouseY
-    ) {
+            boolean hiddenPane) {
         List<Component> tooltip =
                 new ArrayList<>();
 
@@ -934,32 +831,32 @@ public class TabUnifiedScreen extends KineticScreen {
 
         if (hiddenPane) {
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.right_items_title.colored"
                     )
             );
 
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.right_item.1.colored"
                     )
             );
 
             tooltip.add(
-                    Component.translatable(
+                    KineticI18n.translatable(
                             "gui.itemcontrol.tabs.tabs.unified.tooltip.right_item.2.colored"
                     )
             );
         } else {
             if (item.state == ItemState.ADDED) {
                 tooltip.add(
-                        Component.translatable(
+                        KineticI18n.translatable(
                                 "gui.itemcontrol.tabs.tabs.unified.tip_added_item.colored"
                         )
                 );
 
                 tooltip.add(
-                        Component.translatable(
+                        KineticI18n.translatable(
                                 item.ref.matchNbt
                                         ? "gui.itemcontrol.tabs.tabs.unified.tooltip.nbt_mode.on.colored"
                                         : "gui.itemcontrol.tabs.tabs.unified.tooltip.nbt_mode.off.colored"
@@ -967,19 +864,19 @@ public class TabUnifiedScreen extends KineticScreen {
                 );
 
                 tooltip.add(
-                        Component.translatable(
+                        KineticI18n.translatable(
                                 "gui.itemcontrol.tabs.tabs.unified.tooltip.left_item_nbt_toggle.colored"
                         )
                 );
             } else if (item.state == ItemState.BANNED) {
                 tooltip.add(
-                        Component.translatable(
+                        KineticI18n.translatable(
                                 "gui.itemcontrol.tabs.tabs.unified.right_items_title.colored"
                         )
                 );
 
                 tooltip.add(
-                        Component.translatable(
+                        KineticI18n.translatable(
                                 "gui.itemcontrol.tabs.tabs.unified.tooltip.right_item.1.colored"
                         )
                 );
@@ -987,13 +884,13 @@ public class TabUnifiedScreen extends KineticScreen {
 
             if (item.state != ItemState.BANNED) {
                 tooltip.add(
-                        Component.translatable(
+                        KineticI18n.translatable(
                                 "gui.itemcontrol.tabs.tabs.unified.tooltip.left_item.1.colored"
                         )
                 );
 
                 tooltip.add(
-                        Component.translatable(
+                        KineticI18n.translatable(
                                 "gui.itemcontrol.tabs.tabs.unified.tooltip.left_item.2.colored"
                         )
                 );
@@ -1001,25 +898,16 @@ public class TabUnifiedScreen extends KineticScreen {
         }
 
         renderRawTooltip(
-                graphics,
-                tooltip,
-                rawMouseX,
-                rawMouseY
-        );
+                tooltip);
     }
 
     private void renderRawTooltip(
-            GuiGraphics graphics,
-            List<Component> tooltip,
-            int rawMouseX,
-            int rawMouseY
-    ) {
-        KineticOverlays.requestTooltip(tooltip, rawMouseX, rawMouseY);
+            List<Component> tooltip) {
+        showTooltip(tooltip);
     }
 
     @Override
-    protected void renderCanvasForeground(
-            @NotNull GuiGraphics graphics,
+    protected void renderForeground(KineticGraphics graphics,
             int mouseX,
             int mouseY,
             float partialTick
@@ -1029,9 +917,8 @@ public class TabUnifiedScreen extends KineticScreen {
                     contentDrag.payload();
 
             if (payload instanceof TabInfo tabInfo) {
-                GuiTheme.item(
+                KineticTheme.item(
                         graphics,
-                        font,
                         tabInfo.icon,
                         mouseX - 11,
                         mouseY - 11,
@@ -1040,9 +927,8 @@ public class TabUnifiedScreen extends KineticScreen {
                         false
                 );
             } else if (payload instanceof DisplayItem item) {
-                GuiTheme.item(
+                KineticTheme.item(
                         graphics,
-                        font,
                         item.stack,
                         mouseX - 9,
                         mouseY - 9,
@@ -1055,18 +941,14 @@ public class TabUnifiedScreen extends KineticScreen {
 
         TabClientEvents.renderNotificationScaled(
                 graphics,
-                canvasWidth(),
-                font
+                width()
         );
     }
 
     @Override
     protected void renderTooltips(
-            GuiGraphics graphics,
             int scaledMouseX,
-            int scaledMouseY,
-            int rawMouseX,
-            int rawMouseY
+            int scaledMouseY
     ) {
         if (contentDrag.isActive()) {
             return;
@@ -1074,107 +956,82 @@ public class TabUnifiedScreen extends KineticScreen {
 
         if (hoveredItemTooltip != null) {
             renderItemTooltip(
-                    graphics,
                     hoveredItemTooltip,
-                    hoveredItemHiddenPane,
-                    rawMouseX,
-                    rawMouseY
-            );
+                    hoveredItemHiddenPane);
             return;
         }
 
         if (hoveredTabTooltip != null) {
             renderTabTooltip(
-                    graphics,
                     hoveredTabTooltip,
-                    hoveredTabBanned,
-                    rawMouseX,
-                    rawMouseY
-            );
+                    hoveredTabBanned);
             return;
         }
 
         int bottomY =
-                canvasHeight() - 22;
+                height() - 22;
 
-        if (GuiTheme.hovering(
+        if (KineticTheme.hovering(
                 scaledMouseX,
                 scaledMouseY,
                 MAIN_X,
                 bottomY,
-                120,
+                160,
                 18
         )) {
             renderRawTooltip(
-                    graphics,
                     List.of(
-                            Component.translatable(
+                            KineticI18n.translatable(
                                     "gui.itemcontrol.tabs.tabs.unified.btn.add_item.tooltip"
                             )
-                    ),
-                    rawMouseX,
-                    rawMouseY
-            );
+                    ));
             return;
         }
 
-        if (GuiTheme.hovering(
+        if (KineticTheme.hovering(
                 scaledMouseX,
                 scaledMouseY,
-                RIGHT_X + RIGHT_W - 100,
+                RIGHT_X,
                 bottomY,
-                100,
+                RIGHT_W,
                 18
         )) {
             renderRawTooltip(
-                    graphics,
                     List.of(
-                            Component.translatable(
+                            KineticI18n.translatable(
                                     "gui.itemcontrol.tabs.tabs.unified.btn.save.tooltip"
                             )
-                    ),
-                    rawMouseX,
-                    rawMouseY
-            );
+                    ));
         }
     }
 
     private void returnToParent() {
-        if (minecraft != null) {
+        if (isAttached()) {
             navigateBack();
         }
     }
 
     @Override
-    protected boolean handleCloseRequest() {
+    protected boolean onCloseRequested() {
         returnToParent();
         return true;
     }
 
     @Override
-    protected boolean canvasMouseClicked(
-            double mouseX,
-            double mouseY,
-            int button
-    ) {
-        if (super.canvasMouseClicked(
-                mouseX,
-                mouseY,
-                button
-        )) {
-            return true;
-        }
-
-        if (KineticMouseButtons.isPrimary(button)) {
+    protected boolean onMouseClick(MouseInput input) {
+        double mouseX = input.x();
+        double mouseY = input.y();
+        if (input.isLeft()) {
+            // v2 横向拖动无命中余量参数（固定 1px，原为 0）/ v2 horizontal drag has no hit-padding parameter (fixed 1 px, was 0).
             if (mainTabScroll.beginHorizontalDrag(
                     mouseX,
                     mouseY,
+                    input.button(),
                     TAB_CONTENT_X,
                     TAB_SCROLL_Y,
                     TAB_CONTENT_W,
                     4,
-                    20,
-                    0
+                    20
             )) {
                 return true;
             }
@@ -1182,6 +1039,7 @@ public class TabUnifiedScreen extends KineticScreen {
             if (mainItemScroll.beginDrag(
                     mouseX,
                     mouseY,
+                    input.button(),
                     MAIN_X + MAIN_W + 4,
                     ITEM_Y,
                     4,
@@ -1195,6 +1053,7 @@ public class TabUnifiedScreen extends KineticScreen {
             if (rightItemScroll.beginDrag(
                     mouseX,
                     mouseY,
+                    input.button(),
                     RIGHT_X + RIGHT_W + 4,
                     ITEM_Y,
                     4,
@@ -1210,7 +1069,7 @@ public class TabUnifiedScreen extends KineticScreen {
                 && mouseY < TAB_Y + TAB_SIZE) {
             return handleTabClick(
                     mouseX,
-                    button
+                    input
             );
         }
 
@@ -1219,7 +1078,7 @@ public class TabUnifiedScreen extends KineticScreen {
             return handleItemClick(
                     mouseX,
                     mouseY,
-                    button
+                    input
             );
         }
 
@@ -1228,26 +1087,8 @@ public class TabUnifiedScreen extends KineticScreen {
 
     private boolean handleTabClick(
             double mouseX,
-            int button
+            MouseInput input
     ) {
-        if (KineticMouseButtons.isPrimary(button)
-                && mouseX >= MAIN_X
-                && mouseX < MAIN_X + ARROW_W) {
-            mainTabScroll.setOffset(
-                    mainTabScroll.offset() - 1
-            );
-            return true;
-        }
-
-        if (KineticMouseButtons.isPrimary(button)
-                && mouseX >= MAIN_X + MAIN_W - ARROW_W
-                && mouseX < MAIN_X + MAIN_W) {
-            mainTabScroll.setOffset(
-                    mainTabScroll.offset() + 1
-            );
-            return true;
-        }
-
         if (mouseX < TAB_CONTENT_X
                 || mouseX >= TAB_CONTENT_X + TAB_CONTENT_W) {
             return false;
@@ -1272,7 +1113,7 @@ public class TabUnifiedScreen extends KineticScreen {
         String tabId =
                 tabInfo.id.toString();
 
-        if (KineticMouseButtons.isPrimary(button)) {
+        if (input.isLeft()) {
             if (KineticClientRuntime.controlModifierDown()) {
                 contentDrag.start(
                         DragType.MAIN_TAB,
@@ -1288,7 +1129,7 @@ public class TabUnifiedScreen extends KineticScreen {
             return true;
         }
 
-        if (KineticMouseButtons.isSecondary(button)) {
+        if (input.isRight()) {
             if (KineticClientRuntime.shiftModifierDown()) {
                 TabConfig.currentEditing.hiddenTabs.remove(
                         tabId
@@ -1311,7 +1152,7 @@ public class TabUnifiedScreen extends KineticScreen {
     private boolean handleItemClick(
             double mouseX,
             double mouseY,
-            int button
+            MouseInput input
     ) {
         if (mouseX >= MAIN_X
                 && mouseX < MAIN_X + MAIN_W) {
@@ -1332,7 +1173,7 @@ public class TabUnifiedScreen extends KineticScreen {
             DisplayItem item =
                     mainItems.get(index);
 
-            if (KineticMouseButtons.isPrimary(button)) {
+            if (input.isLeft()) {
                 if (item.state == ItemState.BANNED) {
                     unhideItem(item);
                     refreshData();
@@ -1346,7 +1187,7 @@ public class TabUnifiedScreen extends KineticScreen {
                 return true;
             }
 
-            if (KineticMouseButtons.isSecondary(button)) {
+            if (input.isRight()) {
                 if (item.state == ItemState.ADDED
                         && KineticClientRuntime.shiftModifierDown()) {
                     item.ref.matchNbt =
@@ -1381,7 +1222,7 @@ public class TabUnifiedScreen extends KineticScreen {
             DisplayItem item =
                     rightHiddenItems.get(index);
 
-            if (KineticMouseButtons.isPrimary(button)) {
+            if (input.isLeft()) {
                 if (KineticClientRuntime.controlModifierDown()) {
                     contentDrag.start(
                             DragType.RIGHT_ITEM,
@@ -1395,7 +1236,7 @@ public class TabUnifiedScreen extends KineticScreen {
                 return true;
             }
 
-            if (KineticMouseButtons.isSecondary(button)) {
+            if (input.isRight()) {
                 unhideItem(item);
                 refreshData();
                 return true;
@@ -1406,7 +1247,7 @@ public class TabUnifiedScreen extends KineticScreen {
     }
 
     private static int itemIndexAt(
-            GridScrollController scroll,
+            KineticScrollController scroll,
             int gridX,
             int columns,
             double mouseX,
@@ -1477,17 +1318,13 @@ public class TabUnifiedScreen extends KineticScreen {
     }
 
     @Override
-    protected boolean canvasMouseDragged(
-            double mouseX,
-            double mouseY,
-            int button,
-            double dragX,
-            double dragY
-    ) {
+    protected boolean onMouseDrag(MouseDragInput input) {
+        double mouseX = input.x();
+        double mouseY = input.y();
         if (mainTabScroll.dragHorizontal(
                 mouseX,
-                MAIN_X,
-                MAIN_W,
+                TAB_CONTENT_X,
+                TAB_CONTENT_W,
                 20
         )) {
             return true;
@@ -1515,31 +1352,22 @@ public class TabUnifiedScreen extends KineticScreen {
             return true;
         }
 
-        return super.canvasMouseDragged(
-                mouseX,
-                mouseY,
-                button,
-                dragX,
-                dragY
-        );
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseReleased(
-            double mouseX,
-            double mouseY,
-            int button
-    ) {
+    protected boolean onMouseRelease(MouseInput input) {
+        double mouseX = input.x();
         boolean releasedScroll =
-                mainTabScroll.release(button)
-                        | mainItemScroll.release(button)
-                        | rightItemScroll.release(button);
+                mainTabScroll.release(input.button())
+                        | mainItemScroll.release(input.button())
+                        | rightItemScroll.release(input.button());
 
         if (releasedScroll) {
             return true;
         }
 
-        if (KineticMouseButtons.isPrimary(button)
+        if (input.isLeft()
                 && contentDrag.isActive()) {
             Object payload =
                     contentDrag.payload();
@@ -1569,19 +1397,14 @@ public class TabUnifiedScreen extends KineticScreen {
 
         contentDrag.clear();
 
-        return super.canvasMouseReleased(
-                mouseX,
-                mouseY,
-                button
-        );
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseScrolled(
-            double mouseX,
-            double mouseY,
-            double delta
-    ) {
+    protected boolean onMouseScroll(ScrollInput input) {
+        double mouseX = input.x();
+        double mouseY = input.y();
+        double delta = input.deltaY();
         if (mouseX >= MAIN_X
                 && mouseX <= MAIN_X + MAIN_W) {
             if (mouseY >= TAB_Y
@@ -1600,10 +1423,6 @@ public class TabUnifiedScreen extends KineticScreen {
             return true;
         }
 
-        return super.canvasMouseScrolled(
-                mouseX,
-                mouseY,
-                delta
-        );
+        return false;
     }
 }

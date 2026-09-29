@@ -1,27 +1,26 @@
 package dev.xyat.itemcontrol.item.client;
 
 import com.mojang.logging.LogUtils;
-import dev.xyat.itemcontrol.item.client.gui.BannedItemScreen;
-import dev.xyat.itemcontrol.item.client.gui.DamageTypeEditorScreen;
-import dev.xyat.itemcontrol.item.client.gui.DirectEntityImmunityEditorScreen;
+import dev.xyat.itemcontrol.item.client.gui.BannedItemPage;
+import dev.xyat.itemcontrol.item.client.gui.DamageTypeEditorPage;
+import dev.xyat.itemcontrol.item.client.gui.DirectEntityImmunityEditorPage;
 import dev.xyat.itemcontrol.item.client.gui.ItemSearchCache;
 import dev.xyat.itemcontrol.item.client.gui.ItemCacheHudRenderer;
-import dev.xyat.itemcontrol.item.client.gui.ItemTagEditorScreen;
-import dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorScreen;
-import dev.xyat.itemcontrol.item.client.gui.MergeItemScreen;
-import dev.xyat.itemcontrol.item.client.gui.ProtectionItemEditorScreen;
+import dev.xyat.itemcontrol.item.client.gui.ItemTagEditorPage;
+import dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorPage;
+import dev.xyat.itemcontrol.item.client.gui.MergeItemPage;
+import dev.xyat.itemcontrol.item.client.gui.ProtectionItemEditorPage;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
-import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
+import dev.xyat.kineticcore.api.client.gui.KineticGui;
+import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.text.KineticI18n;
-import net.minecraft.client.gui.screens.Screen;
 import org.slf4j.Logger;
 
 public final class ItemClientProxy {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static Screen editorReturnScreen;
     private static boolean installed;
 
     private ItemClientProxy() {
@@ -34,70 +33,58 @@ public final class ItemClientProxy {
         KineticClientEvents.onLogout(ItemClientProxy::onClientLogout);
     }
 
+    // 编辑器在服务端回包后以 KineticGui.openChild 打开，返回到打开时的当前界面（无界面时回到游戏）
+    // Editors open with KineticGui.openChild after the server reply; back returns to the screen current at that
+    // moment (or the game when none is open).
     public static void requestOpenEditorFromCurrentScreen(int editorType) {
-        editorReturnScreen = KineticClientRuntime.currentScreen();
         ItemNetwork.requestOpenEditor(editorType);
     }
 
-    private static Screen takeEditorReturnScreen() {
-        Screen current = KineticClientRuntime.currentScreen();
-        Screen parent = editorReturnScreen != null ? editorReturnScreen : current;
-        editorReturnScreen = null;
-        return parent;
-    }
-
     public static void openBannedGui() {
-        Screen parent = takeEditorReturnScreen();
-        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new BannedItemScreen(parent)));
+        ItemSearchCache.prepareCache(() -> KineticGui.openChild(new BannedItemPage()));
     }
 
     public static void openMergeGui() {
-        Screen parent = takeEditorReturnScreen();
-        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new MergeItemScreen(parent)));
+        ItemSearchCache.prepareCache(() -> KineticGui.openChild(new MergeItemPage()));
     }
 
     public static void openItemTagEditor() {
-        Screen parent = takeEditorReturnScreen();
-        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new ItemTagEditorScreen(parent)));
+        ItemSearchCache.prepareCache(() -> KineticGui.openChild(new ItemTagEditorPage()));
     }
 
     public static void openProtectionEditor(java.util.List<String> rules) {
-        Screen parent = takeEditorReturnScreen();
         ItemSearchCache.prepareCache(() ->
-                KineticClientRuntime.openScreen(new ProtectionItemEditorScreen(parent, rules))
+                KineticGui.openChild(new ProtectionItemEditorPage(rules))
         );
     }
 
     public static void openItemPropertyEditor(String pendingJson, String activeJson) {
         dev.xyat.itemcontrol.item.config.ItemPropertyConfig.applyServerSnapshots(pendingJson, activeJson);
-        Screen parent = takeEditorReturnScreen();
-        ItemSearchCache.prepareCache(() -> KineticClientRuntime.openScreen(new ItemPropertyEditorScreen(parent, pendingJson)));
+        ItemSearchCache.prepareCache(() -> KineticGui.openChild(new ItemPropertyEditorPage(pendingJson)));
     }
 
     public static void openDamageTypeEditor(java.util.List<String> entries) {
-        Screen parent = takeEditorReturnScreen();
-        KineticClientRuntime.openScreen(new DamageTypeEditorScreen(parent, entries));
+        KineticGui.openChild(new DamageTypeEditorPage(entries));
     }
 
     public static void openDirectEntityImmunityEditor(java.util.List<String> entries) {
-        Screen parent = takeEditorReturnScreen();
-        KineticClientRuntime.openScreen(new DirectEntityImmunityEditorScreen(parent, entries));
+        KineticGui.openChild(new DirectEntityImmunityEditorPage(entries));
     }
 
     public static void applyEditorSaveResult(int editorType, boolean success, java.util.List<String> entries, String messageKey) {
-        Screen current = KineticClientRuntime.currentScreen();
-        if (editorType == ItemNetwork.EDITOR_BAN_ITEM && current instanceof BannedItemScreen screen) {
-            screen.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_MERGE_ITEM && current instanceof MergeItemScreen screen) {
-            screen.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_ITEM_TAG && current instanceof ItemTagEditorScreen screen) {
-            screen.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_PROTECTION_ITEM && current instanceof ProtectionItemEditorScreen screen) {
-            screen.applySaveResult(success, entries);
-        } else if (editorType == ItemNetwork.EDITOR_DAMAGE_IMMUNITY && current instanceof DamageTypeEditorScreen screen) {
-            screen.applySaveResult(success, entries);
-        } else if (editorType == ItemNetwork.EDITOR_DIRECT_ENTITY_IMMUNITY && current instanceof DirectEntityImmunityEditorScreen screen) {
-            screen.applySaveResult(success, entries);
+        KineticPage current = KineticGui.currentPage();
+        if (editorType == ItemNetwork.EDITOR_BAN_ITEM && current instanceof BannedItemPage page) {
+            page.applySaveResult(success);
+        } else if (editorType == ItemNetwork.EDITOR_MERGE_ITEM && current instanceof MergeItemPage page) {
+            page.applySaveResult(success);
+        } else if (editorType == ItemNetwork.EDITOR_ITEM_TAG && current instanceof ItemTagEditorPage page) {
+            page.applySaveResult(success);
+        } else if (editorType == ItemNetwork.EDITOR_PROTECTION_ITEM && current instanceof ProtectionItemEditorPage page) {
+            page.applySaveResult(success, entries);
+        } else if (editorType == ItemNetwork.EDITOR_DAMAGE_IMMUNITY && current instanceof DamageTypeEditorPage page) {
+            page.applySaveResult(success, entries);
+        } else if (editorType == ItemNetwork.EDITOR_DIRECT_ENTITY_IMMUNITY && current instanceof DirectEntityImmunityEditorPage page) {
+            page.applySaveResult(success, entries);
         }
 
         if (success) {
@@ -117,9 +104,9 @@ public final class ItemClientProxy {
     }
 
     public static void applyItemPropertySaveResult(boolean success, String pendingJson, String messageKey) {
-        Screen current = KineticClientRuntime.currentScreen();
-        if (current instanceof ItemPropertyEditorScreen screen) {
-            screen.applySaveResult(success, pendingJson, messageKey);
+        ItemPropertyEditorPage page = KineticGui.currentPage(ItemPropertyEditorPage.class);
+        if (page != null) {
+            page.applySaveResult(success, pendingJson, messageKey);
         }
         if (success) {
             KineticOverlays.toast(

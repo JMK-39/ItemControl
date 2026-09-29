@@ -1,5 +1,6 @@
 package dev.xyat.itemcontrol.item.config;
 
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -8,7 +9,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -53,7 +53,7 @@ final class ItemProtectionPatternIndex {
     }
 
     ItemPropertyRule matchingNbt(ItemStack stack) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = KineticRegistries.items().id(stack.getItem());
         if (id == null) return null;
         for (Entry entry : nbtRules.getOrDefault(id, List.of())) {
             if (stack.hasTag() && NbtUtils.compareNbt(entry.nbt, stack.getTag(), true)) return entry.rule;
@@ -62,7 +62,7 @@ final class ItemProtectionPatternIndex {
     }
 
     ItemPropertyRule matchingScope(ItemStack stack) {
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = KineticRegistries.items().id(stack.getItem());
         if (id == null) return null;
         for (Entry entry : scopeRules) {
             if (entry.namespace != null && id.getNamespace().equals(entry.namespace)

@@ -2,9 +2,8 @@ package dev.xyat.itemcontrol.tabs.network;
 
 import dev.xyat.itemcontrol.tabs.TabConfig;
 import dev.xyat.itemcontrol.tabs.TabModule;
-import dev.xyat.itemcontrol.tabs.gui.TabUnifiedScreen;
-import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
-import net.minecraft.client.gui.screens.Screen;
+import dev.xyat.itemcontrol.tabs.gui.TabUnifiedPage;
+import dev.xyat.kineticcore.api.client.gui.KineticGui;
 
 public final class TabNetworkClient {
     private TabNetworkClient() {
@@ -15,9 +14,9 @@ public final class TabNetworkClient {
     }
 
     public static void handleOpenEditor(TabNetwork.OpenTabEditorPacket packet) {
-        Screen parent = KineticClientRuntime.currentScreen();
         if (TabConfig.beginEdit(packet.json())) {
-            KineticClientRuntime.openScreen(new TabUnifiedScreen(parent));
+            // 返回当前界面（无界面时回到游戏）/ Back returns to the current screen (or the game when none is open).
+            KineticGui.openChild(new TabUnifiedPage());
         }
     }
 }

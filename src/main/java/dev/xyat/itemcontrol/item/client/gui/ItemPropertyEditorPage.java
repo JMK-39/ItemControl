@@ -1,5 +1,14 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
+import dev.xyat.kineticcore.api.client.gui.text.KineticText;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
+import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
+import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
+import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
+import dev.xyat.kineticcore.api.client.gui.widget.*;
+import dev.xyat.kineticcore.api.client.gui.widget.list.*;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -8,25 +17,14 @@ import com.google.gson.JsonParser;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
-import dev.xyat.kineticcore.api.client.screen.KineticScreen;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch.ItemCategory;
-import dev.xyat.kineticcore.api.client.theme.GuiTheme;
-import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
-import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticEditBox;
-import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticMultiLineEditBox;
-import dev.xyat.kineticcore.api.client.widget.selection.KineticDropdowns;
-import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridDensity;
-import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridItem;
-import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ItemGridOutline;
-import dev.xyat.kineticcore.api.client.widget.selection.KineticTabs.ScrollableItemGrid;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.text.KineticI18n;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -42,8 +40,6 @@ import net.minecraft.world.item.TieredItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.registries.ForgeRegistries;
-import org.jetbrains.annotations.NotNull;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -57,7 +53,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** Server-authoritative per-item vanilla-property editor. */
-public final class ItemPropertyEditorScreen extends KineticScreen {
+public final class ItemPropertyEditorPage extends KineticPage {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final int GRID_X = 12;
     private static final int GRID_Y = 44;
@@ -84,22 +80,17 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         }
     }
 
-    public Screen getParent() {
-        return parent;
-    }
-
-    private final Screen parent;
     private final Map<String, JsonElement> drafts = new LinkedHashMap<>();
     private final Map<String, JsonElement> baseline = new LinkedHashMap<>();
     private final List<KineticItemSearch.CachedItem> allItems = new ArrayList<>();
-    private final Map<String, KineticEditBox> fields = new HashMap<>();
+    private final Map<String, KineticTextField> fields = new HashMap<>();
     private final Map<String, FieldSpec> fieldSpecs = new HashMap<>();
     private final Map<String, int[]> fieldLabels = new HashMap<>();
     private final List<String> visibleIds = new ArrayList<>();
 
-    private KineticEditBox searchBox;
-    private KineticMultiLineEditBox attributesBox;
-    private ScrollableItemGrid itemGrid;
+    private KineticTextField searchBox;
+    private KineticTextArea attributesBox;
+    private KineticItemGrid itemGrid;
     private EditorCategory category = EditorCategory.COMBAT;
     private String selectedId;
     private String searchQuery = "";
@@ -109,11 +100,9 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private boolean saving;
     private boolean populatingFields;
 
-    public ItemPropertyEditorScreen(Screen parent, String pendingJson) {
-        super(Component.translatable("gui.itemcontrol.item_property.title"));
-        this.parent = parent;
-        setParentScreen(parent);
-        useCanvas(640F, 360F, 6);
+    public ItemPropertyEditorPage(String pendingJson) {
+        super(KineticI18n.translatable("gui.itemcontrol.item_property.title"));
+        useCanvas(640, 360, 6);
         restoreDraft(pendingJson);
         allItems.addAll(ItemSearchCache.getAllItems());
     }
@@ -133,64 +122,50 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void buildUi() {
+    protected void build(KineticUi ui) {
         fields.clear();
         fieldSpecs.clear();
         fieldLabels.clear();
         attributesBox = null;
         lastAttributesValue = null;
-        searchBox = addTextField(12, 10, 220, Component.empty());
-        searchBox.setPlaceholder(Component.translatable("gui.itemcontrol.item_property.search"));
-        searchBox.setMaxLength(1024);
-        searchBox.setValue(searchQuery);
-        searchBox.setResponder(value -> {
+        searchBox = ui().textField(12, 10, 220).build();
+        searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item_property.search"));
+        searchBox.limitTextLength(1024);
+        searchBox.setTextValue(searchQuery);
+        searchBox.setDefaultText(searchQuery);
+        searchBox.onTextChange(value -> {
             searchQuery = value;
             refreshGrid();
         });
 
-        addDropdown(
-                PANEL_RIGHT - 142, 12, 142,
-                categoryOptions(), categoryDropdownValue(category),
-                Component.translatable("gui.itemcontrol.item_property.category.tooltip"),
-                ignored -> true,
-                this::changeCategoryByValue
-        );
+        ui.dropdown(PANEL_RIGHT - 142, 12, 142, categoryOptions())
+                .selected(categoryDropdownValue(category))
+                .tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.category.tooltip"))
+                .validator(ignored -> true)
+                .onChange(this::changeCategoryByValue)
+                .build();
 
         buildCategoryFields();
-        itemGrid = addScrollableItemGrid(
-                GRID_X, GRID_Y, GRID_W, GRID_H,
-                ItemGridDensity.COMPACT, buildGridItems(), gridScrollOffset,
-                this::selectGridIndex
-        );
+        itemGrid = ui.itemGrid(GRID_X, GRID_Y, GRID_W, GRID_H, ItemGridDensity.COMPACT, buildGridItems())
+                .scrollOffset(gridScrollOffset)
+                .onClick(this::selectGridIndex)
+                .build();
         gridScrollOffset = 0;
 
-        addCompactButton(12, 337, 80,
-                Component.translatable("gui.itemcontrol.item_property.add_rule"),
-                Component.translatable("gui.itemcontrol.item_property.add_rule.tooltip"),
-                this::addSelectedRule);
-        addCompactButton(98, 337, 80,
-                Component.translatable("gui.itemcontrol.item_property.reset_item"),
-                Component.translatable("gui.itemcontrol.item_property.reset_item.tooltip"),
-                this::resetSelectedRule);
-        addCompactButton(184, 337, 52,
-                Component.translatable("gui.itemcontrol.item_property.delete"), null,
-                this::deleteSelectedRule);
-        addButton(478, 337, 70,
-                Component.translatable("gui.itemcontrol.item_property.save"),
-                Component.translatable("gui.itemcontrol.item_property.save.tooltip"),
-                this::save);
-        addButton(554, 337, 72,
-                Component.translatable("gui.itemcontrol.item_property.cancel"), null,
-                this::onClose);
+        ui().button(12, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule.tooltip")).compact().onClick(this::addSelectedRule).build();
+        ui().button(98, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item.tooltip")).compact().onClick(this::resetSelectedRule).build();
+        ui().button(184, 337, 52).text(KineticI18n.translatable("gui.itemcontrol.item_property.delete")).compact().onClick(this::deleteSelectedRule).build();
+        ui().button(478, 337, 70).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.save.tooltip")).onClick(this::save).build();
+        ui().button(554, 337, 72).text(KineticI18n.translatable("gui.itemcontrol.item_property.cancel")).onClick(this::close).build();
 
         populateFields();
         refreshGrid();
     }
 
-    private List<KineticDropdowns.Option> categoryOptions() {
-        List<KineticDropdowns.Option> options = new ArrayList<>();
+    private List<KineticDropdown.Option> categoryOptions() {
+        List<KineticDropdown.Option> options = new ArrayList<>();
         for (EditorCategory value : EditorCategory.values()) {
-            options.add(new KineticDropdowns.Option(
+            options.add(new KineticDropdown.Option(
                     categoryDropdownValue(value),
                     Component.empty(),
                     Component.empty()
@@ -200,7 +175,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     private String categoryDropdownValue(EditorCategory value) {
-        return Component.translatable("gui.itemcontrol.item_property.category.current."
+        return KineticI18n.translatable("gui.itemcontrol.item_property.category.current."
                 + value.name().toLowerCase(Locale.ROOT)).getString();
     }
 
@@ -222,11 +197,10 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
                 addNumericField("armor_toughness", false, -2048, 2048, 3);
                 addNumericField("knockback_resistance", false, -2048, 2048, 4);
                 addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 5);
-                attributesBox = addMultiLineTextField(
-                        PANEL_X, 190, 240, 72,
-                        Component.empty(), Component.translatable("gui.itemcontrol.item_property.attributes.placeholder"),
-                        Component.translatable("gui.itemcontrol.item_property.attributes.tooltip")
-                );
+                attributesBox = ui().textArea(PANEL_X, 190, 240, 72)
+                        .placeholder(KineticI18n.translatable("gui.itemcontrol.item_property.attributes.placeholder"))
+                        .tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.attributes.tooltip"))
+                        .build();
                 fieldLabels.put("attributes", new int[]{PANEL_X, 178});
             }
             case TOOL -> {
@@ -268,19 +242,13 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         FieldSpec spec = new FieldSpec(integer, minimum, maximum);
         fieldSpecs.put(key, spec);
         fieldLabels.put(key, new int[]{bounds[0], bounds[1] - 11});
-        KineticEditBox field = addTextField(
-                bounds[0], bounds[1], FIELD_WIDTH, Component.empty(),
-                Component.translatable("gui.itemcontrol.item_property.inherit"),
-                spec::acceptsOrBlank,
-                Component.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip")
-        );
-        field.setResponder(value -> {
+        KineticTextField field = ui().textField(bounds[0], bounds[1], FIELD_WIDTH).placeholder(KineticI18n.translatable("gui.itemcontrol.item_property.inherit")).validator(spec::acceptsOrBlank).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip")).build();
+        field.onTextChange(value -> {
             if (!populatingFields) {
-                updateFieldColor(field);
                 refreshGrid();
             }
         });
-        field.setMaxLength(32);
+        field.limitTextLength(32);
         fields.put(key, field);
     }
 
@@ -289,43 +257,38 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         fieldLabels.put("rarity", new int[]{bounds[0], bounds[1] - 11});
         JsonElement saved = currentRuleObject().get("rarity");
         String selected = saved == null ? "inherit" : saved.getAsString().toLowerCase(Locale.ROOT);
-        List<KineticDropdowns.Option> options = new ArrayList<>();
+        List<KineticDropdown.Option> options = new ArrayList<>();
         String original = originalValue("rarity");
-        options.add(new KineticDropdowns.Option(rarityDisplay("inherit", original),
+        options.add(new KineticDropdown.Option(rarityDisplay("inherit", original),
                 Component.empty(),
-                Component.translatable("gui.itemcontrol.item_property.rarity.inherit.tooltip")));
+                KineticI18n.translatable("gui.itemcontrol.item_property.rarity.inherit.tooltip")));
         for (String value : List.of("common", "uncommon", "rare", "epic")) {
-            options.add(new KineticDropdowns.Option(rarityDisplay(value, original),
+            options.add(new KineticDropdown.Option(rarityDisplay(value, original),
                     Component.empty(),
-                    Component.translatable("gui.itemcontrol.item_property.field.rarity.tooltip")));
+                    KineticI18n.translatable("gui.itemcontrol.item_property.field.rarity.tooltip")));
         }
-        KineticDropdowns.Dropdown dropdown = addDropdown(
-                bounds[0], bounds[1], 112, options, rarityDisplay(selected, original),
-                Component.translatable("gui.itemcontrol.item_property.field.rarity.tooltip"),
-                ignored -> true, this::changeRarity
-        );
-        dropdown.active = canEditSelected();
+        KineticDropdown dropdown = ui().dropdown(bounds[0], bounds[1], 112, options)
+                .selected(rarityDisplay(selected, original))
+                .tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.field.rarity.tooltip"))
+                .validator(ignored -> true)
+                .onChange(this::changeRarity)
+                .build();
+        dropdown.setEnabled(canEditSelected());
     }
 
     private static Component rarityName(String value) {
         if (List.of("common", "uncommon", "rare", "epic").contains(value)) {
-            return Component.translatable("gui.itemcontrol.item_property.rarity." + value);
+            return KineticI18n.translatable("gui.itemcontrol.item_property.rarity." + value);
         }
         return Component.literal(value);
     }
 
     private static String rarityDisplay(String value, String original) {
         if ("inherit".equals(value)) {
-            return ChatFormatting.GRAY + Component.translatable("gui.itemcontrol.item_property.rarity.original",
+            return KineticI18n.translatable("gui.itemcontrol.item_property.rarity.original",
                     rarityName(original)).getString();
         }
-        ChatFormatting color = switch (value) {
-            case "uncommon" -> ChatFormatting.GREEN;
-            case "rare" -> ChatFormatting.BLUE;
-            case "epic" -> ChatFormatting.DARK_PURPLE;
-            default -> ChatFormatting.GRAY;
-        };
-        return color + rarityName(value).getString();
+        return rarityName(value).getString();
     }
 
     private void changeRarity(String value) {
@@ -356,20 +319,15 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         if (!canEditSelected()) {
             label = Component.empty();
         } else if (overridden) {
-            label = Component.translatable("gui.itemcontrol.item_property.boolean." + state)
-                    .withStyle(style -> style.withColor(GuiTheme.indicatorColor(GuiTheme.Indicator.SUCCESS)));
+            label = KineticI18n.translatable("gui.itemcontrol.item_property.boolean." + state)
+                    .withStyle(style -> style.withColor(KineticTheme.indicatorColor(KineticTheme.Indicator.SUCCESS)));
         } else {
-            label = Component.translatable("gui.itemcontrol.item_property.boolean.original",
-                    Component.translatable("gui.itemcontrol.item_property.boolean." + state))
-                    .withStyle(style -> style.withColor(GuiTheme.current().mutedText()));
+            label = KineticI18n.translatable("gui.itemcontrol.item_property.boolean.original",
+                    KineticI18n.translatable("gui.itemcontrol.item_property.boolean." + state))
+                    .withStyle(style -> style.withColor(KineticTheme.current().mutedText()));
         }
-        StateButton button = addButton(
-                bounds[0], bounds[1], FIELD_WIDTH,
-                label,
-                Component.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip"),
-                () -> cycleBoolean(key)
-        );
-        button.active = canEditSelected();
+        KineticButton button = ui().button(bounds[0], bounds[1], FIELD_WIDTH).text(label).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip")).onClick(() -> cycleBoolean(key)).build();
+        button.setEnabled(canEditSelected());
     }
 
     private int[] fieldBounds(int index) {
@@ -382,27 +340,21 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         populatingFields = true;
         try {
             JsonObject rule = currentRuleObject();
-            for (Map.Entry<String, KineticEditBox> entry : fields.entrySet()) {
+            for (Map.Entry<String, KineticTextField> entry : fields.entrySet()) {
                 JsonElement value = rule.get(entry.getKey());
-                KineticEditBox field = entry.getValue();
-                field.setValue(displayValue(entry.getKey(), value));
+                KineticTextField field = entry.getValue();
+                field.setTextValue(displayValue(entry.getKey(), value));
                 field.setPlaceholder(Component.literal(originalValue(entry.getKey())));
                 field.setEnabled(canEditSelected() && isFieldApplicable(entry.getKey()));
-                updateFieldColor(field);
+                field.setDefaultText(field.textValue());
             }
             if (attributesBox != null) {
                 JsonElement attributes = rule.get("attributes");
-                attributesBox.setValue(attributes == null ? "" : GSON.toJson(attributes));
+                attributesBox.setTextValue(attributes == null ? "" : GSON.toJson(attributes));
             }
         } finally {
             populatingFields = false;
         }
-    }
-
-    private void updateFieldColor(KineticEditBox field) {
-        field.setTextColor(field.getValue().isBlank()
-                ? GuiTheme.current().mutedText()
-                : GuiTheme.indicatorColor(GuiTheme.Indicator.SUCCESS));
     }
 
     private static String displayValue(String key, JsonElement value) {
@@ -532,7 +484,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
 
     private void rebuildEditor() {
         if (itemGrid != null) gridScrollOffset = itemGrid.scrollOffset();
-        rebuildUi();
+        rebuild();
     }
 
     private void refreshGrid() {
@@ -540,7 +492,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     private List<ItemGridItem> buildGridItems() {
-        String query = searchBox == null ? "" : searchBox.getValue().trim();
+        String query = searchBox == null ? "" : searchBox.textValue().trim();
         List<GridEntry> rows = new ArrayList<>();
         Set<String> usedIds = new HashSet<>();
 
@@ -611,10 +563,10 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     private boolean hasCurrentPropertiesInput() {
-        for (KineticEditBox field : fields.values()) {
-            if (!field.getValue().isBlank()) return true;
+        for (KineticTextField field : fields.values()) {
+            if (!field.textValue().isBlank()) return true;
         }
-        return attributesBox != null && !attributesBox.getValue().isBlank();
+        return attributesBox != null && !attributesBox.textValue().isBlank();
     }
 
     private boolean matches(String value, String query) {
@@ -624,14 +576,14 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private boolean isRegistered(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
         if (location == null) return false;
-        Item item = ForgeRegistries.ITEMS.getValue(location);
+        Item item = KineticRegistries.items().get(location);
         return item != null && item != Items.AIR;
     }
 
     private ItemStack stackForId(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
         if (location == null) return new ItemStack(Items.BARRIER);
-        Item item = ForgeRegistries.ITEMS.getValue(location);
+        Item item = KineticRegistries.items().get(location);
         return item == null || item == Items.AIR ? new ItemStack(Items.BARRIER) : new ItemStack(item);
     }
 
@@ -684,9 +636,9 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     private boolean flushFields() {
         if (selectedId == null) return true;
         JsonObject rule = currentRuleObject();
-        for (Map.Entry<String, KineticEditBox> entry : fields.entrySet()) {
+        for (Map.Entry<String, KineticTextField> entry : fields.entrySet()) {
             String key = entry.getKey();
-            String value = entry.getValue().getValue().trim();
+            String value = entry.getValue().textValue().trim();
             if (value.isEmpty()) {
                 rule.remove(key);
                 continue;
@@ -705,7 +657,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
             }
         }
         if (attributesBox != null) {
-            String raw = attributesBox.getValue().trim();
+            String raw = attributesBox.textValue().trim();
             if (raw.isEmpty()) {
                 rule.remove("attributes");
             } else {
@@ -760,38 +712,31 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        GuiTheme.panel(graphics, 0, 0, canvasWidth(), canvasHeight());
-        GuiTheme.verticalSeparator(graphics, 240, 10, 318);
-        String attributesValue = attributesBox == null ? "" : attributesBox.getValue();
+    protected void renderBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        KineticTheme.panel(graphics, 0, 0, width(), height());
+        KineticTheme.verticalSeparator(graphics, 240, 10, 318);
+        String attributesValue = attributesBox == null ? "" : attributesBox.textValue();
         if (!attributesValue.equals(lastAttributesValue)) {
             lastAttributesValue = attributesValue;
             refreshGrid();
         }
-        graphics.drawCenteredString(font, title, canvasWidth() / 2, 2, 0xFFFFFF);
-        graphics.drawString(font, Component.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31, 0xFFFFFF, false);
+        graphics.centeredText(title(), width() / 2, 2, 0xFFFFFF, true);
+        graphics.text(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31, 0xFFFFFF, false);
         for (Map.Entry<String, int[]> label : fieldLabels.entrySet()) {
-            graphics.drawString(
-                    font,
-                    font.plainSubstrByWidth(
-                            Component.translatable("gui.itemcontrol.item_property.field." + label.getKey()).getString(),
+            graphics.text(KineticText.trim(
+                            KineticI18n.translatable("gui.itemcontrol.item_property.field." + label.getKey()).getString(),
                             FIELD_WIDTH + 20
-                    ),
-                    label.getValue()[0],
-                    label.getValue()[1],
-                    0xFFDDDDDD,
-                    false
-            );
+                    ), label.getValue()[0], label.getValue()[1], 0xFFDDDDDD, false);
         }
     }
 
     @Override
-    protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
         showHoveredVanillaTooltip(mouseX, mouseY);
         if (transientMessage != null && !transientMessage.isBlank()) {
-            graphics.drawString(font, Component.translatable(transientMessage), PANEL_X, 302, 0xFFFF7777, false);
+            graphics.text(KineticI18n.translatable(transientMessage), PANEL_X, 302, 0xFFFF7777, false);
         } else {
-            graphics.drawString(font, Component.translatable("gui.itemcontrol.item_property.restart_hint"), PANEL_X, 302, 0xFF9BB8FF, false);
+            graphics.text(KineticI18n.translatable("gui.itemcontrol.item_property.restart_hint"), PANEL_X, 302, 0xFF9BB8FF, false);
         }
     }
 
@@ -801,7 +746,7 @@ public final class ItemPropertyEditorScreen extends KineticScreen {
         if (index >= 0 && index < visibleIds.size()) {
             String id = visibleIds.get(index);
             if (!isRegistered(id)) {
-                showTooltip(List.of(Component.literal(id)), null);
+                showTooltip(List.of(Component.literal(id)));
                 return;
             }
         }

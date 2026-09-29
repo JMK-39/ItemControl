@@ -1,35 +1,36 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
-import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
-import dev.xyat.kineticcore.api.client.theme.GuiTheme;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.text.KineticI18n;
+import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
+import dev.xyat.kineticcore.api.client.gui.text.KineticText;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
+import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
+import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
+import dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors;
+import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
+import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
+import dev.xyat.kineticcore.api.client.gui.widget.*;
+import dev.xyat.kineticcore.api.client.gui.widget.list.*;
+
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
-import dev.xyat.kineticcore.api.client.screen.KineticScreen;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.itemcontrol.item.util.ItemBanControl;
-import dev.xyat.kineticcore.api.client.selector.KineticSelectors;
-import dev.xyat.kineticcore.api.client.widget.KineticControl;
-import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
-import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
-import dev.xyat.kineticcore.api.client.widget.input.KineticTextFields.KineticEditBox;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class BannedItemScreen extends KineticScreen {
+public class BannedItemPage extends KineticPage {
 
-    private final Screen parent;
-    private KineticEditBox searchBox;
-    private StateButton ruleBtn, saveBtn, viewBtn, closeBtn;
+    private KineticTextField searchBox;
+    private KineticButton ruleBtn, saveBtn, viewBtn, closeBtn;
     private static int viewMode = 0;
     private static int rememberedScrollOffset = 0;
     private static String lastSearchQuery = "";
@@ -43,37 +44,31 @@ public class BannedItemScreen extends KineticScreen {
 
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_PITCH = 19;
-    private final GridScrollController gridScroll = new GridScrollController();
+    private final KineticScrollController gridScroll = new KineticScrollController();
     private int gridX, gridY, gridCols, contentW, contentH, gridW;
     private boolean compactToolbar;
     private int infoY;
     private int totalH = 0;
 
-    public BannedItemScreen() {
-        this(null);
-    }
-
-    public BannedItemScreen(Screen parent) {
-        super(Component.translatable("gui.itemcontrol.item.banitem.title"));
-        this.parent = parent;
+    public BannedItemPage() {
+        super(KineticI18n.translatable("gui.itemcontrol.item.banitem.title"));
         useCanvas(
-                640f,
-                360f,
+                640,
+                360,
                 4
         );
 
-        setParentScreen(parent);
         configureDraft(BanItemConfig::snapshotData, this::restoreBanSnapshot);
     }
 
     private void restoreBanSnapshot(BanItemConfig.Data snapshot) {
         BanItemConfig.restoreDataSnapshot(snapshot);
         ItemSearchCache.markRulesChanged();
-        if (searchBox != null) updateSearch(searchBox.getValue());
+        if (searchBox != null) updateSearch(searchBox.textValue());
     }
 
     @Override
-    protected void buildUi() {
+    protected void build(KineticUi ui) {
         allMods.clear();
         allMods.addAll(ItemSearchCache.getAllMods());
 
@@ -81,7 +76,7 @@ public class BannedItemScreen extends KineticScreen {
         allTags.addAll(ItemSearchCache.getAllTags());
 
         int sidePadding =
-                switch (layoutLevel()) {
+                switch (layoutMetrics().level()) {
                     case LARGE -> 14;
                     case NORMAL -> 10;
                     case SMALL -> 8;
@@ -91,7 +86,7 @@ public class BannedItemScreen extends KineticScreen {
         compactToolbar =
                 isPortraitLayout()
                         || isCompactLayout()
-                        || canvasWidth() < 520;
+                        || width() < 520;
 
         int searchY = 5;
         int spacing = 5;
@@ -105,7 +100,7 @@ public class BannedItemScreen extends KineticScreen {
         int availableWidth =
                 Math.max(
                         SLOT_SIZE,
-                        canvasWidth()
+                        width()
                                 - sidePadding * 2
                                 - 12
                 );
@@ -125,7 +120,7 @@ public class BannedItemScreen extends KineticScreen {
                 Math.max(
                         sidePadding,
                         (
-                                canvasWidth()
+                                width()
                                         - contentW
                                         - 8
                         ) / 2
@@ -136,7 +131,7 @@ public class BannedItemScreen extends KineticScreen {
                         SLOT_SIZE,
                         Math.max(
                                 1,
-                                (Math.max(SLOT_SIZE, canvasHeight() - gridY - 8) + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH
+                                (Math.max(SLOT_SIZE, height() - gridY - 8) + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH
                         ) * SLOT_PITCH - (SLOT_PITCH - SLOT_SIZE)
                 );
 
@@ -164,19 +159,14 @@ public class BannedItemScreen extends KineticScreen {
                         )
                         : 120;
 
-        searchBox = addTextField(gridX, searchY, searchW, Component.empty());
-        searchBox.setPlaceholder(Component.translatable("gui.itemcontrol.item.banitem.search.hint"));
-        searchBox.setValue(lastSearchQuery);
-        searchBox.setResponder(this::updateSearch);
+        searchBox = ui().textField(gridX, searchY, searchW).build();
+        searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item.banitem.search.hint"));
+        searchBox.setTextValue(lastSearchQuery);
+        searchBox.setDefaultText(lastSearchQuery);
+        searchBox.onTextChange(this::updateSearch);
 
-        ruleBtn = addButton(
-                searchBox.getX() + searchBox.getWidth() + 2,
-                searchY,
-                ruleBtnW,
-                Component.empty(),
-                Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.rule_desc"),
-                () -> {
-                    String query = searchBox.getValue().trim().toLowerCase(Locale.ROOT);
+        ruleBtn = ui().button(searchBox.controlX() + searchBox.controlWidth() + 2, searchY, ruleBtnW).text(Component.empty()).tooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.rule_desc")).onClick(() -> {
+                    String query = searchBox.textValue().trim().toLowerCase(Locale.ROOT);
                     if (BanItemConfig.isProtected(query)) return;
                     if (query.startsWith("@") || query.startsWith("#")) {
                         if (BanItemConfig.data.bannedItems.contains(query)) {
@@ -186,11 +176,10 @@ public class BannedItemScreen extends KineticScreen {
                         }
                         BanItemConfig.rebuildCache();
                         ItemSearchCache.markRulesChanged();
-                        updateSearch(searchBox.getValue());
+                        updateSearch(searchBox.textValue());
                     }
-                }
-        );
-        ((KineticControl) ruleBtn).setVisible(false);
+                }).build();
+        ruleBtn.setControlVisible(false);
 
         int buttonY =
                 compactToolbar
@@ -210,47 +199,32 @@ public class BannedItemScreen extends KineticScreen {
             viewX = closeX - spacing - btnW;
             saveX = viewX - spacing - btnW;
         }
-        saveBtn = addButton(
-                saveX, buttonY, btnW,
-                Component.translatable("gui.itemcontrol.item.banitem.btn.save"),
-                Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.save"),
-                () -> {
+        saveBtn = ui().button(saveX, buttonY, btnW).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.save")).onClick(() -> {
                     String jsonData = BanItemConfig.GSON.toJson(BanItemConfig.data);
                     ItemNetwork.CHANNEL.sendToServer(
                             new ItemNetwork.SaveBanConfigPacket(ItemNetwork.EDITOR_BAN_ITEM, jsonData)
                     );
-                }
-        );
+                }).build();
 
-        viewBtn = addButton(
-                viewX, buttonY, btnW,
-                getViewModeText(),
-                Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.view"),
-                () -> {
+        viewBtn = ui().button(viewX, buttonY, btnW).text(getViewModeText()).tooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.view")).onClick(() -> {
                     viewMode = (viewMode + 1) % 3;
-                    ((KineticControl) viewBtn).setText(getViewModeText());
-                    updateSearch(searchBox.getValue());
-                }
-        );
+                    viewBtn.setText(getViewModeText());
+                    updateSearch(searchBox.textValue());
+                }).build();
 
-        closeBtn = addButton(
-                closeX, buttonY, btnW,
-                Component.translatable("gui.itemcontrol.item.banitem.btn.back"),
-                Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back"),
-                this::onClose
-        );
+        closeBtn = ui().button(closeX, buttonY, btnW).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back")).onClick(this::close).build();
 
         // Keep the permanent toolbar controls explicit through the public Kinetic contract.
         // The rule button is the only conditional control in this row.
-        ((KineticControl) saveBtn).setText(Component.translatable("gui.itemcontrol.item.banitem.btn.save"));
-        ((KineticControl) saveBtn).setVisible(true);
-        ((KineticControl) saveBtn).setEnabled(true);
-        ((KineticControl) viewBtn).setText(getViewModeText());
-        ((KineticControl) viewBtn).setVisible(true);
-        ((KineticControl) viewBtn).setEnabled(true);
-        ((KineticControl) closeBtn).setText(Component.translatable("gui.itemcontrol.item.banitem.btn.back"));
-        ((KineticControl) closeBtn).setVisible(true);
-        ((KineticControl) closeBtn).setEnabled(true);
+        saveBtn.setText(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.save"));
+        saveBtn.setControlVisible(true);
+        saveBtn.setEnabled(true);
+        viewBtn.setText(getViewModeText());
+        viewBtn.setControlVisible(true);
+        viewBtn.setEnabled(true);
+        closeBtn.setText(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.back"));
+        closeBtn.setControlVisible(true);
+        closeBtn.setEnabled(true);
 
         infoY =
                 compactToolbar
@@ -260,12 +234,12 @@ public class BannedItemScreen extends KineticScreen {
         updateSearch(lastSearchQuery);
 
         ItemSearchCache.prepareCache(() -> {
-            if (KineticClientRuntime.currentScreen() != this) return;
+            if (!isOpen()) return;
             allMods.clear();
             allMods.addAll(ItemSearchCache.getAllMods());
             allTags.clear();
             allTags.addAll(ItemSearchCache.getAllTags());
-            updateSearch(searchBox == null ? lastSearchQuery : searchBox.getValue());
+            updateSearch(searchBox == null ? lastSearchQuery : searchBox.textValue());
         });
     }
 
@@ -274,9 +248,9 @@ public class BannedItemScreen extends KineticScreen {
     }
 
     private Component getViewModeText() {
-        if (viewMode == 0) return Component.translatable("gui.itemcontrol.item.banitem.view.all");
-        if (viewMode == 1) return Component.translatable("gui.itemcontrol.item.banitem.view.banned");
-        return Component.translatable("gui.itemcontrol.item.banitem.view.inventory");
+        if (viewMode == 0) return KineticI18n.translatable("gui.itemcontrol.item.banitem.view.all");
+        if (viewMode == 1) return KineticI18n.translatable("gui.itemcontrol.item.banitem.view.banned");
+        return KineticI18n.translatable("gui.itemcontrol.item.banitem.view.inventory");
     }
 
     private List<KineticItemSearch.CachedItem> getInventoryItems() {
@@ -291,32 +265,32 @@ public class BannedItemScreen extends KineticScreen {
         if (query.startsWith("@")) {
             if (allMods.contains(query) && !query.equals("@")) {
                 isAutoCompleteMode = false;
-                ((KineticControl) ruleBtn).setVisible(true);
+                ruleBtn.setControlVisible(true);
                 boolean isRuleBanned = BanItemConfig.data.bannedItems.contains(query);
-                ((KineticControl) ruleBtn).setText(Component.translatable(isRuleBanned ? "gui.itemcontrol.item.banitem.rule.unban" : "gui.itemcontrol.item.banitem.rule.ban"));
+                ruleBtn.setText(KineticI18n.translatable(isRuleBanned ? "gui.itemcontrol.item.banitem.rule.unban" : "gui.itemcontrol.item.banitem.rule.ban"));
                 updateDisplayListForExactMatch(query);
             } else {
                 isAutoCompleteMode = true;
-                ((KineticControl) ruleBtn).setVisible(false);
+                ruleBtn.setControlVisible(false);
                 autoCompleteList = ItemSearchCache.searchStrings("ban_mod", allMods, query);
                 totalH = autoCompleteList.size() * SLOT_PITCH;
             }
         } else if (query.startsWith("#")) {
             if (allTags.contains(query) && !query.equals("#")) {
                 isAutoCompleteMode = false;
-                ((KineticControl) ruleBtn).setVisible(true);
+                ruleBtn.setControlVisible(true);
                 boolean isRuleBanned = BanItemConfig.data.bannedItems.contains(query);
-                ((KineticControl) ruleBtn).setText(Component.translatable(isRuleBanned ? "gui.itemcontrol.item.banitem.rule.unban" : "gui.itemcontrol.item.banitem.rule.ban"));
+                ruleBtn.setText(KineticI18n.translatable(isRuleBanned ? "gui.itemcontrol.item.banitem.rule.unban" : "gui.itemcontrol.item.banitem.rule.ban"));
                 updateDisplayListForExactMatch(query);
             } else {
                 isAutoCompleteMode = true;
-                ((KineticControl) ruleBtn).setVisible(false);
+                ruleBtn.setControlVisible(false);
                 autoCompleteList = ItemSearchCache.searchStrings("ban_tag", allTags, query);
                 totalH = autoCompleteList.size() * SLOT_PITCH;
             }
         } else {
             isAutoCompleteMode = false;
-            ((KineticControl) ruleBtn).setVisible(false);
+            ruleBtn.setControlVisible(false);
             updateDisplayListForExactMatch(query);
         }
 
@@ -361,8 +335,8 @@ public class BannedItemScreen extends KineticScreen {
             initNbt = idStr.substring(bracket);
         }
 
-        if (this.minecraft != null) {
-            KineticSelectors.openNbtEditor(this, initNbt, (savedNbt) -> {
+        {
+            KineticSelectors.openNbtEditor(initNbt, (savedNbt) -> {
                 String cleanNbt = savedNbt == null ? "" : savedNbt.trim();
                 String newIdStr = baseId + cleanNbt;
                 if (isRule) removeBanRule(idStr);
@@ -370,8 +344,8 @@ public class BannedItemScreen extends KineticScreen {
                 viewMode = 1;
                 gridScroll.reset();
                 rememberedScrollOffset = 0;
-                if (viewBtn != null) ((KineticControl) viewBtn).setText(getViewModeText());
-                updateSearch(searchBox == null ? "" : searchBox.getValue());
+                if (viewBtn != null) viewBtn.setText(getViewModeText());
+                updateSearch(searchBox == null ? "" : searchBox.textValue());
             });
         }
     }
@@ -414,41 +388,39 @@ public class BannedItemScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderCanvasBackground(@NotNull GuiGraphics g, int smx, int smy, float pt) {
-        GuiTheme.canvasBackground(g, canvasWidth(), canvasHeight());
-        GuiTheme.panelAlt(g, gridX - 3, gridY - 3, contentW + 12, contentH + 6);
+    protected void renderBackground(KineticGraphics g, int smx, int smy, float pt) {
+        KineticTheme.canvasBackground(g, width(), height());
+        KineticTheme.panelAlt(g, gridX - 3, gridY - 3, contentW + 12, contentH + 6);
     }
 
     @Override
-    protected void renderCanvasForeground(@NotNull GuiGraphics g, int smx, int smy, float pt) {
+    protected void renderForeground(KineticGraphics g, int smx, int smy, float pt) {
         Component countText;
 
         int countX =
                 compactToolbar
                         ? gridX
-                        : searchBox.getX()
-                        + searchBox.getWidth()
+                        : searchBox.controlX()
+                        + searchBox.controlWidth()
                         + 10;
 
         if (!compactToolbar
                 && ruleBtn != null
-                && ((KineticControl) ruleBtn).isVisible()) {
+                && ruleBtn.controlVisible()) {
             countX =
-                    ruleBtn.getX()
-                            + ruleBtn.getWidth()
+                    ruleBtn.controlX()
+                            + ruleBtn.controlWidth()
                             + 10;
         }
 
         if (isAutoCompleteMode) {
-            countText = Component.translatable(
+            countText = KineticI18n.translatable(
                     "gui.itemcontrol.item.banitem.autocomplete.matches_count",
-                    Component.literal(String.valueOf(autoCompleteList.size())).withStyle(ChatFormatting.YELLOW)
-            ).withStyle(ChatFormatting.GRAY);
-            g.drawString(font, countText, countX, infoY, 0xFFFFFF, false);
+                    Component.literal(String.valueOf(autoCompleteList.size()))
+            );
+            g.text(countText, countX, infoY, KineticTheme.current().mutedText(), false);
 
-            enableCanvasScissor(
-                    g,
-                    gridX,
+            g.scissor(gridX,
                     gridY,
                     gridX + contentW,
                     gridY + contentH
@@ -458,30 +430,29 @@ public class BannedItemScreen extends KineticScreen {
                 int y = gridY + i * SLOT_PITCH - (int) Math.round(gridScroll.smoothOffset());
                 if (y + SLOT_SIZE > gridY && y < gridY + contentH) {
                     boolean hovered = smx >= gridX && smx < gridX + gridW && smy >= y && smy < y + SLOT_SIZE;
-                    GuiTheme.stateSurface(
+                    KineticTheme.stateSurface(
                             g,
                             gridX,
                             y,
                             gridW,
                             SLOT_SIZE,
-                            i % 2 == 0 ? GuiTheme.Surface.PANEL : GuiTheme.Surface.PANEL_ALT,
+                            i % 2 == 0 ? KineticTheme.Surface.PANEL : KineticTheme.Surface.PANEL_ALT,
                             false,
                             hovered,
                             false
                     );
-                    g.drawString(font, entry, gridX + 5, y + 6, 0xFFFFFF);
+                    g.text(entry, gridX + 5, y + 6, 0xFFFFFF, true);
                 }
             }
         } else {
-            countText = Component.literal(String.valueOf(displayList.size()))
-                    .withStyle(viewMode == 1 ? ChatFormatting.RED : ChatFormatting.GREEN)
-                    .append(Component.literal(" / ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal(String.valueOf(currentSourceList.size())).withStyle(ChatFormatting.YELLOW));
-            g.drawString(font, countText, countX, infoY, 0xFFFFFF, false);
+            countText = KineticI18n.translatable(
+                    viewMode == 1 ? "gui.itemcontrol.item.banitem.count.banned" : "gui.itemcontrol.item.banitem.count.normal",
+                    displayList.size(),
+                    currentSourceList.size()
+            );
+            g.text(countText, countX, infoY, KineticTheme.current().mutedText(), false);
 
-            enableCanvasScissor(
-                    g,
-                    gridX,
+            g.scissor(gridX,
                     gridY,
                     gridX + contentW,
                     gridY + contentH
@@ -495,7 +466,7 @@ public class BannedItemScreen extends KineticScreen {
                 if (y + SLOT_SIZE > gridY && y < gridY + contentH) {
                     boolean hovered = smx >= x && smx < x + SLOT_SIZE
                             && smy >= y && smy < y + SLOT_SIZE;
-                    GuiTheme.itemSlot(
+                    KineticTheme.itemSlot(
                             g,
                             x,
                             y,
@@ -505,9 +476,8 @@ public class BannedItemScreen extends KineticScreen {
                     );
 
                     ItemBanControl.withSkip(() -> {
-                        GuiTheme.item(
+                        KineticTheme.item(
                                 g,
-                                font,
                                 ci.stack(),
                                 x,
                                 y,
@@ -519,15 +489,14 @@ public class BannedItemScreen extends KineticScreen {
                     });
                     boolean isBannedMarker = ci.id().startsWith("@") || ci.id().startsWith("#") || BanItemConfig.isBanned(ci.stack());
                     if (isBannedMarker) {
-                        GuiTheme.indicatorFill(g, x + 2, y + SLOT_SIZE - 3, SLOT_SIZE - 3, 2, GuiTheme.Indicator.DANGER);
+                        KineticTheme.indicatorFill(g, x + 2, y + SLOT_SIZE - 3, SLOT_SIZE - 3, 2, KineticTheme.Indicator.DANGER);
                     }
                 }
             }
         }
-        disableCanvasScissor(g);
+        g.endScissor();
 
-        GuiTheme.scrollbar(
-                gridScroll,
+        gridScroll.render(
                 g,
                 smx,
                 smy,
@@ -540,43 +509,49 @@ public class BannedItemScreen extends KineticScreen {
 
     }
 
-    private boolean isHoveringButton(StateButton btn, double mx, double my) {
-        return btn != null && ((KineticControl) btn).isVisible() && mx >= btn.getX() && mx < btn.getX() + btn.getWidth() && my >= btn.getY() && my < btn.getY() + btn.getHeight();
+    private boolean isHoveringButton(KineticButton btn, double mx, double my) {
+        return btn != null && btn.controlVisible() && btn.contains(mx, my);
     }
 
     @Override
-    protected void renderTooltips(GuiGraphics g, int smx, int smy, int mx, int my) {
+    protected void renderTooltips(int smx, int smy) {
+        // 原实现按屏幕坐标请求提示并在顶部下移 15 像素；这里用 GUI 缩放后的指针位置保持一致
+        // The old code requested tooltips in screen coordinates, shifted 15 px down near the top; the GUI-scaled cursor
+        // position keeps that behaviour.
+        KineticClientRuntime.CursorPosition cursor = KineticClientRuntime.scaledCursorPosition();
+        int mx = (int) cursor.x();
+        int my = (int) cursor.y();
         int tooltipY = smy < 30 ? my + 15 : my;
 
-        if (isHoveringButton(saveBtn, smx, smy)) { KineticOverlays.requestTooltip(Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.save"), mx, tooltipY); return; }
-        if (isHoveringButton(viewBtn, smx, smy)) { KineticOverlays.requestTooltip(Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.view"), mx, tooltipY); return; }
-        if (isHoveringButton(closeBtn, smx, smy)) { KineticOverlays.requestTooltip(Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back"), mx, tooltipY); return; }
-        if (isHoveringButton(ruleBtn, smx, smy)) { KineticOverlays.requestTooltip(Component.translatable("gui.itemcontrol.item.banitem.tooltip.btn.rule_desc"), mx, tooltipY); return; }
+        if (isHoveringButton(saveBtn, smx, smy)) { KineticOverlays.requestTooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.save"), mx, tooltipY); return; }
+        if (isHoveringButton(viewBtn, smx, smy)) { KineticOverlays.requestTooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.view"), mx, tooltipY); return; }
+        if (isHoveringButton(closeBtn, smx, smy)) { KineticOverlays.requestTooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back"), mx, tooltipY); return; }
+        if (isHoveringButton(ruleBtn, smx, smy)) { KineticOverlays.requestTooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.rule_desc"), mx, tooltipY); return; }
 
         if (!isAutoCompleteMode) {
             int countX =
                     compactToolbar
                             ? gridX
-                            : searchBox.getX()
-                            + searchBox.getWidth()
+                            : searchBox.controlX()
+                            + searchBox.controlWidth()
                             + 10;
 
             if (!compactToolbar
                     && ruleBtn != null
-                    && ((KineticControl) ruleBtn).isVisible()) {
+                    && ruleBtn.controlVisible()) {
                 countX =
-                        ruleBtn.getX()
-                                + ruleBtn.getWidth()
+                        ruleBtn.controlX()
+                                + ruleBtn.controlWidth()
                                 + 10;
             }
             String rawStr = displayList.size() + " / " + currentSourceList.size();
 
-            if (smx >= countX && smx < countX + font.width(rawStr) && smy >= infoY && smy < infoY + font.lineHeight) {
+            if (smx >= countX && smx < countX + KineticText.width(rawStr) && smy >= infoY && smy < infoY + KineticText.lineHeight()) {
                 List<Component> tooltip = new ArrayList<>();
-                tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.count.title"));
-                if (viewMode == 0) tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.count.all_view.desc"));
-                else if (viewMode == 1) tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.count.banned_view.desc"));
-                else tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.view.inventory"));
+                tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.title"));
+                if (viewMode == 0) tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.all_view.desc"));
+                else if (viewMode == 1) tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.banned_view.desc"));
+                else tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.view.inventory"));
                 KineticOverlays.requestTooltip(tooltip, mx, tooltipY);
                 return;
             }
@@ -595,9 +570,9 @@ public class BannedItemScreen extends KineticScreen {
                         List<Component> tooltip = new ArrayList<>();
                         if (ci.id().startsWith("@") || ci.id().startsWith("#")) {
                             tooltip.add(Component.literal(ci.id()));
-                            tooltip.add(Component.translatable(ci.id().startsWith("@") ? "gui.itemcontrol.item.banitem.tooltip.mod_rule" : "gui.itemcontrol.item.banitem.tooltip.tag_rule"));
+                            tooltip.add(KineticI18n.translatable(ci.id().startsWith("@") ? "gui.itemcontrol.item.banitem.tooltip.mod_rule" : "gui.itemcontrol.item.banitem.tooltip.tag_rule"));
                             tooltip.add(Component.empty());
-                            tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.right_unban_rule"));
+                            tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.right_unban_rule"));
                         } else {
                             String ruleIdentifier = getRuleIdentifier(ci);
                             String listedRule = getListedRuleFor(ci);
@@ -605,13 +580,13 @@ public class BannedItemScreen extends KineticScreen {
                             tooltip.add(ItemCacheHudRenderer.getDisplayNameCustom(ci.stack()));
                             tooltip.add(Component.literal(ruleIdentifier));
                             tooltip.add(Component.empty());
-                            tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
+                            tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
                             if (isProtected) {
-                                tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.protected"));
+                                tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.protected"));
                             } else if (BanItemConfig.isBanned(ci.stack())) {
-                                if (!listedRule.isBlank()) tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.right_unban"));
-                                else tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.banned_by_rule"));
-                            } else tooltip.add(Component.translatable("gui.itemcontrol.item.banitem.tooltip.left_ban"));
+                                if (!listedRule.isBlank()) tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.right_unban"));
+                                else tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.banned_by_rule"));
+                            } else tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.left_ban"));
                         }
                         KineticOverlays.requestTooltip(tooltip, mx, my);
                         return null;
@@ -622,11 +597,14 @@ public class BannedItemScreen extends KineticScreen {
     }
 
     @Override
-    protected boolean canvasMouseClicked(double smx, double smy, int btn) {
-        if (KineticMouseButtons.isPrimary(btn)
-                && gridScroll.beginDrag(
+    protected boolean onMouseClickCapture(MouseInput input) {
+        // 原 canvasMouseClicked 全部在控件之前处理 / The old canvasMouseClicked handled all of this before controls.
+        double smx = input.x();
+        double smy = input.y();
+        if (gridScroll.beginDrag(
                         smx,
                         smy,
+                        input.button(),
                         gridX + contentW + 2,
                         gridY,
                         4,
@@ -641,7 +619,7 @@ public class BannedItemScreen extends KineticScreen {
             if (isAutoCompleteMode) {
                 int localY = (int) (smy - gridY + gridScroll.smoothOffset());
                 int idx = localY / SLOT_PITCH;
-                if (localY % SLOT_PITCH < SLOT_SIZE && idx >= 0 && idx < autoCompleteList.size()) { if (searchBox != null) searchBox.setValue(autoCompleteList.get(idx)); return true;
+                if (localY % SLOT_PITCH < SLOT_SIZE && idx >= 0 && idx < autoCompleteList.size()) { if (searchBox != null) searchBox.setTextValue(autoCompleteList.get(idx)); return true;
                 }
             } else {
                 int localX = (int) (smx - gridX);
@@ -657,45 +635,45 @@ public class BannedItemScreen extends KineticScreen {
                     String ruleIdentifier = getRuleIdentifier(ci);
                     if (BanItemConfig.isProtected(ruleIdentifier)) return true;
                     if (ruleIdentifier.startsWith("@") || ruleIdentifier.startsWith("#")) {
-                        if (KineticMouseButtons.isSecondary(btn)) {
+                        if (input.isRight()) {
                             removeBanRule(ruleIdentifier);
-                            updateSearch(searchBox.getValue());
+                            updateSearch(searchBox.textValue());
                         }
                         return true;
                     }
                     String listedRule = getListedRuleFor(ci);
-                    if (KineticClientRuntime.shiftModifierDown() && KineticMouseButtons.isPrimary(btn)) {
+                    if (KineticClientRuntime.shiftModifierDown() && input.isLeft()) {
                         openNbtEditor(ruleIdentifier, !listedRule.isBlank(), ci.stack());
                         return true;
                     }
-                    if (KineticMouseButtons.isPrimary(btn) && listedRule.isBlank() && !BanItemConfig.isBanned(ci.stack())) {
+                    if (input.isLeft() && listedRule.isBlank() && !BanItemConfig.isBanned(ci.stack())) {
                         addBanRule(ruleIdentifier);
-                        updateSearch(searchBox.getValue());
-                    } else if (KineticMouseButtons.isSecondary(btn) && !listedRule.isBlank()) {
+                        updateSearch(searchBox.textValue());
+                    } else if (input.isRight() && !listedRule.isBlank()) {
                         removeBanRule(listedRule);
-                        updateSearch(searchBox.getValue());
+                        updateSearch(searchBox.textValue());
                     }
                     return true;
                 }
             }
         }
-        return super.canvasMouseClicked(smx, smy, btn);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseReleased(double smx, double smy, int btn) {
-        if (gridScroll.release(btn)) {
+    protected boolean onMouseRelease(MouseInput input) {
+        if (gridScroll.release(input.button())) {
             rememberedScrollOffset = gridScroll.offset();
             return true;
         }
 
-        return super.canvasMouseReleased(smx, smy, btn);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseDragged(double smx, double smy, int btn, double dx, double dy) {
+    protected boolean onMouseDrag(MouseDragInput input) {
         if (gridScroll.drag(
-                smy,
+                input.y(),
                 gridY,
                 contentH,
                 20
@@ -704,17 +682,17 @@ public class BannedItemScreen extends KineticScreen {
             return true;
         }
 
-        return super.canvasMouseDragged(smx, smy, btn, dx, dy);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseScrolled(double smx, double smy, double d) {
-        if (gridScroll.scroll(d, SLOT_PITCH)) {
+    protected boolean onMouseScroll(ScrollInput input) {
+        if (gridScroll.scroll(input.deltaY(), SLOT_PITCH)) {
             rememberedScrollOffset = gridScroll.offset();
             return true;
         }
 
-        return super.canvasMouseScrolled(smx, smy, d);
+        return false;
     }
 
 }

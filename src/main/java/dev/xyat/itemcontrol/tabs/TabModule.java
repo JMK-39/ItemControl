@@ -2,6 +2,7 @@ package dev.xyat.itemcontrol.tabs;
 
 import dev.xyat.itemcontrol.tabs.jei.TabJeiPlugin;
 import dev.xyat.itemcontrol.tabs.mixin.client.Access;
+import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
@@ -106,7 +107,7 @@ public final class TabModule {
                 }
             }
 
-            KineticCreativeTabs.refreshSearch(allSearchableItems);
+            KineticItemSearch.refreshCreativeSearch(allSearchableItems);
 
             if (KineticPlatform.isModLoaded("jei")) {
                 TabJeiPlugin.refreshJei();

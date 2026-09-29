@@ -1,5 +1,6 @@
 package dev.xyat.itemcontrol.cleaner;
 
+import dev.xyat.kineticcore.api.text.KineticI18n;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -10,7 +11,6 @@ import dev.xyat.itemcontrol.cleaner.event.AutoCleanerEventHandler;
 import dev.xyat.itemcontrol.cleaner.client.gui.CleanerMenu;
 import dev.xyat.kineticcore.api.menu.KineticMenus;
 import dev.xyat.kineticcore.api.command.CommandText;
-import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -70,8 +70,8 @@ public class CleanerCommand {
 
         if (source.hasPermission(2)) {
             msg.append("\n").append(CommandText.executable("/kt clean trash", "cmd.itemcontrol.cleaner.clean.trash.desc"));
-            msg.append("\n").append(CommandText.createSuggestCommand("/kt clean auto <true/false>", "/kt clean auto ", "cmd.itemcontrol.cleaner.clean.auto.desc"));
-            msg.append("\n").append(CommandText.createSuggestCommand("/kt clean toggle <true/false>", "/kt clean toggle ", "cmd.itemcontrol.cleaner.clean.toggle.desc"));
+            msg.append("\n").append(CommandText.suggest("/kt clean auto <true/false>", "/kt clean auto ", "cmd.itemcontrol.cleaner.clean.auto.desc"));
+            msg.append("\n").append(CommandText.suggest("/kt clean toggle <true/false>", "/kt clean toggle ", "cmd.itemcontrol.cleaner.clean.toggle.desc"));
         }
 
         source.sendSuccess(() -> msg, false);
@@ -85,17 +85,17 @@ public class CleanerCommand {
             int internalIndex = Math.max(0, userIndex - 1);
 
             if (internalIndex >= data.getHistorySize() && internalIndex != 0) {
-                source.sendFailure(Component.translatable("cmd.itemcontrol.cleaner.clean.no_history"));
+                source.sendFailure(KineticI18n.translatable("cmd.itemcontrol.cleaner.clean.no_history"));
                 return 0;
             }
 
             SimpleContainer storage = data.getRecord(internalIndex);
             KineticMenus.open(player,
-                    Component.translatable("gui.itemcontrol.cleaner.cleaner.title"),
+                    KineticI18n.translatable("gui.itemcontrol.cleaner.cleaner.title"),
                     (id, inv, menuPlayer) -> new CleanerMenu(id, inv, storage));
             return 1;
         } catch (Exception e) {
-            source.sendFailure(Component.translatable("cmd.itemcontrol.cleaner.clean.open_failed",
+            source.sendFailure(KineticI18n.translatable("cmd.itemcontrol.cleaner.clean.open_failed",
                     Component.literal(String.valueOf(e.getMessage()))));
             return 0;
         }
@@ -103,7 +103,7 @@ public class CleanerCommand {
 
     private static int clearTrashBin(CommandSourceStack source) {
         CleanerSavedData.get(source.getLevel()).clearAll();
-        source.sendSuccess(() -> Component.translatable("cmd.itemcontrol.cleaner.bin.cleared").withStyle(ChatFormatting.GREEN), true);
+        source.sendSuccess(() -> KineticI18n.translatable("cmd.itemcontrol.cleaner.bin.cleared"), true);
         return 1;
     }
 
@@ -112,16 +112,15 @@ public class CleanerCommand {
             String key = enabled
                     ? "cmd.itemcontrol.cleaner.auto.already_enabled"
                     : "cmd.itemcontrol.cleaner.auto.already_disabled";
-            ctx.getSource().sendSuccess(() -> Component.translatable(key), false);
+            ctx.getSource().sendSuccess(() -> KineticI18n.translatable(key), false);
             return 1;
         }
 
         CleanerConfig.enableCleaner = enabled;
         CleanerConfig.saveServerSettings();
         AutoCleanerEventHandler.resetTimer();
-        Component status = Component.translatable(enabled ? "cmd.itemcontrol.cleaner.status.on" : "cmd.itemcontrol.cleaner.status.off")
-                .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED);
-        ctx.getSource().sendSuccess(() -> Component.translatable("cmd.itemcontrol.cleaner.auto.status", status), true);
+        Component status = KineticI18n.translatable(enabled ? "cmd.itemcontrol.cleaner.status.on" : "cmd.itemcontrol.cleaner.status.off");
+        ctx.getSource().sendSuccess(() -> KineticI18n.translatable("cmd.itemcontrol.cleaner.auto.status", status), true);
         return 1;
     }
 
@@ -131,7 +130,7 @@ public class CleanerCommand {
             String key = enabled
                     ? "cmd.itemcontrol.cleaner.toggle.already_enabled"
                     : "cmd.itemcontrol.cleaner.toggle.already_disabled";
-            ctx.getSource().sendSuccess(() -> Component.translatable(key), false);
+            ctx.getSource().sendSuccess(() -> KineticI18n.translatable(key), false);
             return 1;
         }
 
@@ -139,7 +138,7 @@ public class CleanerCommand {
         CleanerConfig.saveServerSettings();
         AutoCleanerEventHandler.resetTimer();
         String key = enabled ? "cmd.itemcontrol.cleaner.toggle.enabled" : "cmd.itemcontrol.cleaner.toggle.disabled";
-        ctx.getSource().sendSuccess(() -> Component.translatable(key), true);
+        ctx.getSource().sendSuccess(() -> KineticI18n.translatable(key), true);
         return 1;
     }
 }

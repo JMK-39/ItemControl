@@ -1,5 +1,6 @@
 package dev.xyat.itemcontrol.item;
 
+import dev.xyat.kineticcore.api.text.KineticI18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -27,9 +28,9 @@ public class VoidPlaceholderItem extends Item {
     @Override
     public void appendHoverText(@NotNull ItemStack stack, @Nullable Level level, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
         // 第一行：警告这是禁用物品 (红色)
-        tooltip.add(Component.translatable("tip.itemcontrol.item.void_placeholder.warning"));
+        tooltip.add(KineticI18n.translatable("tip.itemcontrol.item.void_placeholder.warning"));
         // 第二行：说明无法获取和使用 (灰色)
-        tooltip.add(Component.translatable("tip.itemcontrol.item.void_placeholder.usage"));
+        tooltip.add(KineticI18n.translatable("tip.itemcontrol.item.void_placeholder.usage"));
     }
 
     @Override

@@ -2,7 +2,7 @@ package dev.xyat.itemcontrol.tabs.network;
 
 import dev.xyat.itemcontrol.tabs.TabConfig;
 import dev.xyat.itemcontrol.tabs.TabsModule;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.config.client.KTConfigApi;
 import dev.xyat.kineticcore.api.network.KineticCompression;
 import dev.xyat.kineticcore.api.network.NetworkCodec;

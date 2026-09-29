@@ -1,14 +1,17 @@
 package dev.xyat.itemcontrol.cleaner.client.gui;
 
+import dev.xyat.kineticcore.api.text.KineticI18n;
+import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
+import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
+import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
+import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
+import dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors;
+import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
+import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
-import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
-import dev.xyat.kineticcore.api.client.theme.GuiTheme;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
-import dev.xyat.kineticcore.api.client.selector.KineticSelectors;
-import dev.xyat.kineticcore.api.client.screen.KineticScreen;
-import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
@@ -17,18 +20,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 @OnlyIn(Dist.CLIENT)
-public final class CleanerItemRuleEditorScreen extends KineticScreen {
-    public Screen getParent() {
-        return parent;
-    }
-
+public final class CleanerItemRuleEditorPage extends KineticPage {
     public enum Mode {
         CLEANER_WHITELIST(
                 "gui.itemcontrol.cleaner.item_rule_editor.whitelist.title",
@@ -77,21 +75,17 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
     private static final int GRID_H = GRID_ROWS * CELL_SIZE - SLOT_GAP;
     private static final int SCROLL_X = GRID_X + GRID_W + 6;
 
-    private final Screen parent;
     private final Mode mode;
     private final Function<List<String>, Boolean> saveHandler;
     private final List<RuleDraft> rules = new ArrayList<>();
-    private final GridScrollController gridScroll = new GridScrollController();
+    private final KineticScrollController gridScroll = new KineticScrollController();
 
-    public CleanerItemRuleEditorScreen(
-            Screen parent,
+    public CleanerItemRuleEditorPage(
             Mode mode,
             List<String> initialRules,
             Function<List<String>, Boolean> saveHandler
     ) {
-        super(Component.translatable(mode.titleKey));
-        this.parent = parent;
-        setParentScreen(parent);
+        super(KineticI18n.translatable(mode.titleKey));
         this.mode = mode;
         this.saveHandler = saveHandler;
         if (initialRules != null) {
@@ -102,7 +96,7 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
                 }
             }
         }
-        useCanvas(640F, 360F, 6);
+        useCanvas(640, 360, 6);
         configureStandaloneDraft(
                 this::ruleValues,
                 this::restoreRuleValues
@@ -126,42 +120,36 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void buildUi() {
+    protected void build(KineticUi ui) {
         updateScrollRange();
 
-        addButton(
-                34, 328, 104,
-                Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.add"),
-                null,
-                this::openItemSelector
-        );
+        ui.button(34, 328, 104)
+                .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.add"))
+                .onClick(this::openItemSelector)
+                .build();
 
-        addButton(
-                432, 328, 80,
-                Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.save"),
-                null,
-                this::save
-        );
+        ui.button(432, 328, 80)
+                .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.save"))
+                .onClick(this::save)
+                .build();
 
-        addButton(
-                522, 328, 80,
-                Component.translatable("gui.itemcontrol.cleaner.item_rule_editor.back"),
-                null,
-                this::closeToParent
-        );
+        ui.button(522, 328, 80)
+                .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.back"))
+                .onClick(this::closeToParent)
+                .build();
     }
 
     private void openItemSelector() {
-        if (minecraft == null) return;
-        KineticSelectors.openItemSelector(this, selection -> {
+        if (!isAttached()) return;
+        KineticSelectors.openItemSelector(selection -> {
             if (selection == null) return;
             String value = selectionValue(selection);
             if (value.isBlank()) {
-                KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.invalid_selection"));
+                KineticOverlays.toast(KineticI18n.translatable("msg.itemcontrol.cleaner.item_rule_editor.invalid_selection"));
                 return;
             }
             if (!mode.groupRules && !selection.isItem()) {
-                KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.item_only"));
+                KineticOverlays.toast(KineticI18n.translatable("msg.itemcontrol.cleaner.item_rule_editor.item_only"));
                 return;
             }
             if (mode.singleItem) {
@@ -188,7 +176,7 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
 
     private void save() {
         if (mode.singleItem && rules.isEmpty()) {
-            KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.area_tool_required"));
+            KineticOverlays.toast(KineticI18n.translatable("msg.itemcontrol.cleaner.item_rule_editor.area_tool_required"));
             return;
         }
         List<String> values = new ArrayList<>(rules.size());
@@ -197,21 +185,21 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
         }
         try {
             if (!Boolean.TRUE.equals(saveHandler.apply(values))) {
-                KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
+                KineticOverlays.toast(KineticI18n.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
             } else {
                 commitDraft();
             }
         } catch (Throwable throwable) {
-            KineticOverlays.toast(Component.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
+            KineticOverlays.toast(KineticI18n.translatable("msg.itemcontrol.cleaner.item_rule_editor.save_failed"));
         }
     }
 
     private void closeToParent() {
-        if (minecraft != null) navigateBack();
+        if (isAttached()) navigateBack();
     }
 
     @Override
-    protected boolean handleCloseRequest() {
+    protected boolean onCloseRequested() {
         closeToParent();
         return true;
     }
@@ -222,32 +210,32 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, canvasWidth(), canvasHeight(), 0xFF171717, 0xFF0E0E0E);
-        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
-        GuiTheme.panel(graphics, GRID_X - 6, GRID_Y - 6, GRID_W + 12, GRID_H + 12);
+    protected void renderBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        graphics.fillGradient(0, 0, width(), height(), 0xFF171717, 0xFF0E0E0E);
+        KineticTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
+        KineticTheme.panel(graphics, GRID_X - 6, GRID_Y - 6, GRID_W + 12, GRID_H + 12);
     }
 
     @Override
-    protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.drawCenteredString(font, title, canvasWidth() / 2, 11, 0xFFFFFF);
+    protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        graphics.centeredText(title(), width() / 2, 11, 0xFFFFFF, true);
         renderGrid(graphics, mouseX, mouseY);
         if (rules.isEmpty()) {
-            graphics.drawCenteredString(font, Component.translatable(mode.emptyKey), canvasWidth() / 2, 164, 0xFFFFFF);
+            graphics.centeredText(KineticI18n.translatable(mode.emptyKey), width() / 2, 164, 0xFFFFFF, true);
         }
-        graphics.drawString(font, Component.translatable(
+        graphics.text(KineticI18n.translatable(
                 mode.groupRules
                         ? "gui.itemcontrol.cleaner.item_rule_editor.hint.rules"
                         : "gui.itemcontrol.cleaner.item_rule_editor.hint.item"
         ), 34, 35, 0xFFFFFF, false);
     }
 
-    private void renderGrid(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderGrid(KineticGraphics graphics, int mouseX, int mouseY) {
         int firstRow = gridScroll.smoothIndexOffset();
         int shift = gridScroll.visualShift(CELL_SIZE);
         int start = firstRow * GRID_COLS;
         int end = Math.min(start + (GRID_ROWS + (shift > 0 ? 1 : 0)) * GRID_COLS, rules.size());
-        enableCanvasScissor(graphics, GRID_X, GRID_Y, GRID_X + GRID_W, GRID_Y + GRID_H);
+        graphics.scissor(GRID_X, GRID_Y, GRID_X + GRID_W, GRID_Y + GRID_H);
         try {
             for (int index = start; index < end; index++) {
             int local = index - start;
@@ -259,11 +247,11 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
             boolean hovered = contains(mouseX, mouseY, GRID_X, GRID_Y, GRID_W, GRID_H)
                     && contains(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE);
             ItemStack stack = rules.get(index).preview();
-            GuiTheme.itemSlot(graphics, x, y, SLOT_SIZE, 4, hovered);
-            GuiTheme.item(graphics, font, stack, x, y, SLOT_SIZE, 1.0F, true);
+            KineticTheme.itemSlot(graphics, x, y, SLOT_SIZE, 4, hovered);
+            KineticTheme.item(graphics, stack, x, y, SLOT_SIZE, 1.0F, true);
             }
         } finally {
-            disableCanvasScissor(graphics);
+            graphics.endScissor();
         }
 
         updateScrollRange();
@@ -280,56 +268,57 @@ public final class CleanerItemRuleEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderTooltips(GuiGraphics graphics, int scaledMouseX, int scaledMouseY, int mouseX, int mouseY) {
-        int index = gridIndexAt(scaledMouseX, scaledMouseY);
+    protected void renderTooltips(int mouseX, int mouseY) {
+        int index = gridIndexAt(mouseX, mouseY);
         if (index >= 0) {
             RuleDraft rule = rules.get(index);
             if (rule.value.startsWith("#") || rule.value.startsWith("@")) {
-                KineticOverlays.requestTooltip(List.of(
+                showTooltip(List.of(
                                 rule.preview().getHoverName(),
                                 Component.literal(rule.value),
-                                Component.translatable(rule.value.startsWith("#")
+                                KineticI18n.translatable(rule.value.startsWith("#")
                                         ? "gui.itemcontrol.cleaner.item_rule_editor.type.tag"
                                         : "gui.itemcontrol.cleaner.item_rule_editor.type.mod")
-                        ), mouseX, mouseY);
+                ));
             } else {
-                KineticOverlays.requestItemTooltip(rule.preview(), mouseX, mouseY);
+                showItemTooltip(rule.preview());
             }
         }
     }
 
     @Override
-    protected boolean canvasMouseClicked(double mouseX, double mouseY, int button) {
-        if (KineticMouseButtons.isPrimary(button) && gridScroll.beginDrag(mouseX, mouseY, SCROLL_X, GRID_Y, 4, GRID_H, 18, 0)) {
+    protected boolean onMouseClickCapture(MouseInput input) {
+        // 原 canvasMouseClicked 在控件之前处理 / The old canvasMouseClicked handled this before controls.
+        double mouseX = input.x();
+        double mouseY = input.y();
+        if (gridScroll.beginDrag(mouseX, mouseY, input.button(), SCROLL_X, GRID_Y, 4, GRID_H, 18, 0)) {
             return true;
         }
         int index = gridIndexAt(mouseX, mouseY);
-        if (index >= 0 && KineticMouseButtons.isSecondary(button)) {
+        if (index >= 0 && input.isRight()) {
             rules.remove(index);
             updateScrollRange();
             return true;
         }
-        return super.canvasMouseClicked(mouseX, mouseY, button);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseReleased(double mouseX, double mouseY, int button) {
-        if (gridScroll.release(button)) return true;
-        return super.canvasMouseReleased(mouseX, mouseY, button);
+    protected boolean onMouseRelease(MouseInput input) {
+        return gridScroll.release(input.button());
     }
 
     @Override
-    protected boolean canvasMouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (gridScroll.drag(mouseY, GRID_Y, GRID_H, 18)) return true;
-        return super.canvasMouseDragged(mouseX, mouseY, button, dragX, dragY);
+    protected boolean onMouseDrag(MouseDragInput input) {
+        return gridScroll.drag(input.y(), GRID_Y, GRID_H, 18);
     }
 
     @Override
-    protected boolean canvasMouseScrolled(double mouseX, double mouseY, double delta) {
-        if (contains(mouseX, mouseY, GRID_X, GRID_Y, GRID_W + 14, GRID_H) && gridScroll.scroll(delta)) {
+    protected boolean onMouseScroll(ScrollInput input) {
+        if (contains(input.x(), input.y(), GRID_X, GRID_Y, GRID_W + 14, GRID_H) && gridScroll.scroll(input.deltaY())) {
             return true;
         }
-        return super.canvasMouseScrolled(mouseX, mouseY, delta);
+        return false;
     }
 
     private int gridIndexAt(double mouseX, double mouseY) {

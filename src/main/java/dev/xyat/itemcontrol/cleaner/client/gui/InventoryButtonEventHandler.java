@@ -1,21 +1,13 @@
 package dev.xyat.itemcontrol.cleaner.client.gui;
 
-import dev.xyat.itemcontrol.cleaner.CleanerModule;
 import dev.xyat.itemcontrol.cleaner.Network.CleanerNetwork;
 import dev.xyat.itemcontrol.cleaner.config.CleanerConfig;
 import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
-import dev.xyat.kineticcore.api.client.widget.KineticWidgets;
-import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.TextureButton;
+import dev.xyat.kineticcore.api.text.KineticI18n;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 
 public final class InventoryButtonEventHandler {
-    public static final ResourceLocation TRASH_BIN_TEXTURE = new ResourceLocation(
-            CleanerModule.MODID,
-            "textures/gui/trash_bin_button.png"
-    );
-
     private static boolean registered;
 
     private InventoryButtonEventHandler() {
@@ -34,15 +26,12 @@ public final class InventoryButtonEventHandler {
         int x = screen.getGuiLeft() + CleanerConfig.trashBinButtonX;
         int y = screen.getGuiTop() + CleanerConfig.trashBinButtonY;
 
-        Component tooltip = Component.translatable("gui.itemcontrol.cleaner.cleaner.button.tooltip");
-        TextureButton trashButton = KineticWidgets.createTextureButton(
-                x, y, 16, 16,
-                TRASH_BIN_TEXTURE,
-                0, 0, 16, 16, 32,
-                tooltip,
+        Component tooltip = KineticI18n.translatable("gui.itemcontrol.cleaner.cleaner.button.tooltip");
+        event.addControl(new TrashBinButton(
+                x,
+                y,
                 tooltip,
                 () -> CleanerNetwork.sendToServer(new CleanerNetwork.OpenTrashBinRequest())
-        );
-        event.addControl(trashButton);
+        ));
     }
 }

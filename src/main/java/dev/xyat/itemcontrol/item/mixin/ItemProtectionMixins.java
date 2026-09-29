@@ -4,13 +4,13 @@ import dev.xyat.itemcontrol.item.kubejs.ItemModuleKubeJSCompat;
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
 import dev.xyat.itemcontrol.item.event.ItemEntityDamageEvent;
 import dev.xyat.itemcontrol.item.util.ItemProtectionList;
+import dev.xyat.kineticcore.api.event.KineticExternalEvents;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -61,7 +61,7 @@ public class ItemProtectionMixins {
         @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
         private void itemcontrol_item$onHurt(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
             ItemEntityDamageEvent event = new ItemEntityDamageEvent((ItemEntity) (Object) this, source, amount);
-            if (MinecraftForge.EVENT_BUS.post(event)) {
+            if (KineticExternalEvents.post(event).isCanceled()) {
                 cir.setReturnValue(false);
             }
         }

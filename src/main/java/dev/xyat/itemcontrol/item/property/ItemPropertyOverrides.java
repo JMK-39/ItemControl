@@ -1,11 +1,10 @@
 package dev.xyat.itemcontrol.item.property;
 
-import dev.xyat.itemcontrol.item.ItemModule;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.config.ItemPropertyRule;
 import dev.xyat.itemcontrol.item.mixin.ItemPropertyMixins.BlockPropertyAccess;
 import dev.xyat.kineticcore.api.minecraft.MinecraftAttributes;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -20,9 +19,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -33,7 +29,6 @@ import java.util.Map;
 import java.util.UUID;
 
 /** Runtime lookups and vanilla-facing adapters for the active per-item property snapshot. */
-@Mod.EventBusSubscriber(modid = ItemModule.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ItemPropertyOverrides {
     // Keep the float passed through vanilla combat finite, including critical hits.
     private static final double INFINITE_ATTACK_DAMAGE = Float.MAX_VALUE / 16.0D;
@@ -65,7 +60,7 @@ public final class ItemPropertyOverrides {
         for (Map.Entry<ResourceLocation, ItemPropertyRule> entry : ItemPropertyConfig.activeSnapshot().entrySet()) {
             ItemPropertyRule rule = entry.getValue();
             if (rule.blockExplosionResistance() == null) continue;
-            Item item = ForgeRegistries.ITEMS.getValue(entry.getKey());
+            Item item = KineticRegistries.items().get(entry.getKey());
             if (!(item instanceof BlockItem blockItem)) continue;
             Block block = blockItem.getBlock();
             if (block == Blocks.AIR || !(block instanceof BlockPropertyAccess access)) continue;
@@ -80,12 +75,9 @@ public final class ItemPropertyOverrides {
         return ORIGINAL_EXPLOSION_RESISTANCE.getOrDefault(block, access.itemcontrol$getExplosionResistance());
     }
 
-    @SubscribeEvent
-    public static void onCommonSetup(FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> {
-            ItemPropertyConfig.activatePendingSnapshot();
-            applyBlockOverrides();
-        });
+    public static void onCommonSetup() {
+        ItemPropertyConfig.activatePendingSnapshot();
+        applyBlockOverrides();
     }
 
     /** Returns null when the block has no level override, otherwise the override decision. */
@@ -167,7 +159,7 @@ public final class ItemPropertyOverrides {
             EquipmentSlot slot = parseSlot(row.slot());
             if (slot == null || slot != eventSlot) continue;
             ResourceLocation id = ResourceLocation.tryParse(row.attribute());
-            Attribute attribute = id == null ? null : ForgeRegistries.ATTRIBUTES.getValue(id);
+            Attribute attribute = id == null ? null : KineticRegistries.attributes().get(id);
             AttributeModifier.Operation operation = parseOperation(row.operation());
             if (attribute == null || operation == null || !Double.isFinite(row.amount())) continue;
             replacements.computeIfAbsent(attribute, ignored -> new ArrayList<>())

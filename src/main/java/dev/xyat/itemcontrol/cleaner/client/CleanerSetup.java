@@ -1,7 +1,7 @@
 package dev.xyat.itemcontrol.cleaner.client;
 
 import dev.xyat.itemcontrol.cleaner.CleanerInit;
-import dev.xyat.itemcontrol.cleaner.client.gui.CleanerScreen;
+import dev.xyat.itemcontrol.cleaner.client.gui.CleanerPage;
 import dev.xyat.kineticcore.api.client.registry.KineticClientMenus;
 
 public final class CleanerSetup {
@@ -18,6 +18,6 @@ public final class CleanerSetup {
         CleanerKeyHandler.install();
         CleanerAreaTooltips.install();
         CleanerAreaClientEvents.install();
-        KineticClientMenus.register(CleanerInit.TRASH_BIN, CleanerScreen::new);
+        KineticClientMenus.register(CleanerInit.TRASH_BIN, CleanerPage::new);
     }
 }

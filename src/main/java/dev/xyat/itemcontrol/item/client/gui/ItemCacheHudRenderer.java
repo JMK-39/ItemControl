@@ -1,5 +1,6 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
+import dev.xyat.kineticcore.api.text.KineticI18n;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
 import dev.xyat.kineticcore.api.event.KineticEventPriority;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
@@ -32,7 +33,7 @@ public final class ItemCacheHudRenderer {
         if (stack.getItem() == net.minecraft.world.item.Items.ENCHANTED_BOOK) {
             try {
                 List<Component> lines = stack.getTooltipLines(KineticClientRuntime.localPlayer(), TooltipFlag.Default.NORMAL);
-                if (lines.size() > 1) return Component.translatable("gui.itemcontrol.item.common.tooltip_pair", lines.get(0), lines.get(1));
+                if (lines.size() > 1) return KineticI18n.translatable("gui.itemcontrol.item.common.tooltip_pair", lines.get(0), lines.get(1));
             } catch (Exception ignored) {
             }
         }

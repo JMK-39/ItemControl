@@ -1,26 +1,28 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
-import dev.xyat.kineticcore.api.client.input.KineticMouseButtons;
+import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
+import dev.xyat.kineticcore.api.client.gui.text.KineticText;
+import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
+import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
+import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
+import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
+import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
+import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
+import dev.xyat.kineticcore.api.client.gui.widget.*;
+import dev.xyat.kineticcore.api.client.gui.widget.list.*;
+import dev.xyat.kineticcore.api.client.search.KineticSuggestion;
+
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
-import dev.xyat.kineticcore.api.client.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.search.KineticSearch;
-import dev.xyat.kineticcore.api.client.screen.KineticScreen;
-import dev.xyat.kineticcore.api.client.widget.KineticControl;
-import dev.xyat.kineticcore.api.client.theme.GuiTheme;
-import dev.xyat.kineticcore.api.client.widget.button.KineticButtons.StateButton;
-import dev.xyat.kineticcore.api.client.widget.input.KineticAutoComplete;
-import dev.xyat.kineticcore.api.client.widget.input.KineticAutoComplete.AutoCompleteBox;
-import dev.xyat.kineticcore.api.client.widget.scroll.KineticScroll.GridScrollController;
 import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import dev.xyat.kineticcore.api.text.KineticI18n;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -28,7 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-public final class DamageTypeEditorScreen extends KineticScreen {
+public final class DamageTypeEditorPage extends KineticPage {
     private static final int PANEL_X = 14;
     private static final int PANEL_Y = 24;
     private static final int PANEL_W = 612;
@@ -46,14 +48,14 @@ public final class DamageTypeEditorScreen extends KineticScreen {
     private static final int SCROLL_X = 610;
 
     private final List<String> entries = new ArrayList<>();
-    private final GridScrollController listScroll = new GridScrollController();
-    private AutoCompleteBox searchBox;
-    private StateButton addButton;
-    private StateButton saveButton;
+    private final KineticScrollController listScroll = new KineticScrollController();
+    private KineticAutoCompleteField searchBox;
+    private KineticButton addButton;
+    private KineticButton saveButton;
     private List<String> pendingSaveSnapshot = List.of();
     private boolean saving;
 
-    public DamageTypeEditorScreen(Screen parent, List<String> initialEntries) {
+    public DamageTypeEditorPage(List<String> initialEntries) {
         super(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.title"));
         if (initialEntries != null) {
             Set<String> unique = new LinkedHashSet<>();
@@ -64,8 +66,7 @@ public final class DamageTypeEditorScreen extends KineticScreen {
             }
             entries.addAll(unique);
         }
-        useCanvas(640F, 360F, 6);
-        setParentScreen(parent);
+        useCanvas(640, 360, 6);
         configureDraft(() -> List.copyOf(entries), this::restoreEntries);
     }
 
@@ -76,54 +77,25 @@ public final class DamageTypeEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void buildUi() {
+    protected void build(KineticUi ui) {
         listScroll.update(entries.size(), VISIBLE_ROWS);
 
-        searchBox = addAutoCompleteField(
-                SEARCH_X,
-                SEARCH_Y,
-                SEARCH_W,
-                Component.empty(),
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.search.hint"),
-                DamageTypeEditorScreen::damageSuggestions,
-                null
-        );
-        searchBox.setResponder(value -> refreshAddButton());
+        searchBox = ui().autoComplete(SEARCH_X, SEARCH_Y, SEARCH_W, DamageTypeEditorPage::damageSuggestions).placeholder(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.search.hint")).build();
+        searchBox.onTextChange(value -> refreshAddButton());
         searchBox.setSelectionResponder(value -> refreshAddButton());
 
-        addButton = addButton(
-                474,
-                SEARCH_Y,
-                90,
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.add"),
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.add"),
-                this::addCurrent
-        );
+        addButton = ui().button(474, SEARCH_Y, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.add")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.add")).onClick(this::addCurrent).build();
 
-        saveButton = addButton(
-                424,
-                328,
-                90,
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.save"),
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.save"),
-                this::save
-        );
+        saveButton = ui().button(424, 328, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.save")).onClick(this::save).build();
 
-        addButton(
-                524,
-                328,
-                90,
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.back"),
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.back"),
-                this::onClose
-        );
+        ui().button(524, 328, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.back")).onClick(this::close).build();
 
         refreshAddButton();
     }
 
     private void addCurrent() {
         if (searchBox == null) return;
-        String value = searchBox.getValue().trim();
+        String value = searchBox.textValue().trim();
         if (!ItemProtectionConfig.areValidResourceEntries(List.of(value))) {
             KineticOverlays.toast(KineticI18n.translatable("msg.itemcontrol.item.damage_type_editor.invalid"));
             return;
@@ -135,27 +107,27 @@ public final class DamageTypeEditorScreen extends KineticScreen {
         entries.add(value);
         listScroll.update(entries.size(), VISIBLE_ROWS);
         listScroll.setOffset(Math.max(0, entries.size() - VISIBLE_ROWS));
-        searchBox.setValue("");
-        blurControl(searchBox);
+        searchBox.setTextValue("");
+        blur(searchBox);
         refreshAddButton();
     }
 
     private void refreshAddButton() {
         if (addButton == null || searchBox == null) return;
-        ((KineticControl) addButton).setEnabled(!searchBox.getValue().trim().isEmpty());
+        addButton.setEnabled(!searchBox.textValue().trim().isEmpty());
     }
 
     private void save() {
         if (saving) return;
         pendingSaveSnapshot = List.copyOf(entries);
         saving = true;
-        if (saveButton != null) ((KineticControl) saveButton).setEnabled(false);
+        if (saveButton != null) saveButton.setEnabled(false);
         ItemNetwork.saveDamageSources(pendingSaveSnapshot);
     }
 
     public void applySaveResult(boolean success, List<String> serverEntries) {
         saving = false;
-        if (saveButton != null) ((KineticControl) saveButton).setEnabled(true);
+        if (saveButton != null) saveButton.setEnabled(true);
         if (success && entries.equals(pendingSaveSnapshot) && serverEntries != null) {
             entries.clear();
             entries.addAll(serverEntries);
@@ -166,34 +138,27 @@ public final class DamageTypeEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderCanvasBackground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        GuiTheme.canvasBackground(graphics, canvasWidth(), canvasHeight());
-        GuiTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
-        GuiTheme.panelAlt(graphics, LIST_X - 5, LIST_Y - 5, LIST_W + 10, LIST_H + 10);
+    protected void renderBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        KineticTheme.canvasBackground(graphics, width(), height());
+        KineticTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
+        KineticTheme.panelAlt(graphics, LIST_X - 5, LIST_Y - 5, LIST_W + 10, LIST_H + 10);
     }
 
     @Override
-    protected void renderCanvasForeground(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.drawCenteredString(font, title, canvasWidth() / 2, 9, GuiTheme.current().text());
+    protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        graphics.centeredText(title(), width() / 2, 9, KineticTheme.current().text(), true);
         renderEntries(graphics, mouseX, mouseY);
-        graphics.drawString(
-                font,
-                KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.hint"),
-                26,
-                307,
-                GuiTheme.current().text(),
-                false
-        );
+        graphics.text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.hint"), 26, 307, KineticTheme.current().text(), false);
     }
 
-    private void renderEntries(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderEntries(KineticGraphics graphics, int mouseX, int mouseY) {
         listScroll.update(entries.size(), VISIBLE_ROWS);
         int start = listScroll.smoothIndexOffset();
         int shift = listScroll.visualShift(ROW_PITCH);
         int end = Math.min(entries.size(), start + VISIBLE_ROWS + 1);
-        List<KineticAutoComplete.Suggestion> dictionary = damageSuggestions();
+        List<KineticSuggestion> dictionary = damageSuggestions();
 
-        enableCanvasScissor(graphics, LIST_X, LIST_Y, LIST_X + LIST_W, LIST_Y + LIST_H);
+        graphics.scissor(LIST_X, LIST_Y, LIST_X + LIST_W, LIST_Y + LIST_H);
         try {
             for (int index = start; index < end; index++) {
                 int row = index - start;
@@ -202,40 +167,33 @@ public final class DamageTypeEditorScreen extends KineticScreen {
                 boolean hovered = contains(mouseX, mouseY, x, y, LIST_W, ROW_H);
                 String value = entries.get(index);
                 boolean valid = isValidDamageEntry(value);
-                GuiTheme.stateSurface(
+                KineticTheme.stateSurface(
                         graphics,
                         x,
                         y,
                         LIST_W,
                         ROW_H,
-                        GuiTheme.Surface.PANEL_ALT,
+                        KineticTheme.Surface.PANEL_ALT,
                         false,
                         hovered,
                         !valid
                 );
                 if (valid) {
-                    GuiTheme.indicatorOutline(
+                    KineticTheme.indicatorOutline(
                             graphics,
                             x,
                             y,
                             LIST_W,
                             ROW_H,
-                            hovered ? GuiTheme.Indicator.INFO : GuiTheme.Indicator.SUCCESS
+                            hovered ? KineticTheme.Indicator.INFO : KineticTheme.Indicator.SUCCESS
                     );
                 }
 
                 String display = displayName(value, dictionary);
-                graphics.drawString(
-                        font,
-                        font.plainSubstrByWidth(display, LIST_W - 10),
-                        x + 5,
-                        y + 6,
-                        GuiTheme.current().text(),
-                        false
-                );
+                graphics.text(KineticText.trim(display, LIST_W - 10), x + 5, y + 6, KineticTheme.current().text(), false);
             }
         } finally {
-            disableCanvasScissor(graphics);
+            graphics.endScissor();
         }
 
         listScroll.render(graphics, mouseX, mouseY, SCROLL_X, LIST_Y, 4, LIST_H, 18);
@@ -257,8 +215,8 @@ public final class DamageTypeEditorScreen extends KineticScreen {
         return registry.containsKey(id);
     }
 
-    private static String displayName(String value, List<KineticAutoComplete.Suggestion> dictionary) {
-        for (KineticAutoComplete.Suggestion suggestion : dictionary) {
+    private static String displayName(String value, List<KineticSuggestion> dictionary) {
+        for (KineticSuggestion suggestion : dictionary) {
             if (!suggestion.value().equals(value)) continue;
             String translation = suggestion.translation().getString();
             return translation.isBlank() ? value : value + " - " + translation;
@@ -267,8 +225,8 @@ public final class DamageTypeEditorScreen extends KineticScreen {
     }
 
     @Override
-    protected void renderTooltips(GuiGraphics graphics, int scaledMouseX, int scaledMouseY, int mouseX, int mouseY) {
-        int index = rowIndexAt(scaledMouseX, scaledMouseY);
+    protected void renderTooltips(int mouseX, int mouseY) {
+        int index = rowIndexAt(mouseX, mouseY);
         if (index < 0) return;
         String value = entries.get(index);
         List<Component> tooltip = new ArrayList<>();
@@ -277,38 +235,45 @@ public final class DamageTypeEditorScreen extends KineticScreen {
             tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.invalid"));
         }
         tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.remove"));
-        KineticOverlays.requestTooltip(tooltip, mouseX, mouseY);
+        showTooltip(tooltip);
     }
 
     @Override
-    protected boolean canvasMouseClicked(double mouseX, double mouseY, int button) {
-        if (KineticMouseButtons.isPrimary(button) && listScroll.beginDrag(mouseX, mouseY, SCROLL_X, LIST_Y, 4, LIST_H, 18, 2)) return true;
+    protected boolean onMouseClickCapture(MouseInput input) {
+        // 原 canvasMouseClicked 在控件之前处理 / The old canvasMouseClicked handled this before controls.
+        double mouseX = input.x();
+        double mouseY = input.y();
+        if (listScroll.beginDrag(mouseX, mouseY, input.button(), SCROLL_X, LIST_Y, 4, LIST_H, 18, 2)) return true;
 
         int index = rowIndexAt(mouseX, mouseY);
-        if (index >= 0 && KineticMouseButtons.isSecondary(button)) {
+        if (index >= 0 && input.isRight()) {
             entries.remove(index);
             listScroll.update(entries.size(), VISIBLE_ROWS);
             return true;
         }
-        return super.canvasMouseClicked(mouseX, mouseY, button);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseScrolled(double mouseX, double mouseY, double delta) {
+    protected boolean onMouseScroll(ScrollInput input) {
+        double mouseX = input.x();
+        double mouseY = input.y();
+        double delta = input.deltaY();
         if (contains(mouseX, mouseY, LIST_X, LIST_Y, LIST_W + 12, LIST_H) && listScroll.scroll(delta)) return true;
-        return super.canvasMouseScrolled(mouseX, mouseY, delta);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    protected boolean onMouseDrag(MouseDragInput input) {
+        double mouseY = input.y();
         if (listScroll.drag(mouseY, LIST_Y, LIST_H, 18)) return true;
-        return super.canvasMouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return false;
     }
 
     @Override
-    protected boolean canvasMouseReleased(double mouseX, double mouseY, int button) {
-        if (listScroll.release(button)) return true;
-        return super.canvasMouseReleased(mouseX, mouseY, button);
+    protected boolean onMouseRelease(MouseInput input) {
+        if (listScroll.release(input.button())) return true;
+        return false;
     }
 
     private int rowIndexAt(double mouseX, double mouseY) {
@@ -326,11 +291,11 @@ public final class DamageTypeEditorScreen extends KineticScreen {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
-    private static List<KineticAutoComplete.Suggestion> damageSuggestions() {
+    private static List<KineticSuggestion> damageSuggestions() {
         var level = KineticClientRuntime.currentLevel();
         if (level == null) return List.of();
 
-        List<KineticAutoComplete.Suggestion> result = new ArrayList<>();
+        List<KineticSuggestion> result = new ArrayList<>();
         var registry = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
 
         registry.entrySet().forEach(entry -> {
@@ -341,7 +306,7 @@ public final class DamageTypeEditorScreen extends KineticScreen {
                     "dmg." + msgId,
                     "damage_type." + id.getNamespace() + "." + id.getPath()
             );
-            result.add(new KineticAutoComplete.Suggestion(
+            result.add(new KineticSuggestion(
                     id.toString(),
                     name == null ? Component.empty() : Component.literal(name)
             ));
@@ -354,7 +319,7 @@ public final class DamageTypeEditorScreen extends KineticScreen {
                     "tag." + id.getNamespace() + "." + id.getPath(),
                     "tag." + id.getPath()
             );
-            result.add(new KineticAutoComplete.Suggestion(
+            result.add(new KineticSuggestion(
                     "#" + id,
                     name == null ? Component.empty() : Component.literal(name)
             ));
