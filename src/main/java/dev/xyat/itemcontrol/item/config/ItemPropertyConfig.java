@@ -28,7 +28,7 @@ import java.util.function.Supplier;
 
 /** Persistence and immutable startup snapshot for per-item property overrides. */
 public final class ItemPropertyConfig {
-    private static final String CONFIG_FILE = "itemcontrol/item_properties.json";
+    private static final String CONFIG_FILE = "kineticcore/item_properties.json";
     private static final int MAX_RULES = 16_384;
     private static final int MAX_JSON_CHARS = 2 * 1024 * 1024;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
