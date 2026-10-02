@@ -4,7 +4,6 @@ import dev.xyat.kineticcore.api.text.KineticI18n;
 import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
-import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
 import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
@@ -12,8 +11,6 @@ import dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors;
 import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
 import dev.xyat.kineticcore.api.client.gui.state.DragStateController;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
-import dev.xyat.kineticcore.api.client.gui.widget.*;
-import dev.xyat.kineticcore.api.client.gui.widget.list.*;
 
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
@@ -33,7 +30,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class TabUnifiedPage extends KineticPage {
     private enum ItemState {

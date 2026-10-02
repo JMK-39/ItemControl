@@ -5,14 +5,12 @@ import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
 import dev.xyat.kineticcore.api.client.gui.text.KineticText;
-import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
 import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
 import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.client.gui.widget.*;
-import dev.xyat.kineticcore.api.client.gui.widget.list.*;
 
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
@@ -32,7 +30,6 @@ import java.util.TreeSet;
 public class ItemTagEditorPage extends KineticPage {
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_PITCH = 19;
-    private static final int PLACEHOLDER_TEXT_COLOR = 0xBFFFFFFF;
     private static String rememberedItemSearch = "";
     private static String rememberedTagSearch = "";
     private static String rememberedSelectedItem = "";

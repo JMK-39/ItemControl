@@ -13,7 +13,6 @@ import dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors;
 import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.client.gui.widget.*;
-import dev.xyat.kineticcore.api.client.gui.widget.list.*;
 
 import dev.xyat.kineticcore.api.client.search.KineticSearch;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
@@ -32,7 +31,6 @@ public class MergeItemPage extends KineticPage {
     private KineticButton addBtn, saveBtn, closeBtn, tagFilterBtn;
     private final KineticScrollController leftScroll = new KineticScrollController();
     private final KineticScrollController rightScroll = new KineticScrollController();
-    private int totalRightH = 0;
     private String selectedTarget = null;
     private boolean isCreatingRule = false;
     private boolean targetTagFilterActive = false;
@@ -51,7 +49,6 @@ public class MergeItemPage extends KineticPage {
     private int rightX, rightY, rightW, rightH;
     private int gridCols;
     private int gridAreaH;
-    private boolean compactLayout;
     private int rightInfoY;
 
     public MergeItemPage() {
@@ -103,7 +100,7 @@ public class MergeItemPage extends KineticPage {
         int gap = 6;
         int buttonHeight = 20;
 
-        compactLayout =
+        boolean compactLayout =
                 isPortraitLayout()
                         || isCompactLayout()
                         || width() < 540;
@@ -290,7 +287,6 @@ public class MergeItemPage extends KineticPage {
 
         if (!searchBox.controlVisible()) {
             rightDisplayList = new ArrayList<>();
-            totalRightH = 0;
             rightScroll.reset();
             rightScroll.update(0, gridAreaH);
             return;
@@ -308,7 +304,7 @@ public class MergeItemPage extends KineticPage {
         }, sourceHash));
 
         int totalRightRows = (int) Math.ceil((double) rightDisplayList.size() / gridCols);
-        totalRightH = totalRightRows * SLOT_PITCH;
+        int totalRightH = totalRightRows * SLOT_PITCH;
         rightScroll.update(totalRightH, gridAreaH);
     }
 

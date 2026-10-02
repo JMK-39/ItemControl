@@ -4,14 +4,12 @@ import dev.xyat.kineticcore.api.text.KineticI18n;
 import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
-import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
 import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
 import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.client.gui.widget.*;
-import dev.xyat.kineticcore.api.client.gui.widget.list.*;
 
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.client.search.KineticSearch;
@@ -29,7 +27,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 @OnlyIn(Dist.CLIENT)
@@ -64,7 +61,6 @@ public final class DirectEntityImmunityEditorPage extends KineticPage {
     private KineticTextField searchBox;
     private KineticButton specialRuleButton;
     private KineticButton saveButton;
-    private KineticButton backButton;
     private boolean saving;
 
     public DirectEntityImmunityEditorPage(List<String> initialEntries) {
@@ -105,7 +101,7 @@ public final class DirectEntityImmunityEditorPage extends KineticPage {
 
         saveButton = ui().button(500, 30, 52).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.save")).onClick(this::save).build();
 
-        backButton = ui().button(558, 30, 56).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.back")).onClick(this::close).build();
+        ui().button(558, 30, 56).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.back")).onClick(this::close).build();
 
         refreshDisplay(false);
     }

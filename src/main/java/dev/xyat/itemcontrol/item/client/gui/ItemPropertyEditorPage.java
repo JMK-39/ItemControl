@@ -23,8 +23,6 @@ import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.text.KineticI18n;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -457,7 +455,6 @@ public final class ItemPropertyEditorPage extends KineticPage {
                         stack.getDestroySpeed(Blocks.OAK_LOG.defaultBlockState())));
     }
 
-    @SuppressWarnings("deprecation")
     private static int numericMiningLevel(Tier tier) {
         // ItemControl's numeric mining-level override intentionally follows vanilla tier levels.
         return tier.getLevel();

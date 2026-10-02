@@ -14,12 +14,10 @@ import dev.xyat.kineticcore.api.client.gui.state.EditedEntryTracker;
 import dev.xyat.kineticcore.api.client.gui.state.LayerState;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.client.gui.widget.*;
-import dev.xyat.kineticcore.api.client.gui.widget.list.*;
 
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.client.search.KineticSearch;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
-import dev.xyat.kineticcore.api.runtime.KineticClientRuntime;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
@@ -37,7 +35,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 @OnlyIn(Dist.CLIENT)
 public final class ProtectionItemEditorPage extends KineticPage {
@@ -59,7 +56,6 @@ public final class ProtectionItemEditorPage extends KineticPage {
     private static final int GRID_W = GRID_COLS * SLOT_PITCH;
     private static final int GRID_H = GRID_ROWS * SLOT_PITCH;
     private static final int SCROLL_X = GRID_X + GRID_W + 5;
-    private static final int PLACEHOLDER_TEXT_COLOR = 0xBFFFFFFF;
     private static final float ITEM_SCALE = 1.0F;
 
     private static final int MODAL_X = 190;

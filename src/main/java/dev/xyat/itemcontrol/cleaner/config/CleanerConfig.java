@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class CleanerConfig {
-    private static final Path CONFIG_DIR = KineticPaths.configFile("kineticcore/cleaner.toml").getParent();
     private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/cleaner.toml");
     private static CommentedFileConfig configData;
 

@@ -4,13 +4,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.resource.KineticResourceIds;
-import dev.xyat.kineticcore.api.runtime.KineticCreativeTabs;
 import dev.xyat.kineticcore.api.runtime.KineticPaths;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -148,41 +146,6 @@ public final class TabConfig {
             }
         }
         return false;
-    }
-
-    private static boolean isValidTabId(String value) {
-        if (value == null || value.isBlank()) return false;
-        ResourceLocation id = KineticResourceIds.tryParse(value.trim());
-        return id != null && KineticCreativeTabs.contains(id);
-    }
-
-    private static boolean isValidRemovalRule(String value) {
-        if (value == null) return false;
-        String rule = value.trim();
-        if (rule.isEmpty() || rule.length() > 32767) return false;
-        if (rule.startsWith("@")) {
-            String namespace = rule.substring(1);
-            return !namespace.isBlank() && KineticResourceIds.tryParse(namespace + ":placeholder") != null;
-        }
-        if (rule.startsWith("#")) return KineticResourceIds.tryParse(rule.substring(1)) != null;
-        return !TabModule.parseItemStr(rule).isEmpty();
-    }
-
-    private static boolean isValidTabItem(TabItem item) {
-        if (item == null || item.id == null || item.nbt == null) return false;
-        ResourceLocation id = KineticResourceIds.tryParse(item.id.trim());
-        if (id == null || !KineticRegistries.items().contains(id)) return false;
-        Item registered = KineticRegistries.items().get(id);
-        if (registered == null || registered == Items.AIR) return false;
-        if (item.nbt.length() > 32767) return false;
-        if (!item.nbt.isBlank() && !"{}".equals(item.nbt)) {
-            try {
-                TagParser.parseTag(item.nbt);
-            } catch (Exception exception) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public static class Data {

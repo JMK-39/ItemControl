@@ -502,58 +502,6 @@ public final class ItemPropertyConfig {
         return element.getAsString();
     }
 
-    private static JsonObject writeRule(ItemPropertyRule rule) {
-        JsonObject json = new JsonObject();
-        putNumber(json, "attack_damage", rule.attackDamage());
-        putNumber(json, "attack_speed", rule.attackSpeed());
-        putNumber(json, "armor", rule.armor());
-        putNumber(json, "armor_toughness", rule.armorToughness());
-        putNumber(json, "knockback_resistance", rule.knockbackResistance());
-        if (!rule.attributes().isEmpty()) {
-            JsonArray attributes = new JsonArray();
-            for (ItemPropertyRule.AttributeModifier modifier : rule.attributes()) {
-                JsonObject entry = new JsonObject();
-                entry.addProperty("attribute", modifier.attribute());
-                entry.addProperty("slot", modifier.slot());
-                entry.addProperty("operation", modifier.operation());
-                entry.addProperty("amount", modifier.amount());
-                attributes.add(entry);
-            }
-            json.add("attributes", attributes);
-        }
-        putNumber(json, "mining_speed", rule.miningSpeed());
-        putNumber(json, "mining_level", rule.miningLevel());
-        putNumber(json, "nutrition", rule.nutrition());
-        putNumber(json, "saturation", rule.saturation());
-        putNumber(json, "eat_seconds", rule.eatSeconds());
-        putBoolean(json, "always_eat", rule.alwaysEat());
-        putBoolean(json, "non_consumable", rule.nonConsumable());
-        putNumber(json, "max_stack_size", rule.maxStackSize());
-        putNumber(json, "max_damage", rule.maxDamage());
-        putNumber(json, "enchantability", rule.enchantability());
-        putString(json, rule.rarity());
-        putBoolean(json, "fire_resistant", rule.fireResistant());
-        putNumber(json, "block_hardness", rule.blockHardness());
-        putNumber(json, "block_explosion_resistance", rule.blockExplosionResistance());
-        putBoolean(json, "explosion_immune", rule.explosionImmune());
-        putBoolean(json, "glowing", rule.glowing());
-        putBoolean(json, "no_gravity", rule.noGravity());
-        putBoolean(json, "persistent", rule.persistent());
-        return json;
-    }
-
-    private static void putNumber(JsonObject json, String key, Number value) {
-        if (value != null) json.addProperty(key, value);
-    }
-
-    private static void putBoolean(JsonObject json, String key, Boolean value) {
-        if (value != null) json.addProperty(key, value);
-    }
-
-    private static void putString(JsonObject json, String value) {
-        if (value != null) json.addProperty("rarity", value);
-    }
-
     public record PendingEntry(String id, ItemPropertyRule rule, JsonElement raw, boolean unresolved, List<String> errors) {
         public boolean invalid() {
             return !unresolved && errors.isEmpty();

@@ -11,7 +11,6 @@ import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
 import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.client.gui.widget.*;
-import dev.xyat.kineticcore.api.client.gui.widget.list.*;
 import dev.xyat.kineticcore.api.client.search.KineticSuggestion;
 
 import dev.xyat.itemcontrol.item.config.ItemProtectionConfig;
