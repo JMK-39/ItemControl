@@ -32,7 +32,12 @@ public final class ItemCacheHudRenderer {
     public static Component getDisplayNameCustom(ItemStack stack) {
         if (stack.getItem() == net.minecraft.world.item.Items.ENCHANTED_BOOK) {
             try {
-                List<Component> lines = stack.getTooltipLines(KineticClientRuntime.localPlayer(), TooltipFlag.Default.NORMAL);
+                //? if >=1.21 {
+/*List<Component> lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.of(KineticClientRuntime.currentLevel()), KineticClientRuntime.localPlayer(), TooltipFlag.Default.NORMAL);*/
+//?} else {
+List<Component> lines = stack.getTooltipLines(KineticClientRuntime.localPlayer(), TooltipFlag.Default.NORMAL);
+//?}
+
                 if (lines.size() > 1) return KineticI18n.translatable("gui.itemcontrol.item.common.tooltip_pair", lines.get(0), lines.get(1));
             } catch (Exception ignored) {
             }

@@ -132,7 +132,58 @@ public final class ItemPropertyOverrides {
         }
     }
 
-    public static void applyAttributeOverrides(net.minecraftforge.event.ItemAttributeModifierEvent event) {
+    //? if >=1.21 {
+/*public static void applyAttributeOverrides(net.neoforged.neoforge.event.ItemAttributeModifierEvent event) {
+        ItemStack stack = event.getItemStack();
+        ItemPropertyRule rule = active(stack);
+        if (rule == null) return;
+        java.util.Map<SlotAttribute, List<ModifierSpec>> replacements = new LinkedHashMap<>();
+        if (rule.attackDamage() != null) {
+            double amount = rule.attackDamage() == -2.0D ? INFINITE_ATTACK_DAMAGE : rule.attackDamage();
+            widenAttackDamageRange(amount);
+            addNeo(replacements, Attributes.ATTACK_DAMAGE, amount, EquipmentSlot.MAINHAND, "attack_damage");
+        }
+        addNeo(replacements, Attributes.ATTACK_SPEED, rule.attackSpeed(), EquipmentSlot.MAINHAND, "attack_speed");
+        if (stack.getItem() instanceof ArmorItem armor) {
+            EquipmentSlot slot = armor.getEquipmentSlot();
+            addNeo(replacements, Attributes.ARMOR, rule.armor(), slot, "armor");
+            addNeo(replacements, Attributes.ARMOR_TOUGHNESS, rule.armorToughness(), slot, "armor_toughness");
+            addNeo(replacements, Attributes.KNOCKBACK_RESISTANCE, rule.knockbackResistance(), slot, "knockback_resistance");
+        }
+        for (int index = 0; index < rule.attributes().size(); index++) {
+            var row = rule.attributes().get(index);
+            EquipmentSlot slot = parseSlot(row.slot());
+            ResourceLocation id = ResourceLocation.tryParse(row.attribute());
+            Attribute attribute = id == null ? null : KineticRegistries.attributes().get(id);
+            AttributeModifier.Operation operation = parseOperation(row.operation());
+            if (slot == null || attribute == null || operation == null || !Double.isFinite(row.amount())) continue;
+            replacements.computeIfAbsent(new SlotAttribute(net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute), slot), ignored -> new ArrayList<>())
+                .add(new ModifierSpec(row.amount(), operation, "attribute_" + index));
+        }
+        // Neo computes all slots in one event. Preserve the unaffected slots of grouped modifiers.
+        for (var entry : List.copyOf(event.getModifiers())) {
+            boolean affected = replacements.keySet().stream().anyMatch(key -> key.attribute.equals(entry.attribute()) && entry.slot().test(key.slot));
+            if (!affected) continue;
+            event.removeModifier(entry.attribute(), entry.modifier().id());
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                if (entry.slot().test(slot) && !replacements.containsKey(new SlotAttribute(entry.attribute(), slot))) {
+                    var modifier = entry.modifier();
+                    event.addModifier(entry.attribute(), new AttributeModifier(dev.xyat.kineticcore.api.resource.KineticResourceIds.of("itemcontrol", "preserved/" + modifier.id().getNamespace() + "/" + modifier.id().getPath() + "/" + slot.getName()), modifier.amount(), modifier.operation()), net.minecraft.world.entity.EquipmentSlotGroup.bySlot(slot));
+                }
+            }
+        }
+        replacements.forEach((key, modifiers) -> modifiers.forEach(modifier -> event.addModifier(key.attribute,
+            new AttributeModifier(dev.xyat.kineticcore.api.resource.KineticResourceIds.of("itemcontrol", modifier.name + "/" + key.slot.getName()), modifier.amount, modifier.operation),
+            net.minecraft.world.entity.EquipmentSlotGroup.bySlot(key.slot))));
+    }
+
+    private record SlotAttribute(net.minecraft.core.Holder<Attribute> attribute, EquipmentSlot slot) {}
+
+    private static void addNeo(Map<SlotAttribute, List<ModifierSpec>> target, net.minecraft.core.Holder<Attribute> attribute, Double value, EquipmentSlot slot, String name) {
+        if (value != null && Double.isFinite(value)) target.computeIfAbsent(new SlotAttribute(attribute, slot), ignored -> new ArrayList<>()).add(new ModifierSpec(value, AttributeModifier.Operation.ADD_VALUE, name));
+    }*/
+//?} else {
+public static void applyAttributeOverrides(net.minecraftforge.event.ItemAttributeModifierEvent event) {
         ItemStack stack = event.getItemStack();
         ItemPropertyRule rule = active(stack);
         if (rule == null) return;
@@ -175,9 +226,16 @@ public final class ItemPropertyOverrides {
             }
         });
     }
+//?}
+
 
     private static void widenAttackDamageRange(double amount) {
-        if (!(Attributes.ATTACK_DAMAGE instanceof RangedAttribute ranged)) return;
+        //? if >=1.21 {
+/*if (!(Attributes.ATTACK_DAMAGE.value() instanceof RangedAttribute ranged)) return;*/
+//?} else {
+if (!(Attributes.ATTACK_DAMAGE instanceof RangedAttribute ranged)) return;
+//?}
+
         double requiredMaximum = Math.max(0, amount + 1);
         if (requiredMaximum > ranged.getMaxValue()) {
             MinecraftAttributes.setRange(ranged, ranged.getMinValue(), requiredMaximum);
@@ -205,7 +263,17 @@ public final class ItemPropertyOverrides {
         }
     }
 
-    private static AttributeModifier.Operation parseOperation(String operation) {
+    //? if >=1.21 {
+/*private static AttributeModifier.Operation parseOperation(String operation) {
+        if (operation == null) return null;
+        try {
+            return AttributeModifier.Operation.valueOf(switch (operation.toUpperCase(java.util.Locale.ROOT)) { case "ADDITION" -> "ADD_VALUE"; case "MULTIPLY_BASE" -> "ADD_MULTIPLIED_BASE"; case "MULTIPLY_TOTAL" -> "ADD_MULTIPLIED_TOTAL"; default -> operation.toUpperCase(java.util.Locale.ROOT); });
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }*/
+//?} else {
+private static AttributeModifier.Operation parseOperation(String operation) {
         if (operation == null) return null;
         try {
             return AttributeModifier.Operation.valueOf(operation.toUpperCase(java.util.Locale.ROOT));
@@ -213,6 +281,23 @@ public final class ItemPropertyOverrides {
             return null;
         }
     }
+//?}
+
+
+    //? if >=1.21 {
+    /*public static net.minecraft.world.food.FoodProperties food(ItemStack stack, net.minecraft.world.food.FoodProperties original) {
+        ItemPropertyRule rule = active(stack);
+        if (rule == null || (rule.nutrition() == null && rule.saturation() == null && rule.alwaysEat() == null && rule.eatSeconds() == null)) return original;
+        int nutrition = rule.nutrition() != null ? rule.nutrition() : original == null ? 0 : original.nutrition();
+        float coefficient = rule.saturation() != null ? rule.saturation().floatValue()
+                : original == null || original.nutrition() == 0 ? 0.0F : original.saturation() / (2.0F * original.nutrition());
+        float saturation = 2.0F * nutrition * coefficient;
+        boolean always = rule.alwaysEat() != null ? rule.alwaysEat() : original != null && original.canAlwaysEat();
+        float seconds = rule.eatSeconds() != null ? rule.eatSeconds().floatValue() : original == null ? 1.6F : original.eatSeconds();
+        return new net.minecraft.world.food.FoodProperties(nutrition, saturation, always, seconds,
+            original == null ? java.util.Optional.empty() : original.usingConvertsTo(), original == null ? List.of() : original.effects());
+    }
+    *///?}
 
     private record ModifierSpec(double amount, AttributeModifier.Operation operation, String name) {
     }

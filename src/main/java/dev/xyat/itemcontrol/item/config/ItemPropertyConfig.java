@@ -212,7 +212,11 @@ public final class ItemPropertyConfig {
             String[] parts = entry.split(";", 5);
             String id = parts[0].trim();
             // The old matcher ignored NBT on tag and mod selectors. Keep that behavior when migrating.
+//? if >=1.21 {
+/*            int nbtStart = id.indexOf('[');*/
+//?} else {
             int nbtStart = id.indexOf('{');
+//?}
             if (nbtStart >= 0 && (id.startsWith("#") || id.startsWith("@"))) {
                 id = id.substring(0, nbtStart).trim();
             }
@@ -407,7 +411,17 @@ public final class ItemPropertyConfig {
             AttributeModifier.Operation modifierOperation;
             try {
                 equipmentSlot = EquipmentSlot.valueOf(slot.toUpperCase(Locale.ROOT));
+//? if >=1.21 {
+/*                modifierOperation = AttributeModifier.Operation.valueOf(switch (operation.toUpperCase(Locale.ROOT)) {
+                    case "ADDITION" -> "ADD_VALUE";
+                    case "MULTIPLY_BASE" -> "ADD_MULTIPLIED_BASE";
+                    case "MULTIPLY_TOTAL" -> "ADD_MULTIPLIED_TOTAL";
+                    default -> operation.toUpperCase(Locale.ROOT);
+                });*/
+//?} else {
                 modifierOperation = AttributeModifier.Operation.valueOf(operation.toUpperCase(Locale.ROOT));
+//?}
+
             } catch (IllegalArgumentException ignored) {
                 errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
                 continue;

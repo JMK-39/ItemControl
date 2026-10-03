@@ -108,7 +108,11 @@ public final class ItemSearchCache {
     private static String getBaseIdentifier(String idStr) {
         if (idStr == null) return "";
         String clean = idStr.trim().toLowerCase(Locale.ROOT);
+//? if >=1.21 {
+/*        int bracket = clean.indexOf('[');*/
+//?} else {
         int bracket = clean.indexOf('{');
+//?}
         return bracket < 0 ? clean : clean.substring(0, bracket);
     }
 
@@ -433,7 +437,23 @@ public final class ItemSearchCache {
         return hash;
     }
 
-    private static String cachedIdentifier(KineticItemSearch.CachedItem item) {
+    //? if >=1.21 {
+/*private static String cachedIdentifier(KineticItemSearch.CachedItem item) {
+        if (item == null) return "";
+        if (item.id() != null && (item.id().startsWith("@") || item.id().startsWith("#") || item.id().contains("["))) {
+            return item.id();
+        }
+        ItemStack stack = item.stack();
+        if (stack != null && !stack.isEmpty() && !stack.getComponentsPatch().isEmpty()) {
+            try {
+                return BanItemConfig.getItemIdentifier(stack);
+            } catch (Throwable ignored) {
+            }
+        }
+        return item.id() == null ? "" : item.id();
+    }*/
+//?} else {
+private static String cachedIdentifier(KineticItemSearch.CachedItem item) {
         if (item == null) return "";
         if (item.id() != null && (item.id().startsWith("@") || item.id().startsWith("#") || item.id().contains("{"))) {
             return item.id();
@@ -447,6 +467,8 @@ public final class ItemSearchCache {
         }
         return item.id() == null ? "" : item.id();
     }
+//?}
+
 
     private static void trimExpired(long now) {
         ITEM_SEARCH_CACHE.entrySet().removeIf(e -> !e.getValue().isAlive(now));

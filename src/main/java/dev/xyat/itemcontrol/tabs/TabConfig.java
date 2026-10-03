@@ -23,7 +23,17 @@ public final class TabConfig {
 
     public static Data data = new Data();
     public static Data currentEditing = null;
+//? if >=1.21 {
+/*    public static final Gson GSON = new GsonBuilder().setPrettyPrinting()
+        .registerTypeAdapter(TabItem.class, (com.google.gson.JsonDeserializer<TabItem>) (json, type, context) -> {
+            if (!json.isJsonObject() || json.getAsJsonObject().has("nbt") || json.getAsJsonObject().has("matchNbt"))
+                throw new com.google.gson.JsonParseException("Expected native component tab item schema");
+            return new Gson().fromJson(json, TabItem.class);
+        }).create();*/
+//?} else {
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+//?}
+
 
     private TabConfig() {
     }
@@ -113,7 +123,18 @@ public final class TabConfig {
         return value == null || value.isBlank() || KineticResourceIds.tryParse(value.trim()) == null;
     }
 
-    private static boolean isValidRemovalRuleSyntax(String value) {
+    //? if >=1.21 {
+/*private static boolean isValidRemovalRuleSyntax(String value) {
+    if (value == null || value.isBlank() || value.length() > 32767) return false;
+    String rule = value.trim();
+    if (rule.startsWith("@")) return rule.substring(1).matches("[a-z0-9_.-]+");
+    if (rule.startsWith("#")) return KineticResourceIds.tryParse(rule.substring(1)) != null;
+    int start = rule.indexOf('[');
+    String id = start < 0 ? rule : rule.substring(0, start).trim();
+    return dev.xyat.itemcontrol.item.data.ItemData.validConstraint(id, start < 0 ? "[]" : rule.substring(start));
+}*/
+//?} else {
+private static boolean isValidRemovalRuleSyntax(String value) {
         if (value == null) return false;
         String rule = value.trim();
         if (rule.isEmpty() || rule.length() > 32767) return false;
@@ -134,8 +155,16 @@ public final class TabConfig {
         }
         return true;
     }
+//?}
 
-    private static boolean hasInvalidTabItemStructure(TabItem item) {
+
+    //? if >=1.21 {
+/*private static boolean hasInvalidTabItemStructure(TabItem item) {
+    if (item == null || item.id == null || item.components == null || item.components.length() > 32767) return true;
+    return !dev.xyat.itemcontrol.item.data.ItemData.validConstraint(item.id, item.components);
+}*/
+//?} else {
+private static boolean hasInvalidTabItemStructure(TabItem item) {
         if (item == null || item.id == null || item.nbt == null || item.nbt.length() > 32767) return true;
         if (KineticResourceIds.tryParse(item.id.trim()) == null) return true;
         if (!item.nbt.isBlank() && !"{}".equals(item.nbt)) {
@@ -147,6 +176,8 @@ public final class TabConfig {
         }
         return false;
     }
+//?}
+
 
     public static class Data {
         public List<String> removals = new ArrayList<>();
@@ -156,22 +187,38 @@ public final class TabConfig {
 
     public static class TabItem {
         public String id = "minecraft:air";
+//? if >=1.21 {
+/*        public String components = "[]";
+        public boolean matchComponents = true;*/
+//?} else {
         public String nbt = "{}";
         public boolean matchNbt = true;
+//?}
+
 
         public TabItem() {
         }
 
         public TabItem(String id, String nbt) {
             this.id = id;
+//? if >=1.21 {
+/*            this.components = (nbt == null || nbt.isEmpty()) ? "[]" : nbt;*/
+//?} else {
             this.nbt = (nbt == null || nbt.isEmpty()) ? "{}" : nbt;
+//?}
+
         }
 
         public boolean isAir() {
             return "minecraft:air".equals(id);
         }
 
-        public ItemStack getStack() {
+        //? if >=1.21 {
+/*public ItemStack getStack() {
+    return isAir() ? ItemStack.EMPTY : dev.xyat.itemcontrol.item.data.ItemData.parse(id + (matchComponents ? components : "[]"));
+}*/
+//?} else {
+public ItemStack getStack() {
             if (isAir()) return ItemStack.EMPTY;
             try {
                 ResourceLocation resourceId = KineticResourceIds.tryParse(id);
@@ -187,6 +234,8 @@ public final class TabConfig {
                 return ItemStack.EMPTY;
             }
         }
+//?}
+
     }
 
     public static class TabAddition {

@@ -105,6 +105,44 @@ public class TrashBinCollectorEventHandler {
         }
     }
 
+//? if >=1.21 {
+/*    private static final class StackKey {
+        private final Item item;
+        private final net.minecraft.core.component.DataComponentPatch tag;
+        private final int hashCode;
+
+        private StackKey(Item item, net.minecraft.core.component.DataComponentPatch tag) {
+            this.item = item;
+            this.tag = tag;
+            this.hashCode = 31 * System.identityHashCode(item) + Objects.hashCode(tag);
+        }
+
+        private static StackKey lookup(ItemStack stack) {
+            return new StackKey(stack.getItem(), stack.getComponentsPatch());
+        }
+
+        private static StackKey stored(ItemStack stack) {
+            net.minecraft.core.component.DataComponentPatch stackTag = stack.getComponentsPatch();
+            return new StackKey(stack.getItem(), stackTag);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof StackKey other)) {
+                return false;
+            }
+            return item == other.item && Objects.equals(tag, other.tag);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+    }*/
+//?} else {
     private static final class StackKey {
         private final Item item;
         private final CompoundTag tag;
@@ -141,4 +179,6 @@ public class TrashBinCollectorEventHandler {
             return hashCode;
         }
     }
+//?}
+
 }

@@ -20,7 +20,12 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
 
     public static CleanerSavedData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage()
-                .computeIfAbsent(CleanerSavedData::load, CleanerSavedData::new, DATA_NAME);
+                //? if >=1.21 {
+/*.computeIfAbsent(new Factory<>(CleanerSavedData::new, CleanerSavedData::load, null), DATA_NAME);*/
+//?} else {
+.computeIfAbsent(CleanerSavedData::load, CleanerSavedData::new, DATA_NAME);
+//?}
+
     }
 
     public void addRecord(BigTrashContainer container) {
@@ -48,7 +53,12 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
         this.setDirty();
     }
 
-    public static CleanerSavedData load(CompoundTag tag) {
+    //? if >=1.21 {
+/*public static CleanerSavedData load(CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {*/
+//?} else {
+public static CleanerSavedData load(CompoundTag tag) {
+//?}
+
         CleanerSavedData data = new CleanerSavedData();
         if (tag.contains("History", Tag.TAG_LIST)) {
             ListTag historyTag = tag.getList("History", Tag.TAG_LIST);
@@ -60,7 +70,12 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
                     for (int i = 0; i < itemTagList.size(); i++) {
                         CompoundTag itemTag = itemTagList.getCompound(i);
                         int slot = itemTag.getInt("Slot");
-                        ItemStack stack = ItemStack.of(itemTag);
+                        //? if >=1.21 {
+/*ItemStack stack = ItemStack.parseOptional(lookup, itemTag);*/
+//?} else {
+ItemStack stack = ItemStack.of(itemTag);
+//?}
+
 
                         // 原版 tag 里 Count 是 byte，超过 127 会变负数。
                         // 这里我们读取自己写入的真实 int 数量
@@ -81,7 +96,12 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
 
     @Override
     @Nonnull
-    public CompoundTag save(@NotNull CompoundTag tag) {
+    //? if >=1.21 {
+/*public CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {*/
+//?} else {
+public CompoundTag save(@NotNull CompoundTag tag) {
+//?}
+
         ListTag historyTag = new ListTag();
 
         for (BigTrashContainer container : history) {
@@ -92,7 +112,13 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
                 if (!stack.isEmpty()) {
                     CompoundTag itemTag = new CompoundTag();
                     itemTag.putInt("Slot", i);
+//? if >=1.21 {
+/*                    // Count codec is bounded; save a one-item template and retain RealCount separately.
+                    itemTag.merge((CompoundTag) stack.copyWithCount(1).save(lookup));*/
+//?} else {
                     stack.save(itemTag);
+//?}
+
 
                     // 保存真正的 int 型数量，规避 byte 溢出
                     itemTag.putInt("RealCount", stack.getCount());
@@ -116,6 +142,13 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
         public int getMaxStackSize() {
             return Integer.MAX_VALUE; // 突破 64 限制
         }
+
+        //? if >=1.21 {
+        /*@Override
+        public int getMaxStackSize(ItemStack stack) {
+            return Integer.MAX_VALUE;
+        }
+        *///?}
 
         @Override
         public @NotNull ItemStack addItem(@Nonnull ItemStack pStack) {

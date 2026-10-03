@@ -27,7 +27,12 @@ public final class ItemPropertyEventHandler {
 
     private static void onItemUseFinish(KineticLivingEvents.UseItemFinishContext context) {
         var rule = ItemPropertyOverrides.active(context.item());
+//? if >=1.21 {
+/*        if (rule != null && Boolean.TRUE.equals(rule.nonConsumable()) && context.item().getFoodProperties(context.entity()) != null) {*/
+//?} else {
         if (rule != null && Boolean.TRUE.equals(rule.nonConsumable()) && context.item().isEdible()) {
+//?}
+
             context.setResultStack(context.item().copy());
         }
     }

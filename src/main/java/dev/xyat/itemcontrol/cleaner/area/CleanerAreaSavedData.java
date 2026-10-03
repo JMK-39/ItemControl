@@ -26,7 +26,12 @@ public class CleanerAreaSavedData extends SavedData {
 
     public static CleanerAreaSavedData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage()
-                .computeIfAbsent(CleanerAreaSavedData::load, CleanerAreaSavedData::new, DATA_NAME);
+                //? if >=1.21 {
+/*.computeIfAbsent(new Factory<>(CleanerAreaSavedData::new, CleanerAreaSavedData::load, null), DATA_NAME);*/
+//?} else {
+.computeIfAbsent(CleanerAreaSavedData::load, CleanerAreaSavedData::new, DATA_NAME);
+//?}
+
     }
 
     public List<CleanerArea> getAreas() {
@@ -136,7 +141,12 @@ public class CleanerAreaSavedData extends SavedData {
         }
     }
 
-    public static CleanerAreaSavedData load(CompoundTag tag) {
+    //? if >=1.21 {
+/*public static CleanerAreaSavedData load(CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {*/
+//?} else {
+public static CleanerAreaSavedData load(CompoundTag tag) {
+//?}
+
         CleanerAreaSavedData data = new CleanerAreaSavedData();
         if (tag.contains("Areas", Tag.TAG_LIST)) {
             ListTag list = tag.getList("Areas", Tag.TAG_COMPOUND);
@@ -154,7 +164,12 @@ public class CleanerAreaSavedData extends SavedData {
     }
 
     @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
+    //? if >=1.21 {
+/*public @NotNull CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {*/
+//?} else {
+public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
+//?}
+
         ListTag list = new ListTag();
         for (CleanerArea area : areas) {
             list.add(area.save());

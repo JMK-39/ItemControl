@@ -3,7 +3,12 @@ package dev.xyat.itemcontrol.item.event;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraftforge.event.entity.EntityEvent;
+//? if >=1.21 {
+/*import net.neoforged.bus.api.ICancellableEvent;*/
+//?} else {
 import net.minecraftforge.eventbus.api.Cancelable;
+//?}
+
 
 /**
  * 物品实体受伤事件。
@@ -13,8 +18,13 @@ import net.minecraftforge.eventbus.api.Cancelable;
  * <p>
  * 如果取消此事件 (setCanceled(true))，物品将不会受到伤害。
  */
+//? if >=1.21 {
+/*public class ItemEntityDamageEvent extends EntityEvent implements ICancellableEvent {*/
+//?} else {
 @Cancelable
 public class ItemEntityDamageEvent extends EntityEvent {
+//?}
+
     private final DamageSource source;
     private final float amount;
 

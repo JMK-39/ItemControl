@@ -134,6 +134,13 @@ public class ItemEntityDamageEventJS extends EntityEventJS {
         return damageEvent != null && damageEvent.getSource().is(net.minecraft.world.damagesource.DamageTypes.CACTUS);
     }
 
+//? if >=1.21 {
+/*    @Override
+    public Object cancel(dev.latvian.mods.rhino.Context cx) throws EventExit {
+        if (damageEvent != null) damageEvent.setCanceled(true);
+        return dev.latvian.mods.kubejs.entity.KubeEntityEvent.super.cancel(cx);
+    }*/
+//?} else {
     @Override
     public Object cancel() throws EventExit {
         if (damageEvent != null && damageEvent.isCancelable()) {
@@ -141,4 +148,6 @@ public class ItemEntityDamageEventJS extends EntityEventJS {
         }
         return super.cancel();
     }
+//?}
+
 }

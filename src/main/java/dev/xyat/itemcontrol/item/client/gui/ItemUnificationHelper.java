@@ -198,7 +198,11 @@ public final class ItemUnificationHelper {
 
     private static String baseId(String idStr) {
         if (idStr == null) return "";
+//? if >=1.21 {
+/*        int bracket = idStr.indexOf('[');*/
+//?} else {
         int bracket = idStr.indexOf('{');
+//?}
         return bracket == -1 ? idStr : idStr.substring(0, bracket);
     }
 

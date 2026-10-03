@@ -2,7 +2,13 @@ package dev.xyat.itemcontrol.item.kubejs;
 
 import dev.latvian.mods.kubejs.event.EventGroup;
 import dev.latvian.mods.kubejs.event.EventHandler;
+//? if >=1.21 {
+/*import dev.latvian.mods.kubejs.script.BindingRegistry;
+import dev.latvian.mods.kubejs.event.EventGroupRegistry;*/
+//?} else {
 import dev.latvian.mods.kubejs.script.BindingsEvent;
+//?}
+
 import dev.xyat.itemcontrol.item.event.ItemEntityDamageEvent;
 import dev.xyat.itemcontrol.item.util.ItemProtectionList;
 import dev.xyat.kineticcore.api.event.KineticExternalEvents;
@@ -10,7 +16,12 @@ import dev.xyat.kineticcore.api.event.KineticEventPriority;
 import dev.xyat.kineticcore.api.world.event.KineticWorldEvents;
 import net.minecraft.world.entity.item.ItemEntity;
 
+//? if >=1.21 {
+/*public final class ItemModuleKubeJSPlugin implements dev.latvian.mods.kubejs.plugin.KubeJSPlugin {*/
+//?} else {
 public final class ItemModuleKubeJSPlugin extends dev.latvian.mods.kubejs.KubeJSPlugin {
+//?}
+
     public static final EventGroup GROUP = EventGroup.of("itemcontrolEvents");
 
     private static EventHandler itemHurt;
@@ -31,15 +42,30 @@ public final class ItemModuleKubeJSPlugin extends dev.latvian.mods.kubejs.KubeJS
     }
 
     @Override
-    public void registerEvents() {
+    //? if >=1.21 {
+/*public void registerEvents(EventGroupRegistry registry) {*/
+//?} else {
+public void registerEvents() {
+//?}
+
         itemHurt = GROUP.server("itemHurt", () -> ItemEntityDamageEventJS.class).hasResult();
         itemSpawn = GROUP.server("itemSpawn", () -> ItemEntityDamageEventJS.class).hasResult();
         itemRemoved = GROUP.server("itemRemoved", () -> ItemEntityDamageEventJS.class).hasResult();
+//? if >=1.21 {
+/*        registry.register(GROUP);*/
+//?} else {
         GROUP.register();
+//?}
+
     }
 
     @Override
-    public void registerBindings(BindingsEvent event) {
+    //? if >=1.21 {
+/*public void registerBindings(BindingRegistry event) {*/
+//?} else {
+public void registerBindings(BindingsEvent event) {
+//?}
+
         event.add("ItemProtection", ItemProtectionList.class);
     }
 

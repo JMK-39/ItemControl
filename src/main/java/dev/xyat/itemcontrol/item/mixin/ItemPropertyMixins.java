@@ -21,6 +21,21 @@ public final class ItemPropertyMixins {
     private ItemPropertyMixins() {
     }
 
+//? if >=1.21 {
+/*    @Mixin(Item.class)
+    public abstract static class ItemProperties {
+        @Inject(method = "getEnchantmentValue()I", at = @At("RETURN"), cancellable = true)
+        private void itemcontrol$enchantability(CallbackInfoReturnable<Integer> cir) {
+            cir.setReturnValue(ItemPropertyOverrides.enchantability((Item) (Object) this, cir.getReturnValue()));
+        }
+        @Inject(method = "getUseDuration(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/entity/LivingEntity;)I", at = @At("RETURN"), cancellable = true)
+        private void itemcontrol$useDuration(ItemStack stack, net.minecraft.world.entity.LivingEntity entity, CallbackInfoReturnable<Integer> cir) {
+            ItemPropertyRule rule = ItemPropertyOverrides.active(stack);
+            if (rule != null && rule.eatSeconds() != null && stack.getFoodProperties(entity) != null)
+                cir.setReturnValue(Math.max(1, Math.min(72_000, Math.round(rule.eatSeconds().floatValue() * 20.0F))));
+        }
+    }*/
+//?} else {
     @Mixin(Item.class)
     public abstract static class ItemProperties {
         @Inject(method = "getMaxStackSize()I", at = @At("RETURN"), cancellable = true)
@@ -76,9 +91,34 @@ public final class ItemPropertyMixins {
             }
         }
     }
+//?}
+
 
     @Mixin(ItemStack.class)
     public abstract static class ItemStackProperties {
+//? if >=1.21 {
+/*        @Inject(method = "getMaxStackSize()I", at = @At("RETURN"), cancellable = true)
+        private void itemcontrol$maxStackSize(CallbackInfoReturnable<Integer> cir) {
+            cir.setReturnValue(ItemPropertyOverrides.maxStackSize(((ItemStack)(Object)this).getItem(), cir.getReturnValue()));
+        }
+        @Inject(method = "getMaxDamage()I", at = @At("RETURN"), cancellable = true)
+        private void itemcontrol$maxDamage(CallbackInfoReturnable<Integer> cir) {
+            cir.setReturnValue(ItemPropertyOverrides.maxDamage(((ItemStack)(Object)this).getItem(), cir.getReturnValue()));
+        }
+        @Inject(method = "getRarity()Lnet/minecraft/world/item/Rarity;", at = @At("RETURN"), cancellable = true)
+        private void itemcontrol$rarity(CallbackInfoReturnable<net.minecraft.world.item.Rarity> cir) {
+            ItemStack stack = (ItemStack)(Object)this;
+            cir.setReturnValue(ItemPropertyOverrides.rarity(stack.getItem(), stack, cir.getReturnValue()));
+        }
+        // ItemStack inherits this default method from IItemStackExtension. A merged override gives
+        // existing stacks the active rule without mutating their persisted food component.
+        public FoodProperties getFoodProperties(net.minecraft.world.entity.LivingEntity entity) {
+            ItemStack stack = (ItemStack)(Object)this;
+            FoodProperties original = stack.getItem().getFoodProperties(stack, entity);
+            return ItemPropertyOverrides.food(stack, original);
+        }
+*/
+//?}
         @Inject(method = "isDamageableItem()Z", at = @At("HEAD"), cancellable = true)
         private void itemcontrol$unbreakable(CallbackInfoReturnable<Boolean> cir) {
             if (ItemPropertyOverrides.isUnbreakable((ItemStack) (Object) this)) cir.setReturnValue(false);

@@ -33,7 +33,39 @@ public class ItemProtectionConfig {
     private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/protection.toml");
     private static CommentedFileConfig configData;
 
-    public static class ProtectionRule {
+    //? if >=1.21 {
+/*public static class ProtectionRule {
+        public final String identifier;
+        public final boolean fireImmune;
+        public final boolean explosionImmune;
+        public final boolean glowing;
+        public final boolean noGravity;
+        public String components = null;
+        public String baseId = null;
+        public String modId = null;
+        public TagKey<Item> tagKey = null;
+
+        public ProtectionRule(String identifier, boolean fireImmune, boolean explosionImmune, boolean glowing, boolean noGravity) {
+            String tempId = identifier;
+            int start = identifier.indexOf('[');
+            if (start >= 0) { this.components = identifier; tempId = identifier.substring(0, start).trim(); }
+            this.identifier = tempId;
+            this.fireImmune = fireImmune;
+            this.explosionImmune = explosionImmune;
+            this.glowing = glowing;
+            this.noGravity = noGravity;
+
+            if (tempId.startsWith("@")) {
+                this.modId = tempId.substring(1);
+            } else if (tempId.startsWith("#")) {
+                this.tagKey = ItemTags.create(KineticResourceIds.parse(tempId.substring(1)));
+            } else {
+                this.baseId = tempId;
+            }
+        }
+    }*/
+//?} else {
+public static class ProtectionRule {
         public final String identifier;
         public final boolean fireImmune;
         public final boolean explosionImmune;
@@ -70,6 +102,8 @@ public class ItemProtectionConfig {
             }
         }
     }
+//?}
+
 
     private static final Map<String, List<ProtectionRule>> PROTECTION_ID_MAP = new HashMap<>();
     private static final List<ProtectionRule> PROTECTION_PATTERN_LIST = new ArrayList<>();
@@ -238,7 +272,35 @@ public class ItemProtectionConfig {
         }
     }
 
-    public static ProtectionRule getProtectionRule(ItemStack stack) {
+    //? if >=1.21 {
+/*public static ProtectionRule getProtectionRule(ItemStack stack) {
+        if (!enableItemProtection || stack.isEmpty()) return null;
+        ResourceLocation itemIdRL = KineticRegistries.items().id(stack.getItem());
+        if (itemIdRL == null) return null;
+        String itemId = itemIdRL.toString();
+
+        List<ProtectionRule> idRules = PROTECTION_ID_MAP.get(itemId);
+        if (idRules != null) {
+            for (ProtectionRule rule : idRules) {
+                if (rule.components != null) {
+                    if (dev.xyat.itemcontrol.item.data.ItemData.matches(rule.components, stack)) return rule;
+                } else {
+                    return rule;
+                }
+            }
+        }
+
+        for (ProtectionRule rule : PROTECTION_PATTERN_LIST) {
+            if (rule.modId != null) {
+                if (itemIdRL.getNamespace().equals(rule.modId)) return rule;
+            } else if (rule.tagKey != null) {
+                if (stack.is(rule.tagKey)) return rule;
+            }
+        }
+        return null;
+    }*/
+//?} else {
+public static ProtectionRule getProtectionRule(ItemStack stack) {
         if (!enableItemProtection || stack.isEmpty()) return null;
         ResourceLocation itemIdRL = KineticRegistries.items().id(stack.getItem());
         if (itemIdRL == null) return null;
@@ -264,6 +326,8 @@ public class ItemProtectionConfig {
         }
         return null;
     }
+//?}
+
 
     public static boolean isGlobalItemDamageImmune(DamageSource source) {
         if (!enableGlobalItemDamageImmunity || source == null) return false;
@@ -368,11 +432,20 @@ public class ItemProtectionConfig {
         }
 
         String plainIdentifier = identifier;
+//? if >=1.21 {
+/*        int nbtStart = identifier.indexOf('[');*/
+//?} else {
         int nbtStart = identifier.indexOf('{');
+//?}
         if (nbtStart >= 0) {
             plainIdentifier = identifier.substring(0, nbtStart).trim();
             try {
+//? if >=1.21 {
+/*                if (!dev.xyat.itemcontrol.item.data.ItemData.validConstraint(plainIdentifier, identifier.substring(nbtStart))) return false;*/
+//?} else {
                 TagParser.parseTag(identifier.substring(nbtStart));
+//?}
+
             } catch (Exception ignored) {
                 return false;
             }

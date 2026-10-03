@@ -1,0 +1,17 @@
+{
+  "cfg.itemcontrol.item.prot.list.tooltip": "§eFormat: Identifier;FireImmune;ExplosionImmune;Glowing;NoGravity. §aIdentifiers support item IDs, #tags, @mods, and optional components after an item ID; the four flags must be true or false.",
+  "gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt": "§d[Shift+Left-Click] Edit components Data",
+  "gui.itemcontrol.tabs.tabs.unified.tooltip.left_item_nbt_toggle": "Shift+Right Click: Toggle components match mode",
+  "gui.itemcontrol.tabs.tabs.unified.tooltip.nbt_mode": "Strict components Match: %s",
+  "gui.itemcontrol.tabs.tabs.unified.tooltip.nbt_mode.on.colored": "§aStrict components Match: ON",
+  "gui.itemcontrol.tabs.tabs.unified.tooltip.nbt_mode.off.colored": "Strict components Match: OFF",
+  "gui.itemcontrol.tabs.tabs.unified.tooltip.left_item_nbt_toggle.colored": "§bShift+Right: Toggle components Match Mode",
+  "cfg.itemcontrol.tabs.tabs.open_editor.tooltip": "§aSupports single items, components items, #item tags, @mod namespaces, hidden tabs, and item additions. §eThe server validates tabs, items, and components before saving.",
+  "gui.itemcontrol.item_property.add_rule.tooltip": "Select an item to add a rule. In Drop Protection, you can also enter #namespace:tag, @modid, or item_id{components} in Search, then click Add Rule.",
+  "gui.itemcontrol.item_property.category.tooltip": "Choose a property group. Drop Protection includes all items and supports item tags, mods, and components rules.",
+  "gui.itemcontrol.components.title": "Edit item components",
+  "gui.itemcontrol.components.hint": "Use native [components], e.g. [damage=5,custom_data={sample:1}]",
+  "gui.itemcontrol.components.invalid": "Invalid component syntax",
+  "gui.itemcontrol.components.save": "Save",
+  "gui.itemcontrol.components.back": "Back"
+}

@@ -26,7 +26,12 @@ public class VoidPlaceholderItem extends Item {
      * 添加物品说明 (Tips)
      */
     @Override
-    public void appendHoverText(@NotNull ItemStack stack, @Nullable Level level, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
+    //? if >=1.21 {
+/*public void appendHoverText(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {*/
+//?} else {
+public void appendHoverText(@NotNull ItemStack stack, @Nullable Level level, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
+//?}
+
         // 第一行：警告这是禁用物品 (红色)
         tooltip.add(KineticI18n.translatable("tip.itemcontrol.item.void_placeholder.warning"));
         // 第二行：说明无法获取和使用 (灰色)

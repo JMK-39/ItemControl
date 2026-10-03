@@ -695,13 +695,20 @@ public final class ProtectionItemEditorPage extends KineticPage {
         return new GridEntry(cached.stack(), identifier, rule, cached.searchText(), sourceOrder);
     }
 
-    private static String identifierForCachedItem(KineticItemSearch.CachedItem cached) {
+    //? if >=1.21 {
+/*private static String identifierForCachedItem(KineticItemSearch.CachedItem cached) {
+    return cached == null || cached.stack() == null || cached.stack().isEmpty() ? "" : dev.xyat.itemcontrol.item.data.ItemData.formatStack(cached.stack());
+}*/
+//?} else {
+private static String identifierForCachedItem(KineticItemSearch.CachedItem cached) {
         if (cached == null || cached.stack() == null || cached.stack().isEmpty()) return "";
         if (cached.stack().getTag() != null && !cached.stack().getTag().isEmpty()) {
             return cached.id() + cached.stack().getTag();
         }
         return cached.id();
     }
+//?}
+
 
     private GridEntry specialEntry(RuleDraft rule, int sourceOrder) {
         ItemStack preview = rule.preview();
@@ -773,7 +780,35 @@ public final class ProtectionItemEditorPage extends KineticPage {
             return cachedPreview;
         }
 
-        private static ItemStack createPreview(String identifier) {
+        //? if >=1.21 {
+/*private static ItemStack createPreview(String identifier) {
+            if (identifier == null || identifier.isBlank()) return new ItemStack(Items.BARRIER);
+            if (identifier.startsWith("@")) {
+                String namespace = identifier.substring(1).trim();
+                for (Item item : KineticRegistries.items().values()) {
+                    ResourceLocation id = KineticRegistries.items().id(item);
+                    if (id != null && id.getNamespace().equals(namespace) && item != Items.AIR) return new ItemStack(item);
+                }
+                return new ItemStack(Items.BARRIER);
+            }
+            if (identifier.startsWith("#")) {
+                ResourceLocation tagId = ResourceLocation.tryParse(identifier.substring(1).trim());
+                if (tagId != null) {
+                    var tag = ItemTags.create(tagId);
+                    for (Item item : KineticRegistries.items().values()) {
+                        if (item == Items.AIR) continue;
+                        ItemStack stack = new ItemStack(item);
+                        if (stack.is(tag)) return stack;
+                    }
+                }
+                return new ItemStack(Items.BARRIER);
+            }
+
+            ItemStack stack = dev.xyat.itemcontrol.item.data.ItemData.parse(identifier);
+            return stack.isEmpty() ? new ItemStack(Items.BARRIER) : stack;
+        }*/
+//?} else {
+private static ItemStack createPreview(String identifier) {
             if (identifier == null || identifier.isBlank()) return new ItemStack(Items.BARRIER);
             if (identifier.startsWith("@")) {
                 String namespace = identifier.substring(1).trim();
@@ -811,5 +846,7 @@ public final class ProtectionItemEditorPage extends KineticPage {
             }
             return stack;
         }
+//?}
+
     }
 }

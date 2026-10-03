@@ -132,7 +132,12 @@ public final class TabModule {
             } else if (rule.startsWith("#")) {
                 String tag = rule.substring(1);
                 if (stack.getTags().anyMatch(t -> t.location().toString().equals(tag))) return true;
+//? if >=1.21 {
+/*            } else if (rule.contains("[")) {*/
+//?} else {
             } else if (rule.contains("{")) {
+//?}
+
                 ItemStack ruleStack = parseItemStr(rule);
                 if (!ruleStack.isEmpty() && ItemStack.isSameItemSameTags(stack, ruleStack)) return true;
             } else if (idStr.equals(rule)) {
@@ -142,7 +147,10 @@ public final class TabModule {
         return false;
     }
 
-    public static ItemStack parseItemStr(String str) {
+    //? if >=1.21 {
+/*public static ItemStack parseItemStr(String str) { return dev.xyat.itemcontrol.item.data.ItemData.parse(str); }*/
+//?} else {
+public static ItemStack parseItemStr(String str) {
         if (str == null || str.isEmpty()) return ItemStack.EMPTY;
         try {
             int brace = str.indexOf('{');
@@ -161,12 +169,19 @@ public final class TabModule {
             return ItemStack.EMPTY;
         }
     }
+//?}
 
-    public static String buildRule(ItemStack stack) {
+
+    //? if >=1.21 {
+/*public static String buildRule(ItemStack stack) { return stack == null || stack.isEmpty() ? "" : dev.xyat.itemcontrol.item.data.ItemData.formatStack(stack); }*/
+//?} else {
+public static String buildRule(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return "";
         ResourceLocation id = KineticRegistries.items().id(stack.getItem());
         if (id == null) return "";
         String nbt = (stack.hasTag() && stack.getTag() != null) ? stack.getTag().toString() : "{}";
         return nbt.equals("{}") ? id.toString() : id + nbt;
     }
+//?}
+
 }

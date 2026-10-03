@@ -16,7 +16,12 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+//? if >=1.21 {
+/*import dev.xyat.kineticcore.api.registry.KineticRegistries;*/
+//?} else {
 import net.minecraftforge.registries.ForgeRegistries;
+//?}
+
 import org.apache.logging.log4j.LogManager;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -77,6 +82,45 @@ public class ItemManagementMixins {
         @Deprecated
         private Item item;
 
+//? if >=1.21 {
+/*        @Mutable @Shadow @Final private net.minecraft.core.component.PatchedDataComponentMap components;
+
+        @Inject(method = "<init>(Lnet/minecraft/world/level/ItemLike;ILnet/minecraft/core/component/PatchedDataComponentMap;)V", at = @At("RETURN"))
+        private void itemcontrol_item$init(net.minecraft.world.level.ItemLike value, int count, net.minecraft.core.component.PatchedDataComponentMap data, CallbackInfo ci) {
+            itemcontrol_item$replaceMergedItem();
+        }
+
+        @Inject(method = "set", at = @At("RETURN"))
+        private void itemcontrol_item$set(net.minecraft.core.component.DataComponentType<?> type, Object value, CallbackInfoReturnable<Object> cir) {
+            itemcontrol_item$replaceMergedItem();
+        }
+
+        @Inject(method = "remove", at = @At("RETURN"))
+        private void itemcontrol_item$remove(net.minecraft.core.component.DataComponentType<?> type, CallbackInfoReturnable<Object> cir) { itemcontrol_item$replaceMergedItem(); }
+
+        @Inject(method = "applyComponentsAndValidate", at = @At("RETURN"))
+        private void itemcontrol_item$applyValidated(net.minecraft.core.component.DataComponentPatch patch, CallbackInfo ci) { itemcontrol_item$replaceMergedItem(); }
+
+        @Inject(method = "applyComponents(Lnet/minecraft/core/component/DataComponentPatch;)V", at = @At("RETURN"))
+        private void itemcontrol_item$applyPatch(net.minecraft.core.component.DataComponentPatch patch, CallbackInfo ci) { itemcontrol_item$replaceMergedItem(); }
+
+        @Inject(method = "applyComponents(Lnet/minecraft/core/component/DataComponentMap;)V", at = @At("RETURN"))
+        private void itemcontrol_item$applyMap(net.minecraft.core.component.DataComponentMap map, CallbackInfo ci) { itemcontrol_item$replaceMergedItem(); }
+
+        @Unique
+        private void itemcontrol_item$replaceMergedItem() {
+            if (item == null || ItemBanControl.shouldSkip()) return;
+            ItemStack self = (ItemStack) (Object) this;
+            String target = BanItemConfig.getReplacement(self);
+            if (target == null || target.isBlank() || BanItemConfig.VOID_ID.equals(target)) return;
+            Item replacement = KineticRegistries.items().get(dev.xyat.kineticcore.api.resource.KineticResourceIds.tryParse(BanItemConfig.getBaseIdentifier(target)));
+            if (replacement == null || replacement == Items.AIR || replacement == item) return;
+            item = replacement;
+            components = net.minecraft.core.component.PatchedDataComponentMap.fromPatch(replacement.components(), components.asPatch());
+        }
+
+*/
+//?} else {
         @Mutable
         @Shadow(remap = false)
         @Final
@@ -117,8 +161,30 @@ public class ItemManagementMixins {
             delegate = ForgeRegistries.ITEMS.getDelegateOrThrow(replacementItem);
         }
 
+
+//?}
         @Inject(method = "is(Lnet/minecraft/world/item/Item;)Z", at = @At("HEAD"), cancellable = true)
-        private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
+        //? if >=1.21 {
+/*private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
+            ItemStack self = (ItemStack) (Object) this;
+            if (self.isEmpty() || pItem == null || pItem == Items.AIR) return;
+            if (self.getItem() != pItem) {
+                ResourceLocation inId = KineticRegistries.items().id(pItem);
+                if (inId != null) {
+                    String replacementStr = BanItemConfig.getReplacement(inId.toString());
+                    if (replacementStr != null && !BanItemConfig.VOID_ID.equals(replacementStr)) {
+                        int bracket = replacementStr.indexOf('[');
+                        String targetPureId = bracket == -1 ? replacementStr : replacementStr.substring(0, bracket);
+                        ResourceLocation thisId = KineticRegistries.items().id(self.getItem());
+                        if (thisId != null && targetPureId.equals(thisId.toString())) {
+                            cir.setReturnValue(true);
+                        }
+                    }
+                }
+            }
+        }*/
+//?} else {
+private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
             ItemStack self = (ItemStack) (Object) this;
             if (self.isEmpty() || pItem == null || pItem == Items.AIR) return;
             if (self.getItem() != pItem) {
@@ -136,6 +202,8 @@ public class ItemManagementMixins {
                 }
             }
         }
+//?}
+
 
         @Inject(method = "is(Lnet/minecraft/tags/TagKey;)Z", at = @At("HEAD"), cancellable = true)
         private void itemcontrol_item$isMergedTag(TagKey<Item> tagKey, CallbackInfoReturnable<Boolean> cir) {
@@ -169,7 +237,11 @@ public class ItemManagementMixins {
                 Map<String, String> stringRules = new java.util.HashMap<>();
                 BanItemConfig.ruleReplacementMap.forEach((rule, target) -> {
                     if (!rule.hasNbt && !BanItemConfig.VOID_ID.equals(target)) {
+//? if >=1.21 {
+/*                        int bracket = target.indexOf('[');*/
+//?} else {
                         int bracket = target.indexOf('{');
+//?}
                         String pureTarget = bracket == -1 ? target : target.substring(0, bracket);
                         stringRules.put(rule.baseId, pureTarget);
                     }

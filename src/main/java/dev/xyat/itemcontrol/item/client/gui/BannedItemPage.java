@@ -322,7 +322,35 @@ public class BannedItemPage extends KineticPage {
         displayList = ItemSearchCache.searchItems("ban_display_" + viewMode, currentSourceList, query, sourceHash);
     }
 
-    private void openNbtEditor(String idStr, boolean isRule, ItemStack fallbackStack) {
+    //? if >=1.21 {
+/*private void openNbtEditor(String idStr, boolean isRule, ItemStack fallbackStack) {
+        String baseId;
+        String initNbt;
+        int bracket = idStr.indexOf('[');
+        if (bracket == -1) {
+            baseId = idStr;
+            initNbt = fallbackStack == null ? "[]" : dev.xyat.itemcontrol.item.data.ItemData.format(fallbackStack);
+        } else {
+            baseId = idStr.substring(0, bracket);
+            initNbt = idStr.substring(bracket);
+        }
+
+        {
+            ItemDataEditor.open(this, baseId, initNbt, (savedNbt) -> {
+                String cleanNbt = savedNbt == null ? "" : savedNbt.trim();
+                String newIdStr = baseId + cleanNbt;
+                if (isRule) removeBanRule(idStr);
+                addBanRule(newIdStr);
+                viewMode = 1;
+                gridScroll.reset();
+                rememberedScrollOffset = 0;
+                if (viewBtn != null) viewBtn.setText(getViewModeText());
+                updateSearch(searchBox == null ? "" : searchBox.textValue());
+            });
+        }
+    }*/
+//?} else {
+private void openNbtEditor(String idStr, boolean isRule, ItemStack fallbackStack) {
         String baseId;
         String initNbt;
         int bracket = idStr.indexOf('{');
@@ -348,11 +376,17 @@ public class BannedItemPage extends KineticPage {
             });
         }
     }
+//?}
+
 
     private String getRuleIdentifier(KineticItemSearch.CachedItem cachedItem) {
         if (cachedItem == null) return "";
         String idStr = cachedItem.id() == null ? "" : cachedItem.id().trim();
+//? if >=1.21 {
+/*        if (idStr.startsWith("@") || idStr.startsWith("#") || idStr.contains("[")) return idStr;*/
+//?} else {
         if (idStr.startsWith("@") || idStr.startsWith("#") || idStr.contains("{")) return idStr;
+//?}
         String identifier = BanItemConfig.getItemIdentifier(cachedItem.stack());
         return identifier.isBlank() ? idStr : identifier;
     }
@@ -370,7 +404,11 @@ public class BannedItemPage extends KineticPage {
 
     private void addBanRule(String rule) {
         if (rule == null || rule.isBlank() || BanItemConfig.isProtected(rule)) return;
+//? if >=1.21 {
+/*        if (rule.contains("[")) {*/
+//?} else {
         if (rule.contains("{")) {
+//?}
             String baseId = BanItemConfig.getBaseIdentifier(rule);
             if (!baseId.isBlank()) BanItemConfig.data.bannedItems.remove(baseId);
         }

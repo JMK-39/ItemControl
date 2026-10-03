@@ -37,7 +37,12 @@ public class TabJeiPlugin implements IModPlugin {
 
         for (TabConfig.TabAddition add : TabConfig.data.additions) {
             for (TabConfig.TabItem item : add.items) {
+//? if >=1.21 {
+/*                if (item.matchComponents && !item.components.equals("[]")) {*/
+//?} else {
                 if (item.matchNbt && !item.nbt.equals("{}")) {
+//?}
+
                     Item mcItem = KineticRegistries.items().get(KineticResourceIds.parse(item.id));
                     if (mcItem != null) itemsWithCustomNBT.add(mcItem);
                 }
@@ -45,7 +50,19 @@ public class TabJeiPlugin implements IModPlugin {
         }
 
         for (Item item : itemsWithCustomNBT) {
+//? if >=1.21 {
+/*            registration.registerSubtypeInterpreter(item, new mezz.jei.api.ingredients.subtypes.ISubtypeInterpreter<ItemStack>() {
+                @Override public Object getSubtypeData(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                    return stack.getComponentsPatch();
+                }
+                @Override public String getLegacyStringSubtypeInfo(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
+                    return dev.xyat.itemcontrol.item.data.ItemData.format(stack);
+                }
+            });*/
+//?} else {
             registration.useNbtForSubtypes(item);
+//?}
+
         }
     }
 

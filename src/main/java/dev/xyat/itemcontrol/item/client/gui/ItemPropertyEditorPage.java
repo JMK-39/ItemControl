@@ -400,7 +400,12 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 FoodProperties food = stack.getFoodProperties(null);
                 yield food != null && food.canAlwaysEat();
             }
-            case "fire_resistant" -> stack.getItem().isFireResistant();
+            //? if >=1.21 {
+/*case "fire_resistant" -> stack.has(net.minecraft.core.component.DataComponents.FIRE_RESISTANT);*/
+//?} else {
+case "fire_resistant" -> stack.getItem().isFireResistant();
+//?}
+
             case "explosion_immune" -> stack.is(Items.NETHER_STAR);
             case "glowing", "no_gravity", "persistent", "non_consumable" -> false;
             default -> false;
@@ -425,9 +430,24 @@ public final class ItemPropertyEditorPage extends KineticPage {
             case "knockback_resistance" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.KNOCKBACK_RESISTANCE));
             case "mining_speed" -> number(miningSpeed(stack));
             case "mining_level" -> item instanceof TieredItem tiered ? Integer.toString(numericMiningLevel(tiered.getTier())) : "";
-            case "nutrition" -> food == null ? "" : Integer.toString(food.getNutrition());
-            case "saturation" -> food == null ? "" : number(food.getSaturationModifier());
-            case "eat_seconds" -> food == null ? "" : number(stack.getUseDuration() / 20.0);
+            //? if >=1.21 {
+/*case "nutrition" -> food == null ? "" : Integer.toString(food.nutrition());*/
+//?} else {
+case "nutrition" -> food == null ? "" : Integer.toString(food.getNutrition());
+//?}
+
+            //? if >=1.21 {
+/*case "saturation" -> food == null ? "" : number(food.nutrition() == 0 ? 0 : food.saturation() / (2.0 * food.nutrition()));*/
+//?} else {
+case "saturation" -> food == null ? "" : number(food.getSaturationModifier());
+//?}
+
+            //? if >=1.21 {
+/*case "eat_seconds" -> food == null ? "" : number(food.eatSeconds());*/
+//?} else {
+case "eat_seconds" -> food == null ? "" : number(stack.getUseDuration() / 20.0);
+//?}
+
             case "max_stack_size" -> Integer.toString(stack.getMaxStackSize());
             case "max_damage" -> Integer.toString(stack.getMaxDamage());
             case "enchantability" -> Integer.toString(stack.getEnchantmentValue());
@@ -440,12 +460,23 @@ public final class ItemPropertyEditorPage extends KineticPage {
         };
     }
 
-    private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attribute attribute) {
+    //? if >=1.21 {
+/*private static double attributeAmount(ItemStack stack, EquipmentSlot slot, net.minecraft.core.Holder<Attribute> attribute) {
+    final double[] total = { 0 };
+    stack.forEachModifier(slot, (type, modifier) -> {
+        if (type.equals(attribute) && modifier.operation() == AttributeModifier.Operation.ADD_VALUE) total[0] += modifier.amount();
+    });
+    return total[0];
+}*/
+//?} else {
+private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attribute attribute) {
         return stack.getAttributeModifiers(slot).get(attribute).stream()
                 .filter(modifier -> modifier.getOperation() == AttributeModifier.Operation.ADDITION)
                 .mapToDouble(AttributeModifier::getAmount)
                 .sum();
     }
+//?}
+
 
     private static double miningSpeed(ItemStack stack) {
         Item item = stack.getItem();
@@ -457,7 +488,13 @@ public final class ItemPropertyEditorPage extends KineticPage {
 
     private static int numericMiningLevel(Tier tier) {
         // ItemControl's numeric mining-level override intentionally follows vanilla tier levels.
-        return tier.getLevel();
+        //? if >=1.21 {
+/*return tier == net.minecraft.world.item.Tiers.NETHERITE ? 4 : tier == net.minecraft.world.item.Tiers.DIAMOND ? 3
+        : tier == net.minecraft.world.item.Tiers.IRON ? 2 : tier == net.minecraft.world.item.Tiers.STONE ? 1 : 0;*/
+//?} else {
+return tier.getLevel();
+//?}
+
     }
 
     private static String number(double value) {
@@ -556,7 +593,11 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private ItemStack specialStack(String id) {
         if (id.startsWith("@")) return new ItemStack(Items.COMMAND_BLOCK);
         if (id.startsWith("#")) return new ItemStack(Items.NAME_TAG);
+//? if >=1.21 {
+/*        return stackForId(id.substring(0, id.indexOf('[')));*/
+//?} else {
         return stackForId(id.substring(0, id.indexOf('{')));
+//?}
     }
 
     private boolean hasCurrentPropertiesInput() {

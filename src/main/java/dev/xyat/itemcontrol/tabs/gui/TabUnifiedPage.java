@@ -413,12 +413,17 @@ public class TabUnifiedPage extends KineticPage {
                             String id =
                                     selectedId.toString();
 
+//? if >=1.21 {
+/*                            String nbt = dev.xyat.itemcontrol.item.data.ItemData.format(selectedStack);*/
+//?} else {
                             String nbt =
                                     selectedStack.hasTag()
                                             && selectedStack.getTag() != null
                                             ? selectedStack.getTag().toString()
                                             : "{}";
 
+
+//?}
                             boolean exists =
                                     mainItems.stream()
                                             .anyMatch(item -> {
@@ -427,11 +432,16 @@ public class TabUnifiedPage extends KineticPage {
                                                                 item.stack.getItem()
                                                         );
 
+//? if >=1.21 {
+/*                                                String currentNbt = dev.xyat.itemcontrol.item.data.ItemData.format(item.stack);*/
+//?} else {
                                                 String currentNbt =
                                                         item.stack.getTag() != null
                                                                 ? item.stack.getTag().toString()
                                                                 : "{}";
 
+
+//?}
                                                 return currentId != null
                                                         && currentId.toString().equals(id)
                                                         && currentNbt.equals(nbt);

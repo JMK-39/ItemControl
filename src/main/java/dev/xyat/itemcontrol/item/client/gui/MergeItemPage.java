@@ -343,7 +343,11 @@ public class MergeItemPage extends KineticPage {
 
     private String getBaseIdentifier(String idStr) {
         if (idStr == null) return "";
+//? if >=1.21 {
+/*        int bracket = idStr.indexOf('[');*/
+//?} else {
         int bracket = idStr.indexOf('{');
+//?}
         return bracket == -1 ? idStr : idStr.substring(0, bracket);
     }
 
@@ -375,7 +379,48 @@ public class MergeItemPage extends KineticPage {
     }
 
 
-    private void openNbtEditor(String idStr, int context, String targetParent, ItemStack fallbackStack) {
+    //? if >=1.21 {
+/*private void openNbtEditor(String idStr, int context, String targetParent, ItemStack fallbackStack) {
+        String baseId;
+        String initNbt;
+        int bracket = idStr.indexOf('[');
+        if (bracket == -1) {
+            baseId = idStr;
+            initNbt = fallbackStack == null ? "[]" : dev.xyat.itemcontrol.item.data.ItemData.format(fallbackStack);
+        } else {
+            baseId = idStr.substring(0, bracket);
+            initNbt = idStr.substring(bracket);
+        }
+
+        {
+            ItemDataEditor.open(this, baseId, initNbt, (savedNbt) -> {
+                String newIdStr = baseId + savedNbt;
+                switch (context) {
+                    case 0:
+                        tempRules.putIfAbsent(newIdStr, new ArrayList<>());
+                        selectedTarget = newIdStr; isCreatingRule = false; targetTagFilterActive = false; expandedTargets.add(newIdStr);
+                        break;
+                    case 1:
+                        tempRules.get(selectedTarget).add(newIdStr);
+                        break;
+                    case 2:
+                        List<String> src = tempRules.remove(idStr);
+                        if (src == null) src = new ArrayList<>();
+                        tempRules.put(newIdStr, src);
+                        if (idStr.equals(selectedTarget)) selectedTarget = newIdStr;
+                        targetTagFilterActive = false; expandedTargets.remove(idStr); expandedTargets.add(newIdStr);
+                        break;
+                    case 3:
+                        List<String> pSrc = tempRules.get(targetParent);
+                        if (pSrc != null) { pSrc.remove(idStr); pSrc.add(newIdStr); }
+                        break;
+                }
+                updateLeftEntries(); updateRightPanel();
+            });
+        }
+    }*/
+//?} else {
+private void openNbtEditor(String idStr, int context, String targetParent, ItemStack fallbackStack) {
         String baseId;
         String initNbt;
         int bracket = idStr.indexOf('{');
@@ -414,6 +459,8 @@ public class MergeItemPage extends KineticPage {
             });
         }
     }
+//?}
+
 
     @Override
     protected void renderBackground(KineticGraphics g, int smx, int smy, float pt) {

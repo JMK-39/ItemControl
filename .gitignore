@@ -29,3 +29,5 @@ src/generated/resources/.cache/
 Thumbs.db
 
 /CF_UPDATE_LOG.md
+run-*/
+.superpowers/

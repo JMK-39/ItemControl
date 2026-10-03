@@ -99,6 +99,68 @@ public class BanItemConfig {
         return copy;
     }
 
+//? if >=1.21 {
+/*    public static class ItemRule {
+        public final String originalString;
+        public final String baseId;
+        public final String components;
+        public final boolean hasNbt;
+
+        public ItemRule(String str) {
+            String clean = normalizeRuleIdentifier(str);
+            this.originalString = clean;
+            int bracket = clean.indexOf('[');
+            if (bracket == -1) {
+                this.baseId = clean;
+                this.components = null;
+                this.hasNbt = false;
+            } else {
+                this.baseId = clean.substring(0, bracket);
+                this.components = clean;
+                this.hasNbt = true;
+            }
+        }
+
+        public boolean matchesWithId(ItemStack stack, String itemId) {
+            if (stack == null || itemId == null || itemId.isEmpty() || this.originalString.isEmpty()) return false;
+            if (this.originalString.startsWith("@")) {
+                int colonIdx = itemId.indexOf(':');
+                String namespace = colonIdx == -1 ? itemId : itemId.substring(0, colonIdx);
+                return namespace.equals(this.originalString.substring(1));
+            }
+            if (this.originalString.startsWith("#")) {
+                String targetTag = this.originalString.substring(1);
+                try {
+                    return stack.getTags().anyMatch(t -> t.location().toString().toLowerCase(Locale.ROOT).equals(targetTag));
+                } catch (Throwable e) {
+                    logLimitedWarn("匹配物品标签规则时出错，规则=" + this.originalString + ", 物品=" + itemId, e);
+                    return false;
+                }
+            }
+
+            if (!itemId.equals(this.baseId)) return false;
+            if (!this.hasNbt) return true;
+            if (this.components != null) {
+                return dev.xyat.itemcontrol.item.data.ItemData.matches(components, stack);
+            }
+            return false;
+        }
+
+        public boolean matches(ItemStack stack) {
+            if (stack == null || stack.isEmpty()) return false;
+            String itemId = getItemIdFromCache(stack.getItem());
+            if (itemId.isEmpty()) return false;
+            return matchesWithId(stack, itemId);
+        }
+
+        @Override
+        public int hashCode() { return originalString.hashCode(); }
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ItemRule && ((ItemRule)obj).originalString.equals(this.originalString);
+        }
+    }*/
+//?} else {
     public static class ItemRule {
         public final String originalString;
         public final String baseId;
@@ -159,6 +221,8 @@ public class BanItemConfig {
             return obj instanceof ItemRule && ((ItemRule)obj).originalString.equals(this.originalString);
         }
     }
+//?}
+
 
     public static boolean isProtected(String identifier) {
         if (identifier == null) return false;
@@ -213,7 +277,11 @@ public class BanItemConfig {
         if (clean.isEmpty() || clean.startsWith("@") || clean.startsWith("#")) return false;
         if (data != null && data.bannedItems != null && data.bannedItems.contains(clean)) return true;
 
+//? if >=1.21 {
+/*        int bracket = clean.indexOf('[');*/
+//?} else {
         int bracket = clean.indexOf('{');
+//?}
         String baseId = bracket == -1 ? clean : clean.substring(0, bracket);
         if (pureIdBanned.contains(baseId)) return true;
 
@@ -325,7 +393,29 @@ public class BanItemConfig {
         return raw.substring(1).trim().toLowerCase(Locale.ROOT);
     }
 
-    private static String normalizeRuleIdentifier(String identifier) {
+    //? if >=1.21 {
+/*private static String normalizeRuleIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) return "";
+        String text = identifier.trim();
+        if (text.startsWith("@")) {
+            String namespace = text.substring(1).trim().toLowerCase(Locale.ROOT);
+            return namespace.matches("[a-z0-9_.-]+") ? "@" + namespace : "";
+        }
+        if (text.startsWith("#")) {
+            ResourceLocation tag = KineticResourceIds.tryParse(text.substring(1).trim().toLowerCase(Locale.ROOT));
+            return tag == null ? "" : "#" + tag;
+        }
+        int start = text.indexOf('[');
+        String id = start < 0 ? text : text.substring(0, start).trim();
+        ResourceLocation location = KineticResourceIds.tryParse(id.toLowerCase(Locale.ROOT));
+        if (location == null) return "";
+        // Validate syntax without replacing the raw constraints with a normalized patch: explicit defaults matter.
+        String data = start < 0 ? "[]" : text.substring(start);
+        if (!dev.xyat.itemcontrol.item.data.ItemData.validConstraint(location.toString(), data)) return "";
+        return location + (start < 0 ? "" : data);
+    }*/
+//?} else {
+private static String normalizeRuleIdentifier(String identifier) {
         if (identifier == null) return "";
         String raw = identifier.trim();
         if (raw.isEmpty()) return "";
@@ -364,6 +454,8 @@ public class BanItemConfig {
         }
         return cleanId;
     }
+//?}
+
 
     private static String compactKnownNbtIdentifier(String baseId, CompoundTag tag) {
         if (baseId == null || baseId.isBlank() || tag == null || tag.isEmpty()) return "";
@@ -417,7 +509,11 @@ public class BanItemConfig {
     public static String getBaseIdentifier(String identifier) {
         if (identifier == null || identifier.isBlank()) return "";
         String raw = identifier.trim();
+//? if >=1.21 {
+/*        int bracket = raw.indexOf('[');*/
+//?} else {
         int bracket = raw.indexOf('{');
+//?}
         String base = bracket == -1 ? raw : raw.substring(0, bracket);
         if (base.startsWith("@") || base.startsWith("#")) return base.toLowerCase(Locale.ROOT);
         try {
@@ -746,7 +842,10 @@ public class BanItemConfig {
         return pureIdReplacements.get(id);
     }
 
-    public static String getItemIdentifier(ItemStack stack) {
+    //? if >=1.21 {
+/*public static String getItemIdentifier(ItemStack stack) { return stack == null || stack.isEmpty() ? "" : dev.xyat.itemcontrol.item.data.ItemData.formatStack(stack); }*/
+//?} else {
+public static String getItemIdentifier(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return "";
         ResourceLocation id = KineticRegistries.items().id(stack.getItem());
         if (id == null) return "";
@@ -757,8 +856,17 @@ public class BanItemConfig {
         if (!compact.isEmpty()) return compact;
         return base + tag;
     }
+//?}
 
-    public static ItemStack parseItemStack(String identifier) {
+
+    //? if >=1.21 {
+/*public static ItemStack parseItemStack(String identifier) {
+        final ItemStack[] result = { ItemStack.EMPTY };
+        ItemBanControl.withSkip(() -> { result[0] = dev.xyat.itemcontrol.item.data.ItemData.parse(identifier); return null; });
+        return result[0];
+    }*/
+//?} else {
+public static ItemStack parseItemStack(String identifier) {
         String clean = normalizeRuleIdentifier(identifier);
         if (clean.isEmpty() || clean.startsWith("@") || clean.startsWith("#")) return ItemStack.EMPTY;
         final ItemStack[] result = {ItemStack.EMPTY};
@@ -790,4 +898,6 @@ public class BanItemConfig {
 
         return result[0];
     }
+//?}
+
 }
