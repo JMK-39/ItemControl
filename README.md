@@ -26,8 +26,8 @@ Item Control 提供物品规则、属性、掉落物保护、清理与创造标�
 
 [GitHub project / 项目仓库](https://github.com/JMK-39/ItemControl) · [CurseForge](https://www.curseforge.com/minecraft/mc-mods/itemcontrol)
 
-Detailed tutorials have been prepared as a local GitHub Wiki draft; the Wiki is pending publication.
+See the [English Wiki tutorial](https://github.com/JMK-39/ItemControl/wiki/Tutorial) for detailed instructions (pages prepared locally; publication pending).
 
-详细教程已整理为本地 GitHub Wiki 草稿，Wiki 待上线。
+详细用法见[中文 Wiki 教程](https://github.com/JMK-39/ItemControl/wiki/使用教程)（页面已在本地整理，待上线）。
 
 [Changelog / 更新日志](CHANGELOG.md)
