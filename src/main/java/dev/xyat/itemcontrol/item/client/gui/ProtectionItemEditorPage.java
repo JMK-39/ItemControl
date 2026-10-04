@@ -4,7 +4,6 @@ import dev.xyat.kineticcore.api.text.KineticI18n;
 import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
-import dev.xyat.kineticcore.api.client.gui.text.KineticText;
 import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
@@ -47,6 +46,8 @@ public final class ProtectionItemEditorPage extends KineticPage {
     private static final int SEARCH_W = 300;
     private static final int SPECIAL_X = 334;
     private static final int SPECIAL_W = 120;
+    private static final int SAVE_X = 500;
+    private static final int TEXT_GAP = 4;
     private static final int GRID_X = 26;
     private static final int GRID_Y = 58;
     private static final int SLOT_SIZE = 18;
@@ -62,6 +63,10 @@ public final class ProtectionItemEditorPage extends KineticPage {
     private static final int MODAL_Y = 99;
     private static final int MODAL_W = 260;
     private static final int MODAL_H = 164;
+    private static final int MODAL_PADDING = 14;
+    // Keep both toggle rows below the modal status text and above the action buttons.
+    private static final int MODAL_TOGGLE_Y = MODAL_Y + 69;
+    private static final int MODAL_TOGGLE_ROW_PITCH = 28;
 
     private enum Layer {
         RULE_EDITOR
@@ -131,23 +136,23 @@ public final class ProtectionItemEditorPage extends KineticPage {
 
         specialRuleButton = ui().button(SPECIAL_X, SEARCH_Y, SPECIAL_W).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.special_rule")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.special_rule")).onClick(this::openSpecialRuleFromSearch).build();
 
-        saveButton = ui().button(500, 30, 52).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.save")).onClick(this::save).build();
+        saveButton = ui().button(SAVE_X, 30, 52).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.save")).onClick(this::save).build();
 
         backButton = ui().button(558, 30, 56).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.back")).onClick(this::close).build();
 
-        modalFireButton = addModalButton(204, 158, 108, () -> {
+        modalFireButton = addModalButton(204, MODAL_TOGGLE_Y, 108, () -> {
             modalFireImmune = !modalFireImmune;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.fire");
-        modalExplosionButton = addModalButton(328, 158, 108, () -> {
+        modalExplosionButton = addModalButton(328, MODAL_TOGGLE_Y, 108, () -> {
             modalExplosionImmune = !modalExplosionImmune;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.explosion");
-        modalGlowingButton = addModalButton(204, 186, 108, () -> {
+        modalGlowingButton = addModalButton(204, MODAL_TOGGLE_Y + MODAL_TOGGLE_ROW_PITCH, 108, () -> {
             modalGlowing = !modalGlowing;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.glowing");
-        modalGravityButton = addModalButton(328, 186, 108, () -> {
+        modalGravityButton = addModalButton(328, MODAL_TOGGLE_Y + MODAL_TOGGLE_ROW_PITCH, 108, () -> {
             modalNoGravity = !modalNoGravity;
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.gravity");
@@ -469,7 +474,7 @@ public final class ProtectionItemEditorPage extends KineticPage {
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.centeredText(title(), width() / 2, 9, 0xFFFFFF, true);
+        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 2 * TEXT_GAP, 0xFFFFFF, true);
         if (layerManager.isOpen(Layer.RULE_EDITOR)) {
             renderModal(graphics);
             return;
@@ -486,10 +491,10 @@ public final class ProtectionItemEditorPage extends KineticPage {
                 GRID_H,
                 18
         );
-        graphics.text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.hint"), 26, 346, 0xFFFFFF, false);
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.hint"), GRID_X, 346, PANEL_X + PANEL_W - GRID_X - TEXT_GAP, 0xFFFFFF, false);
         if (specialRuleButton == null || !specialRuleButton.controlVisible()) {
             Component count = KineticI18n.translatable("gui.itemcontrol.item.protection_editor.count", rules.size(), displayEntries.size());
-            graphics.text(count, 334, SEARCH_Y + 6, 0xFFFFFF, false);
+            graphics.scrollingText(count, SPECIAL_X, SEARCH_Y + 6, SAVE_X - SPECIAL_X - TEXT_GAP, 0xFFFFFF, false);
         }
     }
 
@@ -535,7 +540,7 @@ public final class ProtectionItemEditorPage extends KineticPage {
     }
 
     private void renderModal(KineticGraphics graphics) {
-        graphics.centeredText(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.modal.title"), width() / 2, MODAL_Y + 10, 0xFFFFFF, true);
+        graphics.scrollingTextCentered(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.modal.title"), MODAL_X + MODAL_W / 2, MODAL_Y + 10, MODAL_W - 2 * MODAL_PADDING, 0xFFFFFF, true);
         int previewX = MODAL_X + 18;
         int previewY = MODAL_Y + 27;
         KineticTheme.itemSlot(graphics, previewX, previewY, SLOT_SIZE, 4, false);
@@ -543,12 +548,14 @@ public final class ProtectionItemEditorPage extends KineticPage {
         String name = modalPreview.isEmpty()
                 ? KineticI18n.translatable("gui.itemcontrol.item.protection_editor.unknown").getString()
                 : modalPreview.getHoverName().getString();
-        graphics.text(KineticText.trim(name, 190), MODAL_X + 44, MODAL_Y + 28, 0xFFFFFF, false);
-        graphics.text(KineticText.trim(modalIdentifier, 190), MODAL_X + 44, MODAL_Y + 41, 0xFFAAAAAA, false);
+        int nameX = previewX + SLOT_SIZE + 8;
+        int nameWidth = MODAL_X + MODAL_W - MODAL_PADDING - nameX;
+        graphics.scrollingText(Component.literal(name), nameX, MODAL_Y + 28, nameWidth, 0xFFFFFF, false);
+        graphics.scrollingText(Component.literal(modalIdentifier), nameX, MODAL_Y + 41, nameWidth, 0xFFAAAAAA, false);
         Component state = KineticI18n.translatable(modalExistingRule == null
                 ? "gui.itemcontrol.item.protection_editor.modal.new"
                 : "gui.itemcontrol.item.protection_editor.modal.existing");
-        graphics.text(state, MODAL_X + 14, MODAL_Y + 55, 0xFFFFFF, false);
+        graphics.scrollingText(state, MODAL_X + MODAL_PADDING, MODAL_Y + 55, MODAL_W - 2 * MODAL_PADDING, 0xFFFFFF, false);
     }
 
     @Override

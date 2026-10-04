@@ -43,6 +43,8 @@ public class BannedItemPage extends KineticPage {
 
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_PITCH = 19;
+    // Leave a gap between self-drawn text and the next control or panel edge.
+    private static final int TEXT_GAP = 4;
     private final KineticScrollController gridScroll = new KineticScrollController();
     private int gridX, gridY, gridCols, contentW, contentH, gridW;
     private boolean compactToolbar;
@@ -449,13 +451,14 @@ private void openNbtEditor(String idStr, boolean isRule, ItemStack fallbackStack
                             + ruleBtn.controlWidth()
                             + 10;
         }
+        int countWidth = Math.max(0, (compactToolbar ? gridX + contentW : saveBtn.controlX()) - countX - TEXT_GAP);
 
         if (isAutoCompleteMode) {
             countText = KineticI18n.translatable(
                     "gui.itemcontrol.item.banitem.autocomplete.matches_count",
                     Component.literal(String.valueOf(autoCompleteList.size()))
             );
-            g.text(countText, countX, infoY, KineticTheme.current().mutedText(), false);
+            g.scrollingText(countText, countX, infoY, countWidth, KineticTheme.current().mutedText(), false);
 
             g.scissor(gridX,
                     gridY,
@@ -478,7 +481,7 @@ private void openNbtEditor(String idStr, boolean isRule, ItemStack fallbackStack
                             hovered,
                             false
                     );
-                    g.text(entry, gridX + 5, y + 6, 0xFFFFFF, true);
+                    g.scrollingText(Component.literal(entry), gridX + 5, y + 6, gridW - 5 - TEXT_GAP, 0xFFFFFF, true);
                 }
             }
         } else {
@@ -487,7 +490,7 @@ private void openNbtEditor(String idStr, boolean isRule, ItemStack fallbackStack
                     displayList.size(),
                     currentSourceList.size()
             );
-            g.text(countText, countX, infoY, KineticTheme.current().mutedText(), false);
+            g.scrollingText(countText, countX, infoY, countWidth, KineticTheme.current().mutedText(), false);
 
             g.scissor(gridX,
                     gridY,

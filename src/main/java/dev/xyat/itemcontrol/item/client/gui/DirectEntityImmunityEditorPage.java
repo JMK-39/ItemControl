@@ -40,6 +40,8 @@ public final class DirectEntityImmunityEditorPage extends KineticPage {
     private static final int SEARCH_W = 300;
     private static final int SPECIAL_X = 334;
     private static final int SPECIAL_W = 120;
+    private static final int SAVE_X = 500;
+    private static final int TEXT_GAP = 4;
     private static final int GRID_X = 26;
     private static final int GRID_Y = 58;
     private static final int CELL_SIZE = 52;
@@ -99,7 +101,7 @@ public final class DirectEntityImmunityEditorPage extends KineticPage {
 
         specialRuleButton = ui().button(SPECIAL_X, SEARCH_Y, SPECIAL_W).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tag.add")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.tag")).onClick(this::toggleTagFromSearch).build();
 
-        saveButton = ui().button(500, 30, 52).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.save")).onClick(this::save).build();
+        saveButton = ui().button(SAVE_X, 30, 52).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.save")).onClick(this::save).build();
 
         ui().button(558, 30, 56).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.back")).onClick(this::close).build();
 
@@ -217,16 +219,16 @@ public final class DirectEntityImmunityEditorPage extends KineticPage {
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.centeredText(title(), width() / 2, 9, 0xFFFFFF, true);
+        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 2 * TEXT_GAP, 0xFFFFFF, true);
         if (specialRuleButton == null || !specialRuleButton.controlVisible()) {
             Component count = KineticI18n.translatable(
                     "gui.itemcontrol.item.direct_entity_editor.count",
                     selectedEntries.size(),
                     displayEntries.size()
             );
-            graphics.text(count, 334, SEARCH_Y + 6, 0xFFFFFF, false);
+            graphics.scrollingText(count, SPECIAL_X, SEARCH_Y + 6, SAVE_X - SPECIAL_X - TEXT_GAP, 0xFFFFFF, false);
         }
-        graphics.text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.hint"), 26, 342, 0xFFFFFF, false);
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.hint"), GRID_X, 342, PANEL_X + PANEL_W - GRID_X - TEXT_GAP, 0xFFFFFF, false);
     }
 
     private void renderGrid(KineticGraphics graphics, int mouseX, int mouseY) {

@@ -14,6 +14,10 @@ public final class RuntimeValidation {
     private BanItemConfig.ItemRule preheatedBan;
     private boolean preheatedTab;
     public RuntimeValidation() {
+        if (Boolean.getBoolean("itemcontrol.guiValidation")) {
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(this::started);
+            return;
+        }
         try {
             String enchanted = "minecraft:diamond_sword[enchantments={levels:{\"minecraft:sharpness\":1}}]";
             preheatedBan = new BanItemConfig.ItemRule(enchanted);
@@ -31,6 +35,7 @@ public final class RuntimeValidation {
     }
 
     private void started(net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+        if (Boolean.getBoolean("itemcontrol.guiValidation")) { GuiLongTextValidation.install(); return; }
         try {
             String json = TabConfig.GSON.toJson(new TabConfig.TabItem());
             require(json.contains("\"components\"") && json.contains("\"matchComponents\"")

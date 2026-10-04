@@ -499,13 +499,13 @@ public class TabUnifiedPage extends KineticPage {
 
         KineticTheme.surface(graphics, 0, height() - 30, width(), 30, KineticTheme.Surface.PANEL_ALT);
 
-        graphics.text(KineticI18n.translatable(
+        graphics.scrollingText(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.left_title.colored"
-                ), MAIN_X, 8, 0xFFFFFF, true);
+                ), MAIN_X, 8, MAIN_W - 4, 0xFFFFFF, true);
 
-        graphics.text(KineticI18n.translatable(
+        graphics.scrollingText(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.right_title.colored"
-                ), RIGHT_X, 8, 0xFFFFFF, true);
+                ), RIGHT_X, 8, RIGHT_W - 4, 0xFFFFFF, true);
 
         renderMainPane(
                 graphics,

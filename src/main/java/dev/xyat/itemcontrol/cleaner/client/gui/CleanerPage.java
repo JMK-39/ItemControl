@@ -26,6 +26,8 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
     // The old screen overrode renderLabels and never drew the vanilla title / "Inventory" labels; the page host
     // draws them, so they are moved out of the visible area.
     private static final int HIDDEN_LABEL_POS = -10000;
+    // Leave room for the title and history text even when navigation labels are long.
+    private static final int MIN_HEADER_WIDTH = 70;
 
     private final KineticScrollController scroller = new KineticScrollController();
     private int lastSyncedRow = -1;
@@ -34,6 +36,7 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
     private final int maxHistory;
     private KineticButton previousPageButton;
     private KineticButton nextPageButton;
+    private int headerRightX;
     private final Map<Slot, Integer> originalCounts = new HashMap<>();
 
     public CleanerPage(CleanerMenu cleanerMenu, Component title) {
@@ -46,13 +49,18 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
 
     @Override
     protected void build(KineticUi ui) {
+        // Vanilla container initialization may reset the inventory label after construction.
+        setTitleLabelPosition(HIDDEN_LABEL_POS, HIDDEN_LABEL_POS);
+        setInventoryLabelPosition(HIDDEN_LABEL_POS, HIDDEN_LABEL_POS);
         Component previous = KineticI18n.translatable("gui.itemcontrol.cleaner.cleaner.prev");
         Component next = KineticI18n.translatable("gui.itemcontrol.cleaner.cleaner.next");
         int gap = 2;
-        int previousWidth = Math.max(26, KineticText.width(previous) + 8);
-        int nextWidth = Math.max(26, KineticText.width(next) + 8);
+        int maxButtonWidth = (imageWidth() - 16 - MIN_HEADER_WIDTH - gap) / 2;
+        int previousWidth = Math.min(maxButtonWidth, Math.max(26, KineticText.width(previous) + 8));
+        int nextWidth = Math.min(maxButtonWidth, Math.max(26, KineticText.width(next) + 8));
         int nextX = leftPos() + imageWidth() - 8 - nextWidth;
         int previousX = nextX - gap - previousWidth;
+        headerRightX = previousX - 4;
         int y = topPos() + 2;
 
         previousPageButton = ui.button(previousX, y, previousWidth)
@@ -128,13 +136,18 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
         originalCounts.clear();
 
         Component titleComp = KineticI18n.translatable("gui.itemcontrol.cleaner.cleaner.title");
-        graphics.text(titleComp, left + 8, top + 6, 4210752, false);
         Component pageText = KineticI18n.translatable(
                 "gui.itemcontrol.cleaner.cleaner.page",
                 Component.literal(String.valueOf(historyIndex + 1)),
                 Component.literal(String.valueOf(maxHistory))
         );
-        graphics.text(pageText, left + 8 + graphics.textWidth(titleComp) + 6, top + 6, 4210752, false);
+        int titleX = left + 8;
+        int headerWidth = headerRightX - titleX;
+        int pageReservation = Math.min(graphics.textWidth(pageText), headerWidth / 2);
+        int titleWidth = headerWidth - pageReservation - 6;
+        graphics.scrollingText(titleComp, titleX, top + 6, titleWidth, 4210752, false);
+        int pageX = titleX + Math.min(graphics.textWidth(titleComp), titleWidth) + 6;
+        graphics.scrollingText(pageText, pageX, top + 6, headerRightX - pageX, 4210752, false);
     }
 
     private void showPreviousPage() {

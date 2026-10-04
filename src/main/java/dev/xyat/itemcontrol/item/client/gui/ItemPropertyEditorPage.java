@@ -1,6 +1,5 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
-import dev.xyat.kineticcore.api.client.gui.text.KineticText;
 import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
@@ -57,9 +56,13 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private static final int GRID_Y = 44;
     private static final int GRID_W = 222;
     private static final int GRID_H = 284;
+    private static final int SEARCH_W = 220;
     private static final int PANEL_X = 246;
     private static final int PANEL_RIGHT = 626;
     private static final int FIELD_WIDTH = 92;
+    private static final int FIELD_COLUMN_PITCH = 124;
+    private static final int ATTRIBUTES_WIDTH = 240;
+    private static final int TEXT_GAP = 4;
     private static final BigDecimal BASE_ATTACK_DAMAGE = BigDecimal.ONE;
     private static final BigDecimal BASE_ATTACK_SPEED = BigDecimal.valueOf(4);
 
@@ -78,12 +81,14 @@ public final class ItemPropertyEditorPage extends KineticPage {
         }
     }
 
+    private record FieldLabel(int x, int y, int maxWidth) {}
+
     private final Map<String, JsonElement> drafts = new LinkedHashMap<>();
     private final Map<String, JsonElement> baseline = new LinkedHashMap<>();
     private final List<KineticItemSearch.CachedItem> allItems = new ArrayList<>();
     private final Map<String, KineticTextField> fields = new HashMap<>();
     private final Map<String, FieldSpec> fieldSpecs = new HashMap<>();
-    private final Map<String, int[]> fieldLabels = new HashMap<>();
+    private final Map<String, FieldLabel> fieldLabels = new HashMap<>();
     private final List<String> visibleIds = new ArrayList<>();
 
     private KineticTextField searchBox;
@@ -126,7 +131,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         fieldLabels.clear();
         attributesBox = null;
         lastAttributesValue = null;
-        searchBox = ui().textField(12, 10, 220).build();
+        searchBox = ui().textField(GRID_X, 10, SEARCH_W).build();
         searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item_property.search"));
         searchBox.limitTextLength(1024);
         searchBox.setTextValue(searchQuery);
@@ -195,11 +200,11 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addNumericField("armor_toughness", false, -2048, 2048, 3);
                 addNumericField("knockback_resistance", false, -2048, 2048, 4);
                 addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 5);
-                attributesBox = ui().textArea(PANEL_X, 190, 240, 72)
+                attributesBox = ui().textArea(PANEL_X, 190, ATTRIBUTES_WIDTH, 72)
                         .placeholder(KineticI18n.translatable("gui.itemcontrol.item_property.attributes.placeholder"))
                         .tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.attributes.tooltip"))
                         .build();
-                fieldLabels.put("attributes", new int[]{PANEL_X, 178});
+                fieldLabels.put("attributes", new FieldLabel(PANEL_X, 178, ATTRIBUTES_WIDTH - TEXT_GAP));
             }
             case TOOL -> {
                 addNumericField("attack_damage", false, -1, Integer.MAX_VALUE, 0);
@@ -239,7 +244,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         int[] bounds = fieldBounds(index);
         FieldSpec spec = new FieldSpec(integer, minimum, maximum);
         fieldSpecs.put(key, spec);
-        fieldLabels.put(key, new int[]{bounds[0], bounds[1] - 11});
+        fieldLabels.put(key, fieldLabel(bounds));
         KineticTextField field = ui().textField(bounds[0], bounds[1], FIELD_WIDTH).placeholder(KineticI18n.translatable("gui.itemcontrol.item_property.inherit")).validator(spec::acceptsOrBlank).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.field." + key + ".tooltip")).build();
         field.onTextChange(value -> {
             if (!populatingFields) {
@@ -252,7 +257,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
 
     private void addRarityDropdown() {
         int[] bounds = fieldBounds(3);
-        fieldLabels.put("rarity", new int[]{bounds[0], bounds[1] - 11});
+        fieldLabels.put("rarity", fieldLabel(bounds));
         JsonElement saved = currentRuleObject().get("rarity");
         String selected = saved == null ? "inherit" : saved.getAsString().toLowerCase(Locale.ROOT);
         List<KineticDropdown.Option> options = new ArrayList<>();
@@ -309,7 +314,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
 
     private void addBooleanButton(String key, int index) {
         int[] bounds = fieldBounds(index);
-        fieldLabels.put(key, new int[]{bounds[0], bounds[1] - 11});
+        fieldLabels.put(key, fieldLabel(bounds));
         JsonObject current = currentRuleObject();
         boolean overridden = current.has(key);
         String state = overridden ? current.get(key).getAsBoolean() ? "true" : "false" : originalBooleanValue(key);
@@ -331,7 +336,12 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private int[] fieldBounds(int index) {
         int column = index % 3;
         int row = index / 3;
-        return new int[]{PANEL_X + column * 124, 82 + row * 48};
+        return new int[]{PANEL_X + column * FIELD_COLUMN_PITCH, 82 + row * 48};
+    }
+
+    private FieldLabel fieldLabel(int[] bounds) {
+        return new FieldLabel(bounds[0], bounds[1] - 11,
+                Math.min(FIELD_COLUMN_PITCH, PANEL_RIGHT - bounds[0]) - TEXT_GAP);
     }
 
     private void populateFields() {
@@ -758,13 +768,14 @@ return tier.getLevel();
             lastAttributesValue = attributesValue;
             refreshGrid();
         }
-        graphics.centeredText(title(), width() / 2, 2, 0xFFFFFF, true);
-        graphics.text(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31, 0xFFFFFF, false);
-        for (Map.Entry<String, int[]> label : fieldLabels.entrySet()) {
-            graphics.text(KineticText.trim(
-                            KineticI18n.translatable("gui.itemcontrol.item_property.field." + label.getKey()).getString(),
-                            FIELD_WIDTH + 20
-                    ), label.getValue()[0], label.getValue()[1], 0xFFDDDDDD, false);
+        // The title's shadow shares the search box's top row, so keep its viewport to the right of the box.
+        int titleWidth = 2 * (width() / 2 - GRID_X - SEARCH_W - TEXT_GAP);
+        graphics.scrollingTextCentered(title(), width() / 2, 2, titleWidth, 0xFFFFFF, true);
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31, GRID_W - TEXT_GAP, 0xFFFFFF, false);
+        for (Map.Entry<String, FieldLabel> entry : fieldLabels.entrySet()) {
+            FieldLabel label = entry.getValue();
+            graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.field." + entry.getKey()),
+                    label.x(), label.y(), label.maxWidth(), 0xFFDDDDDD, false);
         }
     }
 
@@ -772,9 +783,9 @@ return tier.getLevel();
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
         showHoveredVanillaTooltip(mouseX, mouseY);
         if (transientMessage != null && !transientMessage.isBlank()) {
-            graphics.text(KineticI18n.translatable(transientMessage), PANEL_X, 302, 0xFFFF7777, false);
+            graphics.scrollingText(KineticI18n.translatable(transientMessage), PANEL_X, 302, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFFFF7777, false);
         } else {
-            graphics.text(KineticI18n.translatable("gui.itemcontrol.item_property.restart_hint"), PANEL_X, 302, 0xFF9BB8FF, false);
+            graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.restart_hint"), PANEL_X, 302, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFF9BB8FF, false);
         }
     }
 

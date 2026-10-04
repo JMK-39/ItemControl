@@ -30,6 +30,9 @@ import java.util.TreeSet;
 public class ItemTagEditorPage extends KineticPage {
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_PITCH = 19;
+    // Keep text clear of panel edges and the tag list's inset scrollbar.
+    private static final int TEXT_GAP = 4;
+    private static final int TAG_SCROLLBAR_INSET = 6;
     private static String rememberedItemSearch = "";
     private static String rememberedTagSearch = "";
     private static String rememberedSelectedItem = "";
@@ -301,7 +304,7 @@ public class ItemTagEditorPage extends KineticPage {
 
     @Override
     protected void renderForeground(KineticGraphics g, int smx, int smy, float pt) {
-        g.text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.guide"), leftX, guideY, 0xFFFFFF, false);
+        g.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.item_tag.guide"), leftX, guideY, leftW - TEXT_GAP, 0xFFFFFF, false);
 
         g.scissor(leftX, leftY, leftX + leftW, leftY + leftH);
         for (int i = 0; i < filteredItems.size(); i++) {
@@ -334,14 +337,14 @@ public class ItemTagEditorPage extends KineticPage {
                 : copyMode
                 ? KineticI18n.translatable("gui.itemcontrol.item.item_tag.copy_mode_hint", selectedItemId)
                 : KineticI18n.translatable("gui.itemcontrol.item.item_tag.selected", selectedItemId);
-        g.text(selectedText, rightX + 2, rightY, 0xFFFFFF, false);
+        g.scrollingText(selectedText, rightX + 2, rightY, rightW - 2 - TEXT_GAP, 0xFFFFFF, false);
 
         g.scissor(rightX, tagListY, rightX + rightW, tagListY + tagListH);
         int y = tagListY - (int) Math.round(tagScroll.smoothOffset());
         for (TagEntry entry : displayedTags) {
             if (y + 13 > tagListY && y < tagListY + tagListH) {
                 Component prefix = KineticI18n.translatable(entry.source.key);
-                g.text(prefix.copy().append(" #" + entry.tag), rightX + 3, y + 2, 0xFFFFFF, false);
+                g.scrollingText(prefix.copy().append(" #" + entry.tag), rightX + 3, y + 2, rightW - 3 - TAG_SCROLLBAR_INSET - TEXT_GAP, 0xFFFFFF, false);
             }
             y += 14;
         }
@@ -362,13 +365,13 @@ public class ItemTagEditorPage extends KineticPage {
                 int sy = suggestionY + (int) Math.round(i * 12D - visual);
                 boolean hovered = smx >= rightX && smx < rightX + rightW && smy >= sy && smy < sy + 12;
                 if (hovered) KineticTheme.stateSurface(g, rightX, sy, rightW, 12, KineticTheme.Surface.PANEL_ALT, false, true, false);
-                g.text(suggestion, rightX + 3, sy + 2, 0xFFFFFF, false);
+                g.scrollingText(Component.literal(suggestion), rightX + 3, sy + 2, rightW - 3 - TEXT_GAP, 0xFFFFFF, false);
             }
             g.endScissor();
         }
 
         itemScroll.render(g, smx, smy, leftX + leftW - 6, leftY, 4, leftH, 20);
-        tagScroll.render(g, smx, smy, rightX + rightW - 6, tagListY, 4, tagListH, 20);
+        tagScroll.render(g, smx, smy, rightX + rightW - TAG_SCROLLBAR_INSET, tagListY, 4, tagListH, 20);
     }
 
     @Override
@@ -458,7 +461,7 @@ public class ItemTagEditorPage extends KineticPage {
         double smx = input.x();
         double smy = input.y();
         if (itemScroll.beginDrag(smx, smy, input.button(), leftX + leftW - 6, leftY, 4, leftH, 20, 0)) return true;
-        if (tagScroll.beginDrag(smx, smy, input.button(), rightX + rightW - 6, tagListY, 4, tagListH, 20, 0)) return true;
+        if (tagScroll.beginDrag(smx, smy, input.button(), rightX + rightW - TAG_SCROLLBAR_INSET, tagListY, 4, tagListH, 20, 0)) return true;
 
         if (tagInput != null && isFocused(tagInput) && !tagSuggestions.isEmpty()) {
             int suggestionY = tagInput.controlY() + tagInput.controlHeight() + 1;

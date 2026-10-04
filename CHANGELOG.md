@@ -1,3 +1,21 @@
+## 26.10.4 — 2026-10-04
+
+### English
+
+- Keep long editor headings, labels, hints, autocomplete suggestions and list names inside their own bounds with shared scrolling text. Applies to item properties, protection, direct entity immunity, damage types, banned/merged items, tags, cleaner rules, creative tabs and component editing.
+- Preserve scaled merge-source text while clipping in page coordinates; keep target names clear of expand symbols and counts.
+- Move protection modal toggles below the status text. Limit cleaner navigation/header widths and hide vanilla container labels again after initialization.
+- Require matching KineticCore 26.10.4+ for the current screen-fitting tooltip API. No gameplay, configuration syntax or language keys changed.
+
+### 简体中文
+
+- 物品属性、保护、直接实体免疫、伤害类型、禁用/合并物品、标签、清理规则、创造标签页及组件编辑器的长标题、标签、说明、自动补全与名称在各自范围内滚动。
+- 合并来源保留文字缩放，并在页面坐标中裁剪；目标名称避开展开符号与计数。
+- 保护弹窗的开关移到状态说明下方；清理页标题、历史页码及导航按钮限制宽度，初始化后重新隐藏原版容器标签。
+- 要求匹配的 KineticCore 26.10.4+，使用当前屏幕适配悬浮提示；未修改玩法、配置语法或语言键。
+
+---
+
 2026年10月04日 — Language key validation / 语言键一致性检查
 
 - Require identical authored English/Chinese keys and string values in source, version overrides and packaged resources; generated formatting keys are rejected during builds.

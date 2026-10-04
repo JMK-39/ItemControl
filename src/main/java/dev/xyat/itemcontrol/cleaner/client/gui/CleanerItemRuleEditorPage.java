@@ -218,16 +218,16 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.centeredText(title(), width() / 2, 11, 0xFFFFFF, true);
+        graphics.scrollingTextCentered(title(), width() / 2, 11, PANEL_W - 4, 0xFFFFFF, true);
         renderGrid(graphics, mouseX, mouseY);
         if (rules.isEmpty()) {
-            graphics.centeredText(KineticI18n.translatable(mode.emptyKey), width() / 2, 164, 0xFFFFFF, true);
+            graphics.scrollingTextCentered(KineticI18n.translatable(mode.emptyKey), width() / 2, 164, GRID_W - 4, 0xFFFFFF, true);
         }
-        graphics.text(KineticI18n.translatable(
+        graphics.scrollingText(KineticI18n.translatable(
                 mode.groupRules
                         ? "gui.itemcontrol.cleaner.item_rule_editor.hint.rules"
                         : "gui.itemcontrol.cleaner.item_rule_editor.hint.item"
-        ), 34, 35, 0xFFFFFF, false);
+        ), GRID_X, 35, GRID_W - 4, 0xFFFFFF, false);
     }
 
     private void renderGrid(KineticGraphics graphics, int mouseX, int mouseY) {

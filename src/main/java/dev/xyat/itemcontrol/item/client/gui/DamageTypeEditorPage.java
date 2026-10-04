@@ -3,7 +3,6 @@ package dev.xyat.itemcontrol.item.client.gui;
 import dev.xyat.kineticcore.api.client.gui.input.ScrollInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseDragInput;
 import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
-import dev.xyat.kineticcore.api.client.gui.text.KineticText;
 import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
@@ -145,9 +144,9 @@ public final class DamageTypeEditorPage extends KineticPage {
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.centeredText(title(), width() / 2, 9, KineticTheme.current().text(), true);
+        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 4, KineticTheme.current().text(), true);
         renderEntries(graphics, mouseX, mouseY);
-        graphics.text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.hint"), 26, 307, KineticTheme.current().text(), false);
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.hint"), LIST_X, 307, LIST_W - 4, KineticTheme.current().text(), false);
     }
 
     private void renderEntries(KineticGraphics graphics, int mouseX, int mouseY) {
@@ -189,7 +188,7 @@ public final class DamageTypeEditorPage extends KineticPage {
                 }
 
                 String display = displayName(value, dictionary);
-                graphics.text(KineticText.trim(display, LIST_W - 10), x + 5, y + 6, KineticTheme.current().text(), false);
+                graphics.scrollingText(Component.literal(display), x + 5, y + 6, LIST_W - 10, KineticTheme.current().text(), false);
             }
         } finally {
             graphics.endScissor();
