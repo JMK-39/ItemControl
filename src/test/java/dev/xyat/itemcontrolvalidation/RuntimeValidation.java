@@ -9,7 +9,15 @@ import net.neoforged.fml.common.Mod;
 
 @Mod("itemcontrol_validation")
 public final class RuntimeValidation {
-    private static int failures;
+*///?}
+    // 26.1 lists enchantment levels directly in the enchantments component.
+    //? if >=26.1 {
+    /*private static final String ENCHANTED = "minecraft:diamond_sword[enchantments={\"minecraft:sharpness\":1}]";
+    *///?} else if >=1.21 {
+    /*private static final String ENCHANTED = "minecraft:diamond_sword[enchantments={levels:{\"minecraft:sharpness\":1}}]";
+    *///?}
+    //? if >=1.21 {
+/*    private static int failures;
     private Object preheatedProtection;
     private BanItemConfig.ItemRule preheatedBan;
     private boolean preheatedTab;
@@ -19,7 +27,7 @@ public final class RuntimeValidation {
             return;
         }
         try {
-            String enchanted = "minecraft:diamond_sword[enchantments={levels:{\"minecraft:sharpness\":1}}]";
+            String enchanted = ENCHANTED;
             preheatedBan = new BanItemConfig.ItemRule(enchanted);
             var tabs = new TabConfig.Data();
             var tab = new TabConfig.TabAddition();
@@ -78,7 +86,7 @@ public final class RuntimeValidation {
     }
 
     private void validatePreheated() throws ReflectiveOperationException {
-        var stack = BanItemConfig.parseItemStack("minecraft:diamond_sword[enchantments={levels:{\"minecraft:sharpness\":1}}]");
+        var stack = BanItemConfig.parseItemStack(ENCHANTED);
         require(!stack.isEmpty() && preheatedBan.matches(stack), "preheated dynamic component ban rule");
         var field = dev.xyat.itemcontrol.item.config.ItemPropertyConfig.class.getDeclaredField("ACTIVE");
         field.setAccessible(true);
@@ -152,14 +160,33 @@ public final class RuntimeValidation {
         build.setAccessible(true);
         var previous = active.get();
         try {
-            active.set(build.invoke(null, java.util.Map.of("minecraft:apple", com.google.gson.JsonParser.parseString("{\"nutrition\":8}"))));
+*///?}
+            // 26.1 food and eating time are default components, rebuilt by ItemControl's initializer when items bind.
+//? if >=26.1 {
+/*            active.set(build.invoke(null, java.util.Map.of("minecraft:apple", com.google.gson.JsonParser.parseString("{\"nutrition\":8}"))));
+            var apple = new ItemStack(Items.APPLE);
+            var components = net.minecraft.core.component.DataComponentMap.builder().addAll(Items.APPLE.components());
+            dev.xyat.itemcontrol.item.property.ItemPropertyOverrides.applyDefaultComponents(Items.APPLE, components);
+            var food = components.build().get(net.minecraft.core.component.DataComponents.FOOD);
+            require(food.nutrition() == 8 && Math.abs(food.saturation() - 4.8F) < 0.001F, "nutrition override preserves saturation coefficient");
+            active.set(build.invoke(null, java.util.Map.of("minecraft:apple", com.google.gson.JsonParser.parseString("{\"max_stack_size\":12,\"rarity\":\"epic\",\"eat_seconds\":2.0,\"enchantability\":7}"))));
+            components = net.minecraft.core.component.DataComponentMap.builder().addAll(Items.APPLE.components());
+            dev.xyat.itemcontrol.item.property.ItemPropertyOverrides.applyDefaultComponents(Items.APPLE, components);
+            var built = components.build();
+            require(apple.getMaxStackSize() == 12 && apple.getRarity() == net.minecraft.world.item.Rarity.EPIC, "existing stack property Mixins");
+            require(Math.abs(built.get(net.minecraft.core.component.DataComponents.CONSUMABLE).consumeSeconds() - 2.0F) < 0.001F
+                    && built.get(net.minecraft.core.component.DataComponents.ENCHANTABLE).value() == 7, "eating time and enchantability components");
+*///?} else if >=1.21 {
+/*            active.set(build.invoke(null, java.util.Map.of("minecraft:apple", com.google.gson.JsonParser.parseString("{\"nutrition\":8}"))));
             var apple = new ItemStack(Items.APPLE);
             var food = apple.getFoodProperties(null);
             require(food.nutrition() == 8 && Math.abs(food.saturation() - 4.8F) < 0.001F, "nutrition override preserves saturation coefficient");
             active.set(build.invoke(null, java.util.Map.of("minecraft:apple", com.google.gson.JsonParser.parseString("{\"max_stack_size\":12,\"rarity\":\"epic\",\"eat_seconds\":2.0}"))));
             require(apple.getMaxStackSize() == 12 && apple.getRarity() == net.minecraft.world.item.Rarity.EPIC
                     && apple.getUseDuration(null) == 40, "existing stack property Mixins");
-            active.set(build.invoke(null, java.util.Map.of("minecraft:diamond_sword", com.google.gson.JsonParser.parseString("{\"attack_damage\":5,\"attributes\":[{\"attribute\":\"minecraft:generic.attack_speed\",\"slot\":\"mainhand\",\"operation\":\"ADDITION\",\"amount\":6}]}"))));
+*///?}
+//? if >=1.21 {
+/*            active.set(build.invoke(null, java.util.Map.of("minecraft:diamond_sword", com.google.gson.JsonParser.parseString("{\"attack_damage\":5,\"attributes\":[{\"attribute\":\"minecraft:generic.attack_speed\",\"slot\":\"mainhand\",\"operation\":\"ADDITION\",\"amount\":6}]}"))));
             var sword = new ItemStack(Items.DIAMOND_SWORD);
             sword.set(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, net.minecraft.world.item.component.ItemAttributeModifiers.builder()
                     .add(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE,
@@ -173,7 +200,7 @@ public final class RuntimeValidation {
             sword.forEachModifier(net.minecraft.world.entity.EquipmentSlot.OFFHAND, (attribute, modifier) -> {
                 if (attribute.equals(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)) values[2] += modifier.amount();
             });
-            require(values[0] == 5 && values[1] == 6 && values[2] == 2, "attribute operation and unaffected slot preservation");
+            require(values[0] == 5 && values[1] == 6 && values[2] == 2, "attribute operation and unaffected slot preservation: " + java.util.Arrays.toString(values));
         } finally { active.set(previous); }
     }
 }

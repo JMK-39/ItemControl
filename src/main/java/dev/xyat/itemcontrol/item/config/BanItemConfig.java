@@ -3,6 +3,7 @@ package dev.xyat.itemcontrol.item.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
@@ -459,7 +460,7 @@ private static String normalizeRuleIdentifier(String identifier) {
 
     private static String compactKnownNbtIdentifier(String baseId, CompoundTag tag) {
         if (baseId == null || baseId.isBlank() || tag == null || tag.isEmpty()) return "";
-        if (tag.contains("GunId", 8)) {
+        if (tag.contains("GunId", Tag.TAG_STRING)) {
             String gunId = tag.getString("GunId").trim();
             if (!gunId.isEmpty()) {
                 CompoundTag stable = new CompoundTag();

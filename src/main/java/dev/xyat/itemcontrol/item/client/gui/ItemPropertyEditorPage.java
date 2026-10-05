@@ -16,6 +16,7 @@ import com.google.gson.JsonParser;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
+import dev.xyat.itemcontrol.item.property.ItemPropertyReads;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch;
 import dev.xyat.kineticcore.api.client.search.KineticItemSearch.ItemCategory;
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
@@ -27,16 +28,11 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.food.FoodProperties;
-import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.Tier;
-import net.minecraft.world.item.TieredItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.EmptyBlockGetter;
-import net.minecraft.world.level.block.Blocks;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -391,7 +387,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private boolean isFieldApplicable(String key) {
         if (selectedId == null || !isRegistered(selectedId)) return false;
         if (key.equals("armor") || key.equals("armor_toughness") || key.equals("knockback_resistance")) {
-            return stackForId(selectedId).getItem() instanceof ArmorItem;
+            return ItemPropertyReads.armorSlot(stackForId(selectedId)) != null;
         }
         return true;
     }
@@ -406,16 +402,8 @@ public final class ItemPropertyEditorPage extends KineticPage {
         if (!isRegistered(selectedId)) return ItemPropertyConfig.isProtectionPattern(selectedId) ? "false" : "inherit";
         ItemStack stack = stackForId(selectedId);
         boolean value = switch (key) {
-            case "always_eat" -> {
-                FoodProperties food = stack.getFoodProperties(null);
-                yield food != null && food.canAlwaysEat();
-            }
-            //? if >=1.21 {
-/*case "fire_resistant" -> stack.has(net.minecraft.core.component.DataComponents.FIRE_RESISTANT);*/
-//?} else {
-case "fire_resistant" -> stack.getItem().isFireResistant();
-//?}
-
+            case "always_eat" -> ItemPropertyReads.canAlwaysEat(stack);
+            case "fire_resistant" -> ItemPropertyReads.fireResistant(stack);
             case "explosion_immune" -> stack.is(Items.NETHER_STAR);
             case "glowing", "no_gravity", "persistent", "non_consumable" -> false;
             default -> false;
@@ -431,36 +419,26 @@ case "fire_resistant" -> stack.getItem().isFireResistant();
     private String originalValueWithoutOverride(String key) {
         ItemStack stack = stackForId(selectedId);
         Item item = stack.getItem();
-        FoodProperties food = stack.getFoodProperties(null);
+        EquipmentSlot armorSlot = ItemPropertyReads.armorSlot(stack);
+        Integer nutrition = ItemPropertyReads.nutrition(stack);
+        Double saturation = ItemPropertyReads.saturationModifier(stack);
+        Double eatSeconds = ItemPropertyReads.eatSeconds(stack);
+        Integer miningLevel = ItemPropertyReads.miningLevel(stack);
         return switch (key) {
             case "attack_damage" -> number(1 + attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_DAMAGE));
             case "attack_speed" -> number(4 + attributeAmount(stack, EquipmentSlot.MAINHAND, Attributes.ATTACK_SPEED));
-            case "armor" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.ARMOR));
-            case "armor_toughness" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.ARMOR_TOUGHNESS));
-            case "knockback_resistance" -> number(attributeAmount(stack, ((ArmorItem) item).getEquipmentSlot(), Attributes.KNOCKBACK_RESISTANCE));
-            case "mining_speed" -> number(miningSpeed(stack));
-            case "mining_level" -> item instanceof TieredItem tiered ? Integer.toString(numericMiningLevel(tiered.getTier())) : "";
-            //? if >=1.21 {
-/*case "nutrition" -> food == null ? "" : Integer.toString(food.nutrition());*/
-//?} else {
-case "nutrition" -> food == null ? "" : Integer.toString(food.getNutrition());
-//?}
-
-            //? if >=1.21 {
-/*case "saturation" -> food == null ? "" : number(food.nutrition() == 0 ? 0 : food.saturation() / (2.0 * food.nutrition()));*/
-//?} else {
-case "saturation" -> food == null ? "" : number(food.getSaturationModifier());
-//?}
-
-            //? if >=1.21 {
-/*case "eat_seconds" -> food == null ? "" : number(food.eatSeconds());*/
-//?} else {
-case "eat_seconds" -> food == null ? "" : number(stack.getUseDuration() / 20.0);
-//?}
+            case "armor" -> number(attributeAmount(stack, armorSlot, Attributes.ARMOR));
+            case "armor_toughness" -> number(attributeAmount(stack, armorSlot, Attributes.ARMOR_TOUGHNESS));
+            case "knockback_resistance" -> number(attributeAmount(stack, armorSlot, Attributes.KNOCKBACK_RESISTANCE));
+            case "mining_speed" -> number(ItemPropertyReads.miningSpeed(stack));
+            case "mining_level" -> miningLevel == null ? "" : Integer.toString(miningLevel);
+            case "nutrition" -> nutrition == null ? "" : Integer.toString(nutrition);
+            case "saturation" -> saturation == null ? "" : number(saturation);
+            case "eat_seconds" -> eatSeconds == null ? "" : number(eatSeconds);
 
             case "max_stack_size" -> Integer.toString(stack.getMaxStackSize());
             case "max_damage" -> Integer.toString(stack.getMaxDamage());
-            case "enchantability" -> Integer.toString(stack.getEnchantmentValue());
+            case "enchantability" -> Integer.toString(ItemPropertyReads.enchantability(stack));
             case "rarity" -> stack.getRarity().name().toLowerCase(Locale.ROOT);
             case "block_hardness" -> number(((BlockItem) item).getBlock().defaultBlockState()
                     .getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
@@ -487,25 +465,6 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
     }
 //?}
 
-
-    private static double miningSpeed(ItemStack stack) {
-        Item item = stack.getItem();
-        if (item instanceof TieredItem tiered) return tiered.getTier().getSpeed();
-        return Math.max(stack.getDestroySpeed(Blocks.STONE.defaultBlockState()),
-                Math.max(stack.getDestroySpeed(Blocks.DIRT.defaultBlockState()),
-                        stack.getDestroySpeed(Blocks.OAK_LOG.defaultBlockState())));
-    }
-
-    private static int numericMiningLevel(Tier tier) {
-        // ItemControl's numeric mining-level override intentionally follows vanilla tier levels.
-        //? if >=1.21 {
-/*return tier == net.minecraft.world.item.Tiers.NETHERITE ? 4 : tier == net.minecraft.world.item.Tiers.DIAMOND ? 3
-        : tier == net.minecraft.world.item.Tiers.IRON ? 2 : tier == net.minecraft.world.item.Tiers.STONE ? 1 : 0;*/
-//?} else {
-return tier.getLevel();
-//?}
-
-    }
 
     private static String number(double value) {
         return Double.isFinite(value) ? BigDecimal.valueOf(value).setScale(6, RoundingMode.HALF_UP)

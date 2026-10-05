@@ -1,3 +1,29 @@
+## 26.10.5 — 2026-10-05
+
+### English
+
+- Enabled Minecraft 26.1.2 / NeoForge 26.1.2.112 (Java 25); releases now cover Forge 1.20.1, NeoForge 1.21.1 and NeoForge 26.1.2. Optional JEI 29.43; KubeJS integration compiles against KubeJS 26.1.2-8 but its 26.1 build does not start on 26.1.2 yet.
+- Every version uses the same screens. On 1.21.1 and 26.1.2, item component data (`[damage=5]`) is now edited in Core's NBT editor, the same editor Forge uses for NBT, instead of a separate page. Requires KineticCore 26.10.5+.
+- Item properties on 26.1.2: food, eating time and enchantability are 26.1 item components and are applied when the game binds item components; stack size, durability, rarity, mining, attributes and block values keep their existing hooks. Armor slots, tool levels and mining speeds are read from the item's equippable and tool components.
+- Item rules written for 1.21.1 keep their attribute ids on 26.1.2 (`minecraft:generic.attack_speed` matches `minecraft:attack_speed`). Item merging, merged tags, item protection, the trash bin, cleaner areas and creative tabs use the 26.1 item, entity and saved-data APIs.
+- Fixed on every version: cleaner key bindings used a missing category name, so the Controls screen showed a raw key; they now appear under "Dropped-Item Cleanup".
+- Fixed on 1.21.1: the drop-protection hint showed the 1.20.1 `item_id{components}` syntax instead of `item_id[components]`.
+- No @OnlyIn annotations on 26.1.2, where NeoForge shows a mod-loading warning screen for them.
+- Verified: all three versions build; the server runtime checks pass on 1.21.1 and 26.1.2; 150 English/Chinese 26.1.2 client captures at 854×480 and 1536×864 match the 1.21.1 layouts.
+
+### 简体中文
+
+- 启用 Minecraft 26.1.2 / NeoForge 26.1.2.112（Java 25）；发布版本覆盖 Forge 1.20.1、NeoForge 1.21.1 与 NeoForge 26.1.2。可选 JEI 29.43；KubeJS 联动按 KubeJS 26.1.2-8 编译，但其 26.1 版本目前无法在 26.1.2 上启动。
+- 所有版本使用相同界面。1.21.1 与 26.1.2 的物品数据组件（`[damage=5]`）改用核心 NBT 编辑器编辑，与 Forge 编辑 NBT 的界面一致，不再使用单独页面。要求 KineticCore 26.10.5+。
+- 26.1.2 的物品属性：食物、食用时间与附魔能力在 26.1 中属于物品组件，在游戏绑定物品组件时应用；堆叠、耐久、稀有度、挖掘、属性与方块数值沿用原有挂钩。盔甲槽位、工具等级与挖掘速度从物品的可装备与工具组件读取。
+- 1.21.1 写下的属性规则在 26.1.2 上继续生效（`minecraft:generic.attack_speed` 对应 `minecraft:attack_speed`）。物品合并、合并标签、物品保护、垃圾桶、清理区域与创造标签页使用 26.1 的物品、实体与存档数据接口。
+- 修复所有版本：清理按键使用了不存在的分类名，按键设置界面显示原始键名；现在显示在“掉落物清理”分类下。
+- 修复 1.21.1：掉落物保护提示显示 1.20.1 的 `物品ID{数据组件}` 写法，现改为 `物品ID[数据组件]`。
+- 26.1.2 不再使用 @OnlyIn 注解，NeoForge 会为它显示模组加载警告界面。
+- 验证：三个版本均可构建；服务端运行时检查在 1.21.1 与 26.1.2 通过；26.1.2 客户端中英文 854×480 与 1536×864 共 150 张截图，与 1.21.1 布局一致。
+
+---
+
 ## 26.10.4 — 2026-10-04
 
 ### English

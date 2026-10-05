@@ -47,7 +47,7 @@ public class CleanerMenu extends AbstractContainerMenu {
     }
 
     public void updateState(int historyIndex, int rowOffset) {
-        if (!player.level().isClientSide && player.level() instanceof ServerLevel sl) {
+        if (!player.level().isClientSide() && player.level() instanceof ServerLevel sl) {
             this.scrollableContainer.setRealData(CleanerSavedData.get(sl).getRecord(historyIndex));
             this.scrollableContainer.setScrollOffset(rowOffset);
             this.broadcastChanges();

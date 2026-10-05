@@ -8,5 +8,6 @@
   "gui.itemcontrol.tabs.tabs.unified.tooltip.left_item_nbt_toggle.colored": "§bShift+右键：切换 数据组件 匹配模式",
   "cfg.itemcontrol.tabs.tabs.open_editor.tooltip": "§a支持单物品、带 数据组件 物品、#物品标签、@模组命名空间删除规则，以及标签页隐藏和物品追加。§e保存前服务器会验证标签页、物品和 数据组件。",
   "gui.itemcontrol.item_property.add_rule.tooltip": "选择物品后添加规则；在掉落物保护分类还可在搜索框输入 #命名空间:标签、@模组ID 或 物品ID[数据组件]，再点击添加规则。",
-  "gui.itemcontrol.item_property.category.tooltip": "选择属性分类；掉落物保护显示全部物品，并支持物品标签、模组和 数据组件 规则。"
+  "gui.itemcontrol.item_property.category.tooltip": "选择属性分类；掉落物保护显示全部物品，并支持物品标签、模组和 数据组件 规则。",
+  "key.category.itemcontrol.cleaner": "掉落物清理"
 }

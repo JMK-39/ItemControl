@@ -13,7 +13,7 @@ public final class CleanerKeyBindings {
             return;
         }
         cleanerKey = KineticKeyBindings.builder("key.itemcontrol.cleaner")
-                .category("key.itemcontrol.category")
+                .category("key.itemcontrol.cleaner.category")
                 .context(KineticKeyBindings.Context.IN_GAME)
                 .keyboard(KineticKeyBindings.Key.DELETE)
                 .onPressed(CleanerKeyHandler::handleCleanerPress)

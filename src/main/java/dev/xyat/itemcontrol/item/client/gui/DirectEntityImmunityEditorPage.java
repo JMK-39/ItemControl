@@ -29,6 +29,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+// NeoForge 26.1 no longer strips @OnlyIn members and warns about the annotation; this class is only used on the client.
+//? if <26.1
 @OnlyIn(Dist.CLIENT)
 public final class DirectEntityImmunityEditorPage extends KineticPage {
     private static final int PANEL_X = 14;

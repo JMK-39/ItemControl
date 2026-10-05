@@ -100,7 +100,7 @@ public class CleanerArea {
 
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
-        tag.putUUID("OwnerId", ownerId);
+        dev.xyat.itemcontrol.util.Nbt.putUuid(tag, "OwnerId", ownerId);
         tag.putString("OwnerName", ownerName);
         tag.putString("Dimension", dimension);
         tag.putInt("MinX", minX);
@@ -114,7 +114,7 @@ public class CleanerArea {
 
     public static CleanerArea load(CompoundTag tag) {
         return new CleanerArea(
-                tag.getUUID("OwnerId"),
+                dev.xyat.itemcontrol.util.Nbt.uuid(tag, "OwnerId"),
                 tag.getString("OwnerName"),
                 tag.getString("Dimension"),
                 tag.getInt("MinX"),

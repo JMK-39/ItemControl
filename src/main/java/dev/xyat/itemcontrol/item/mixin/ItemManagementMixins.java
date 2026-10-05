@@ -76,13 +76,82 @@ public class ItemManagementMixins {
 
     @Mixin(ItemStack.class)
     public static abstract class ItemStackMixin {
+        // 26.1 stacks hold an item holder, and their type checks are TypedInstance default methods; the overrides
+        // below add merged items and tags to them.
+//? if >=26.1 {
+/*        @Mutable @Shadow @Final @Deprecated private net.minecraft.core.Holder<Item> item;
+        @Mutable @Shadow @Final private net.minecraft.core.component.PatchedDataComponentMap components;
+
+        @Inject(method = "<init>(Lnet/minecraft/core/Holder;ILnet/minecraft/core/component/PatchedDataComponentMap;)V", at = @At("RETURN"))
+        private void itemcontrol_item$init(net.minecraft.core.Holder<Item> value, int count, net.minecraft.core.component.PatchedDataComponentMap data, CallbackInfo ci) {
+            itemcontrol_item$replaceMergedItem();
+        }
+
+        @Inject(method = "set", at = @At("RETURN"))
+        private void itemcontrol_item$set(net.minecraft.core.component.DataComponentType<?> type, Object value, CallbackInfoReturnable<Object> cir) {
+            itemcontrol_item$replaceMergedItem();
+        }
+
+        @Inject(method = "remove", at = @At("RETURN"))
+        private void itemcontrol_item$remove(net.minecraft.core.component.DataComponentType<?> type, CallbackInfoReturnable<Object> cir) { itemcontrol_item$replaceMergedItem(); }
+
+        @Inject(method = "applyComponentsAndValidate", at = @At("RETURN"))
+        private void itemcontrol_item$applyValidated(net.minecraft.core.component.DataComponentPatch patch, CallbackInfo ci) { itemcontrol_item$replaceMergedItem(); }
+
+        @Inject(method = "applyComponents(Lnet/minecraft/core/component/DataComponentPatch;)V", at = @At("RETURN"))
+        private void itemcontrol_item$applyPatch(net.minecraft.core.component.DataComponentPatch patch, CallbackInfo ci) { itemcontrol_item$replaceMergedItem(); }
+
+        @Inject(method = "applyComponents(Lnet/minecraft/core/component/DataComponentMap;)V", at = @At("RETURN"))
+        private void itemcontrol_item$applyMap(net.minecraft.core.component.DataComponentMap map, CallbackInfo ci) { itemcontrol_item$replaceMergedItem(); }
+
+        @Unique
+        private void itemcontrol_item$replaceMergedItem() {
+            if (item == null || ItemBanControl.shouldSkip()) return;
+            ItemStack self = (ItemStack) (Object) this;
+            String target = BanItemConfig.getReplacement(self);
+            if (target == null || target.isBlank() || BanItemConfig.VOID_ID.equals(target)) return;
+            Item replacement = KineticRegistries.items().get(dev.xyat.kineticcore.api.resource.KineticResourceIds.tryParse(BanItemConfig.getBaseIdentifier(target)));
+            if (replacement == null || replacement == Items.AIR || replacement == item.value()) return;
+            item = replacement.builtInRegistryHolder();
+            components = net.minecraft.core.component.PatchedDataComponentMap.fromPatch(replacement.components(), components.asPatch());
+        }
+
+        public boolean is(Object rawType) {
+            ItemStack self = (ItemStack) (Object) this;
+            if (self.typeHolder().value() == rawType) return true;
+            if (self.isEmpty() || !(rawType instanceof Item pItem) || pItem == Items.AIR) return false;
+            ResourceLocation inId = KineticRegistries.items().id(pItem);
+            String replacementStr = inId == null ? null : BanItemConfig.getReplacement(inId.toString());
+            if (replacementStr == null || BanItemConfig.VOID_ID.equals(replacementStr)) return false;
+            int bracket = replacementStr.indexOf('[');
+            String targetPureId = bracket == -1 ? replacementStr : replacementStr.substring(0, bracket);
+            ResourceLocation thisId = KineticRegistries.items().id(self.getItem());
+            return thisId != null && targetPureId.equals(thisId.toString());
+        }
+
+        public boolean is(TagKey<Item> tagKey) {
+            ItemStack self = (ItemStack) (Object) this;
+            if (self.typeHolder().is(tagKey)) return true;
+            return !ItemBanControl.shouldSkip() && !self.isEmpty() && BanItemConfig.hasMergedTag(self, tagKey);
+        }
+
+        public Stream<TagKey<Item>> tags() {
+            ItemStack self = (ItemStack) (Object) this;
+            Stream<TagKey<Item>> original = self.typeHolder().tags();
+            if (ItemBanControl.shouldSkip() || self.isEmpty()) return original;
+            Set<TagKey<Item>> mergedTags = BanItemConfig.getMergedTagKeys(self);
+            return mergedTags.isEmpty() ? original : Stream.concat(original, mergedTags.stream()).distinct();
+        }
+*/
+//?} else {
         @Mutable
         @Shadow
         @Final
         @Deprecated
         private Item item;
+//?}
 
-//? if >=1.21 {
+//? if >=1.21 && <26.1 {
 /*        @Mutable @Shadow @Final private net.minecraft.core.component.PatchedDataComponentMap components;
 
         @Inject(method = "<init>(Lnet/minecraft/world/level/ItemLike;ILnet/minecraft/core/component/PatchedDataComponentMap;)V", at = @At("RETURN"))
@@ -120,7 +189,7 @@ public class ItemManagementMixins {
         }
 
 */
-//?} else {
+//?} else if <1.21 {
         @Mutable
         @Shadow(remap = false)
         @Final
@@ -163,9 +232,9 @@ public class ItemManagementMixins {
 
 
 //?}
-        @Inject(method = "is(Lnet/minecraft/world/item/Item;)Z", at = @At("HEAD"), cancellable = true)
-        //? if >=1.21 {
-/*private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
+        //? if >=1.21 && <26.1 {
+/*@Inject(method = "is(Lnet/minecraft/world/item/Item;)Z", at = @At("HEAD"), cancellable = true)
+private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
             ItemStack self = (ItemStack) (Object) this;
             if (self.isEmpty() || pItem == null || pItem == Items.AIR) return;
             if (self.getItem() != pItem) {
@@ -183,7 +252,8 @@ public class ItemManagementMixins {
                 }
             }
         }*/
-//?} else {
+//?} else if <1.21 {
+@Inject(method = "is(Lnet/minecraft/world/item/Item;)Z", at = @At("HEAD"), cancellable = true)
 private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
             ItemStack self = (ItemStack) (Object) this;
             if (self.isEmpty() || pItem == null || pItem == Items.AIR) return;
@@ -204,7 +274,7 @@ private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean>
         }
 //?}
 
-
+//? if <26.1 {
         @Inject(method = "is(Lnet/minecraft/tags/TagKey;)Z", at = @At("HEAD"), cancellable = true)
         private void itemcontrol_item$isMergedTag(TagKey<Item> tagKey, CallbackInfoReturnable<Boolean> cir) {
             if (ItemBanControl.shouldSkip()) return;
@@ -226,6 +296,7 @@ private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean>
                 cir.setReturnValue(Stream.concat(original, mergedTags.stream()).distinct());
             }
         }
+//?}
     }
 
     @Mixin(SimpleJsonResourceReloadListener.class)

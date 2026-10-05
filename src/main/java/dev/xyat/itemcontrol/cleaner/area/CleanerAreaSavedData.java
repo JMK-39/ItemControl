@@ -26,13 +26,22 @@ public class CleanerAreaSavedData extends SavedData {
 
     public static CleanerAreaSavedData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage()
-                //? if >=1.21 {
+                //? if >=26.1 {
+/*.computeIfAbsent(TYPE);*/
+//?} else if >=1.21 {
 /*.computeIfAbsent(new Factory<>(CleanerAreaSavedData::new, CleanerAreaSavedData::load, null), DATA_NAME);*/
 //?} else {
 .computeIfAbsent(CleanerAreaSavedData::load, CleanerAreaSavedData::new, DATA_NAME);
 //?}
 
     }
+
+    // 26.1 saved data is typed by id and codec; the stored compound keeps its layout.
+    //? if >=26.1 {
+    /*private static final net.minecraft.world.level.saveddata.SavedDataType<CleanerAreaSavedData> TYPE = new net.minecraft.world.level.saveddata.SavedDataType<>(
+            dev.xyat.kineticcore.api.resource.KineticResourceIds.of("itemcontrol", DATA_NAME), CleanerAreaSavedData::new,
+            CompoundTag.CODEC.xmap(tag -> load(tag, null), data -> data.save(new CompoundTag(), null)));
+    *///?}
 
     public List<CleanerArea> getAreas() {
         return readOnlyAreas;
@@ -163,10 +172,13 @@ public static CleanerAreaSavedData load(CompoundTag tag) {
         return data;
     }
 
+    //? if >=26.1 {
+    /*public @NotNull CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {
+    *///?} else if >=1.21 {
+    /*@Override
+    public @NotNull CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {
+    *///?} else {
     @Override
-    //? if >=1.21 {
-/*public @NotNull CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {*/
-//?} else {
 public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
 //?}
 

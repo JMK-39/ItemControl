@@ -55,10 +55,15 @@ public class TabJeiPlugin implements IModPlugin {
                 @Override public Object getSubtypeData(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
                     return stack.getComponentsPatch();
                 }
-                @Override public String getLegacyStringSubtypeInfo(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
+*///?}
+                // JEI for 26.1 dropped legacy string subtype ids.
+//? if >=1.21 && <26.1 {
+/*                @Override public String getLegacyStringSubtypeInfo(ItemStack stack, mezz.jei.api.ingredients.subtypes.UidContext context) {
                     return dev.xyat.itemcontrol.item.data.ItemData.format(stack);
                 }
-            });*/
+*///?}
+//? if >=1.21 {
+/*            });*/
 //?} else {
             registration.useNbtForSubtypes(item);
 //?}

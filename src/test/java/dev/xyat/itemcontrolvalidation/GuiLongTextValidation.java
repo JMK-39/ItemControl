@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 /^** Uses the existing client and unsaved page drafts. Never clicks or saves editor changes. *^/
 public final class GuiLongTextValidation {
     private static final Logger LOG=LoggerFactory.getLogger(GuiLongTextValidation.class);
-    private static final String ROOT="D:/IDEAWork/ItemControl/.gradle/gui-long-text-20261004/";
+    private static final String ROOT=System.getProperty("itemcontrol.guiValidation.output","D:/IDEAWork/ItemControl/.gradle/gui-long-text-20261004/");
     private static final String[] NAMES={"property-combat","property-tool","property-food","property-general","property-block","property-protection","protection-list","protection-modal-new","protection-modal-existing","direct-immunity","damage-types","banned","banned-mods","banned-tags","merge-collapsed","merge-expanded","item-tags","tag-suggestions","cleaner","rules-empty","rules-blacklist","rules-area","creative-tabs","components","components-invalid"};
     private static boolean installed,started,screenshot,finished,originalFullscreen;
     private static String originalLanguage;
@@ -87,7 +87,7 @@ public final class GuiLongTextValidation {
         if(page>=NAMES.length){nextPhase();return;}
         openPage(page);
         screenshot=false;due=System.currentTimeMillis()+1000;
-        LOG.info("ITEM_GUI_OPEN phase={} case={} page={}",phase,NAMES[page],KineticGui.currentPage().getClass().getName());
+        LOG.info("ITEM_GUI_OPEN phase={} case={} page={}",phase,NAMES[page],KineticGui.currentPage()!=null?KineticGui.currentPage().getClass().getName():String.valueOf(Minecraft.getInstance().screen));
     }
     @SuppressWarnings("unchecked")
     private static void openPage(int index) throws Exception {
@@ -144,7 +144,7 @@ public final class GuiLongTextValidation {
                 dev.xyat.itemcontrol.tabs.TabConfig.currentEditing=new dev.xyat.itemcontrol.tabs.TabConfig.Data();
                 KineticGui.open(new dev.xyat.itemcontrol.tabs.gui.TabUnifiedPage());
             }
-            case 23,24 -> KineticGui.open(new dev.xyat.itemcontrol.item.client.gui.ComponentsEditorPage("minecraft:diamond_sword",index==23?"[damage=1]":"[invalid=]",value->{}));
+            case 23,24 -> dev.xyat.itemcontrol.item.client.gui.ItemDataEditor.open(null,"minecraft:diamond_sword",index==23?"[damage=1]":"[invalid=]",value->{});
         }
     }
     private static void setField(Object target,String name,Object value)throws Exception {

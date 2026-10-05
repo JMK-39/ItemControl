@@ -149,7 +149,7 @@ public class CleanerAreaManager {
         data.addArea(finalArea);
         clearServerAndClientSelection(player);
         notify(player, "msg.itemcontrol.cleaner.cleaner.area.saved", cost, (Math.max(0, limit - realUsedAfterRemove - cost)));
-        syncAll(player.server);
+        syncAll(player.getServer());
     }
 
     private static int getUsedGridCost(CleanerAreaSavedData data, UUID ownerId) {
@@ -208,7 +208,7 @@ public class CleanerAreaManager {
             data.removeArea(target);
             clearServerAndClientSelection(player);
             notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_one", (target.ownerName()), (getRemainingGridCount(player)));
-            syncAll(player.server);
+            syncAll(player.getServer());
         } else {
             notify(player, "msg.itemcontrol.cleaner.cleaner.area.not_owner", (target.ownerName()));
         }
@@ -219,7 +219,7 @@ public class CleanerAreaManager {
         int removed = data.removeByOwner(player.getUUID());
         clearServerAndClientSelection(player);
         notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_self", removed, (getRemainingGridCount(player)));
-        syncAll(player.server);
+        syncAll(player.getServer());
     }
 
     private static void clearAll(ServerPlayer player) {
@@ -227,12 +227,12 @@ public class CleanerAreaManager {
             notify(player, "msg.itemcontrol.cleaner.cleaner.area.no_permission");
             return;
         }
-        CleanerAreaSavedData data = CleanerAreaSavedData.get(player.server.overworld());
+        CleanerAreaSavedData data = CleanerAreaSavedData.get(player.getServer().overworld());
         int removed = data.clearAllAreas();
         START_POINTS.clear();
         END_POINTS.clear();
         notify(player, "msg.itemcontrol.cleaner.cleaner.area.removed_all", removed);
-        syncAll(player.server);
+        syncAll(player.getServer());
     }
 
     private static void clearServerAndClientSelection(ServerPlayer player) {
@@ -303,7 +303,7 @@ public class CleanerAreaManager {
     }
 
     public static void syncTo(ServerPlayer player) {
-        CleanerAreaSavedData data = CleanerAreaSavedData.get(player.server.overworld());
+        CleanerAreaSavedData data = CleanerAreaSavedData.get(player.getServer().overworld());
         CleanerNetwork.sendToPlayer(new CleanerNetwork.SyncCleanerAreas(data.getAreas()), player);
     }
 

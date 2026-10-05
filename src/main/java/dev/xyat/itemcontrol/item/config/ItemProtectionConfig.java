@@ -360,7 +360,7 @@ public static ProtectionRule getProtectionRule(ItemStack stack) {
         }
 
         for (TagKey<EntityType<?>> tag : GLOBAL_DIRECT_ENTITY_IMMUNE_TAGS) {
-            if (entityType.is(tag)) {
+            if (entityType.builtInRegistryHolder().is(tag)) {
                 return true;
             }
         }

@@ -208,7 +208,7 @@ public final class DamageTypeEditorPage extends KineticPage {
         ResourceLocation id = KineticResourceIds.tryParse(idText);
         if (id == null) return false;
         if (tag) {
-            return registry.getTagNames().anyMatch(key -> key.location().equals(id));
+            return registry.getTagNames().anyMatch(tagKey -> tagKey.location().equals(id));
         }
         return registry.containsKey(id);
     }

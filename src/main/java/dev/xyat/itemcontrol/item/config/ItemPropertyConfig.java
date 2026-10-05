@@ -426,7 +426,7 @@ public final class ItemPropertyConfig {
                 errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
                 continue;
             }
-            if (attributeId == null || KineticRegistries.attributes().get(attributeId) == null) {
+            if (dev.xyat.itemcontrol.item.property.ItemPropertyOverrides.attribute(attributeId) == null) {
                 errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
                 continue;
             }

@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+// NeoForge 26.1 no longer strips @OnlyIn members and warns about the annotation; this class is only used on the client.
+//? if <26.1
 @OnlyIn(Dist.CLIENT)
 public final class CleanerItemRuleEditorPage extends KineticPage {
     public enum Mode {

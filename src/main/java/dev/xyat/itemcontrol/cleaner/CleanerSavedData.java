@@ -20,13 +20,26 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
 
     public static CleanerSavedData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage()
-                //? if >=1.21 {
+                //? if >=26.1 {
+/*.computeIfAbsent(TYPE);*/
+//?} else if >=1.21 {
 /*.computeIfAbsent(new Factory<>(CleanerSavedData::new, CleanerSavedData::load, null), DATA_NAME);*/
 //?} else {
 .computeIfAbsent(CleanerSavedData::load, CleanerSavedData::new, DATA_NAME);
 //?}
 
     }
+
+    // 26.1 saved data is typed by id and codec; the stored compound keeps its layout and items use the world's registries.
+    //? if >=26.1 {
+    /*private static final net.minecraft.world.level.saveddata.SavedDataType<CleanerSavedData> TYPE = new net.minecraft.world.level.saveddata.SavedDataType<>(
+            dev.xyat.kineticcore.api.resource.KineticResourceIds.of("itemcontrol", DATA_NAME), level -> new CleanerSavedData(),
+            level -> CompoundTag.CODEC.xmap(tag -> load(tag, lookup(level)), data -> data.save(new CompoundTag(), lookup(level))));
+
+    private static net.minecraft.core.HolderLookup.Provider lookup(ServerLevel level) {
+        return level != null ? level.registryAccess() : dev.xyat.kineticcore.api.runtime.KineticServerRuntime.currentServer().registryAccess();
+    }
+    *///?}
 
     public void addRecord(BigTrashContainer container) {
         if (!CleanerConfig.enableTrashBin) return;
@@ -68,10 +81,10 @@ public static CleanerSavedData load(CompoundTag tag) {
                     BigTrashContainer container = new BigTrashContainer(CleanerConfig.getTrashBinSlots());
 
                     for (int i = 0; i < itemTagList.size(); i++) {
-                        CompoundTag itemTag = itemTagList.getCompound(i);
-                        int slot = itemTag.getInt("Slot");
+                        CompoundTag itemTag = dev.xyat.itemcontrol.util.Nbt.compound(itemTagList, i);
+                        int slot = dev.xyat.itemcontrol.util.Nbt.intValue(itemTag, "Slot");
                         //? if >=1.21 {
-/*ItemStack stack = ItemStack.parseOptional(lookup, itemTag);*/
+/*ItemStack stack = dev.xyat.itemcontrol.util.Nbt.loadItem(itemTag, lookup);*/
 //?} else {
 ItemStack stack = ItemStack.of(itemTag);
 //?}
@@ -80,7 +93,7 @@ ItemStack stack = ItemStack.of(itemTag);
                         // 原版 tag 里 Count 是 byte，超过 127 会变负数。
                         // 这里我们读取自己写入的真实 int 数量
                         if (itemTag.contains("RealCount")) {
-                            stack.setCount(itemTag.getInt("RealCount"));
+                            stack.setCount(dev.xyat.itemcontrol.util.Nbt.intValue(itemTag, "RealCount"));
                         }
 
                         if (slot >= 0 && slot < container.getContainerSize()) {
@@ -94,13 +107,18 @@ ItemStack stack = ItemStack.of(itemTag);
         return data;
     }
 
+    //? if >=26.1 {
+    /*@Nonnull
+    public CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {
+    *///?} else if >=1.21 {
+    /*@Override
+    @Nonnull
+    public CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {
+    *///?} else {
     @Override
     @Nonnull
-    //? if >=1.21 {
-/*public CompoundTag save(@NotNull CompoundTag tag, net.minecraft.core.HolderLookup.Provider lookup) {*/
-//?} else {
-public CompoundTag save(@NotNull CompoundTag tag) {
-//?}
+    public CompoundTag save(@NotNull CompoundTag tag) {
+    //?}
 
         ListTag historyTag = new ListTag();
 
@@ -114,7 +132,7 @@ public CompoundTag save(@NotNull CompoundTag tag) {
                     itemTag.putInt("Slot", i);
 //? if >=1.21 {
 /*                    // Count codec is bounded; save a one-item template and retain RealCount separately.
-                    itemTag.merge((CompoundTag) stack.copyWithCount(1).save(lookup));*/
+                    itemTag.merge(dev.xyat.itemcontrol.util.Nbt.saveItem(stack.copyWithCount(1), lookup));*/
 //?} else {
                     stack.save(itemTag);
 //?}

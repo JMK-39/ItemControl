@@ -230,9 +230,13 @@ public class TabUnifiedPage extends KineticPage {
         TabModule.bypassAllModifications = true;
 
         try {
+            //? if >=26.1 {
+            /*CreativeModeTab minecraftTab = BuiltInRegistries.CREATIVE_MODE_TAB.getValue(currentTab.id);
+            *///?} else {
             CreativeModeTab minecraftTab =
                     BuiltInRegistries.CREATIVE_MODE_TAB
                             .get(currentTab.id);
+            //?}
 
             rawItems =
                     minecraftTab == null

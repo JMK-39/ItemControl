@@ -19,6 +19,12 @@ public final class ItemPropertyEventHandler {
         KineticExternalEvents.subscribe(ItemAttributeModifierEvent.class, ItemPropertyEventHandler::onAttributeModifiers);
         KineticLivingEvents.onUseItemFinish(KineticEventPriority.NORMAL, ItemPropertyEventHandler::onItemUseFinish);
         KineticModLifecycle.onCommonSetup(ItemPropertyOverrides::onCommonSetup);
+        // 26.1 item components are built by default-component initializers each time the game binds them.
+        //? if >=26.1 {
+        /*net.neoforged.fml.ModList.get().getModContainerById("itemcontrol").ifPresent(container -> container.getEventBus().addListener(
+                (net.neoforged.neoforge.event.ModifyDefaultComponentsEvent event) -> event.modifyMatching((item, components) -> true,
+                        (components, context, item) -> ItemPropertyOverrides.applyDefaultComponents(item, components))));
+        *///?}
     }
 
     private static void onAttributeModifiers(ItemAttributeModifierEvent event) {
@@ -27,11 +33,7 @@ public final class ItemPropertyEventHandler {
 
     private static void onItemUseFinish(KineticLivingEvents.UseItemFinishContext context) {
         var rule = ItemPropertyOverrides.active(context.item());
-//? if >=1.21 {
-/*        if (rule != null && Boolean.TRUE.equals(rule.nonConsumable()) && context.item().getFoodProperties(context.entity()) != null) {*/
-//?} else {
-        if (rule != null && Boolean.TRUE.equals(rule.nonConsumable()) && context.item().isEdible()) {
-//?}
+        if (rule != null && Boolean.TRUE.equals(rule.nonConsumable()) && ItemPropertyReads.isFood(context.item())) {
 
             context.setResultStack(context.item().copy());
         }

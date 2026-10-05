@@ -135,7 +135,7 @@ public class AutoCleanerEventHandler {
 
         manualTickCounter = MANUAL_DELAY_SECONDS * 20;
         manualInitiatorName = player.getDisplayName().copy();
-        broadcastActionBar(player.server, manualInitiatorName, MANUAL_DELAY_SECONDS, false);
+        broadcastActionBar(player.getServer(), manualInitiatorName, MANUAL_DELAY_SECONDS, false);
 
         KineticPlayerMessages.system(player, KineticI18n.translatable("msg.itemcontrol.cleaner.cleaner.manual.confirmed"));
     }

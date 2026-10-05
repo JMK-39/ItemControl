@@ -12,7 +12,6 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
-import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -144,8 +143,9 @@ public final class ItemPropertyOverrides {
             addNeo(replacements, Attributes.ATTACK_DAMAGE, amount, EquipmentSlot.MAINHAND, "attack_damage");
         }
         addNeo(replacements, Attributes.ATTACK_SPEED, rule.attackSpeed(), EquipmentSlot.MAINHAND, "attack_speed");
-        if (stack.getItem() instanceof ArmorItem armor) {
-            EquipmentSlot slot = armor.getEquipmentSlot();
+        EquipmentSlot armorSlot = ItemPropertyReads.armorSlot(stack);
+        if (armorSlot != null) {
+            EquipmentSlot slot = armorSlot;
             addNeo(replacements, Attributes.ARMOR, rule.armor(), slot, "armor");
             addNeo(replacements, Attributes.ARMOR_TOUGHNESS, rule.armorToughness(), slot, "armor_toughness");
             addNeo(replacements, Attributes.KNOCKBACK_RESISTANCE, rule.knockbackResistance(), slot, "knockback_resistance");
@@ -154,7 +154,7 @@ public final class ItemPropertyOverrides {
             var row = rule.attributes().get(index);
             EquipmentSlot slot = parseSlot(row.slot());
             ResourceLocation id = ResourceLocation.tryParse(row.attribute());
-            Attribute attribute = id == null ? null : KineticRegistries.attributes().get(id);
+            Attribute attribute = attribute(id);
             AttributeModifier.Operation operation = parseOperation(row.operation());
             if (slot == null || attribute == null || operation == null || !Double.isFinite(row.amount())) continue;
             replacements.computeIfAbsent(new SlotAttribute(net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute), slot), ignored -> new ArrayList<>())
@@ -199,7 +199,7 @@ public static void applyAttributeOverrides(net.minecraftforge.event.ItemAttribut
             }
             addConvenience(replacements, Attributes.ATTACK_SPEED, rule.attackSpeed(), eventSlot);
         }
-        if (stack.getItem() instanceof ArmorItem armor && armor.getEquipmentSlot() == eventSlot) {
+        if (ItemPropertyReads.armorSlot(stack) == eventSlot) {
             addConvenience(replacements, Attributes.ARMOR, rule.armor(), eventSlot);
             addConvenience(replacements, Attributes.ARMOR_TOUGHNESS, rule.armorToughness(), eventSlot);
             addConvenience(replacements, Attributes.KNOCKBACK_RESISTANCE, rule.knockbackResistance(), eventSlot);
@@ -210,7 +210,7 @@ public static void applyAttributeOverrides(net.minecraftforge.event.ItemAttribut
             EquipmentSlot slot = parseSlot(row.slot());
             if (slot == null || slot != eventSlot) continue;
             ResourceLocation id = ResourceLocation.tryParse(row.attribute());
-            Attribute attribute = id == null ? null : KineticRegistries.attributes().get(id);
+            Attribute attribute = attribute(id);
             AttributeModifier.Operation operation = parseOperation(row.operation());
             if (attribute == null || operation == null || !Double.isFinite(row.amount())) continue;
             replacements.computeIfAbsent(attribute, ignored -> new ArrayList<>())
@@ -228,6 +228,18 @@ public static void applyAttributeOverrides(net.minecraftforge.event.ItemAttribut
     }
 //?}
 
+
+    /** The attribute a rule names, or null. */
+    public static Attribute attribute(ResourceLocation id) {
+        if (id == null) return null;
+        Attribute attribute = KineticRegistries.attributes().get(id);
+        // 26.1 dropped the "generic." style prefixes from attribute ids; rules written for older versions keep matching.
+        int prefix = id.getPath().indexOf('.');
+        if (attribute == null && prefix > 0) {
+            attribute = KineticRegistries.attributes().get(dev.xyat.kineticcore.api.resource.KineticResourceIds.of(id.getNamespace(), id.getPath().substring(prefix + 1)));
+        }
+        return attribute;
+    }
 
     private static void widenAttackDamageRange(double amount) {
         //? if >=1.21 {
@@ -284,7 +296,37 @@ private static AttributeModifier.Operation parseOperation(String operation) {
 //?}
 
 
-    //? if >=1.21 {
+    //? if >=26.1 {
+    /*/^*
+     * 26.1 items keep food, eating time and enchantability only in their default components; these are rebuilt from the
+     * active rules whenever the game binds item components (NeoForge's ModifyDefaultComponentsEvent initializer).
+     ^/
+    public static void applyDefaultComponents(Item item, net.minecraft.core.component.DataComponentMap.Builder components) {
+        ItemPropertyRule rule = ItemPropertyConfig.active(item);
+        if (rule == null) return;
+        net.minecraft.world.food.FoodProperties original = components.get(net.minecraft.core.component.DataComponents.FOOD);
+        if (rule.nutrition() != null || rule.saturation() != null || rule.alwaysEat() != null) {
+            int nutrition = rule.nutrition() != null ? rule.nutrition() : original == null ? 0 : original.nutrition();
+            float coefficient = rule.saturation() != null ? rule.saturation().floatValue()
+                    : original == null || original.nutrition() == 0 ? 0.0F : original.saturation() / (2.0F * original.nutrition());
+            boolean always = rule.alwaysEat() != null ? rule.alwaysEat() : original != null && original.canAlwaysEat();
+            components.set(net.minecraft.core.component.DataComponents.FOOD,
+                    new net.minecraft.world.food.FoodProperties(nutrition, 2.0F * nutrition * coefficient, always));
+            if (components.get(net.minecraft.core.component.DataComponents.CONSUMABLE) == null) {
+                components.set(net.minecraft.core.component.DataComponents.CONSUMABLE, net.minecraft.world.item.component.Consumables.DEFAULT_FOOD);
+            }
+        }
+        net.minecraft.world.item.component.Consumable consumable = components.get(net.minecraft.core.component.DataComponents.CONSUMABLE);
+        if (rule.eatSeconds() != null && consumable != null && components.get(net.minecraft.core.component.DataComponents.FOOD) != null) {
+            components.set(net.minecraft.core.component.DataComponents.CONSUMABLE, new net.minecraft.world.item.component.Consumable(
+                    rule.eatSeconds().floatValue(), consumable.animation(), consumable.sound(), consumable.hasConsumeParticles(), consumable.onConsumeEffects()));
+        }
+        if (rule.enchantability() != null) {
+            components.set(net.minecraft.core.component.DataComponents.ENCHANTABLE,
+                    rule.enchantability() > 0 ? new net.minecraft.world.item.enchantment.Enchantable(rule.enchantability()) : null);
+        }
+    }
+    *///?} else if >=1.21 {
     /*public static net.minecraft.world.food.FoodProperties food(ItemStack stack, net.minecraft.world.food.FoodProperties original) {
         ItemPropertyRule rule = active(stack);
         if (rule == null || (rule.nutrition() == null && rule.saturation() == null && rule.alwaysEat() == null && rule.eatSeconds() == null)) return original;

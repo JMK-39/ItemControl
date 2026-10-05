@@ -14,7 +14,7 @@ public final class CleanerAreaKeyBindings {
             return;
         }
         areaActionKey = KineticKeyBindings.builder("key.itemcontrol.cleaner.area_action")
-                .category("key.itemcontrol.category")
+                .category("key.itemcontrol.cleaner.category")
                 .context(KineticKeyBindings.Context.IN_GAME)
                 .keyboard(KineticKeyBindings.Key.LEFT_SHIFT)
                 .register();

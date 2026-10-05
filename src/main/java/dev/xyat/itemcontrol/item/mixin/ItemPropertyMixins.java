@@ -21,7 +21,13 @@ public final class ItemPropertyMixins {
     private ItemPropertyMixins() {
     }
 
-//? if >=1.21 {
+// 26.1 keeps enchantability and eating time in item components (ItemPropertyOverrides.applyDefaultComponents), so this
+// Mixin is left out of its config there (unavailable_mixins).
+//? if >=26.1 {
+/*    @Mixin(Item.class)
+    public abstract static class ItemProperties {
+    }*/
+//?} else if >=1.21 {
 /*    @Mixin(Item.class)
     public abstract static class ItemProperties {
         @Inject(method = "getEnchantmentValue()I", at = @At("RETURN"), cancellable = true)
@@ -110,7 +116,11 @@ public final class ItemPropertyMixins {
             ItemStack stack = (ItemStack)(Object)this;
             cir.setReturnValue(ItemPropertyOverrides.rarity(stack.getItem(), stack, cir.getReturnValue()));
         }
-        // ItemStack inherits this default method from IItemStackExtension. A merged override gives
+*/
+//?}
+        // 26.1 food is the item's default FOOD component (ItemPropertyOverrides.applyDefaultComponents).
+//? if >=1.21 && <26.1 {
+/*        // ItemStack inherits this default method from IItemStackExtension. A merged override gives
         // existing stacks the active rule without mutating their persisted food component.
         public FoodProperties getFoodProperties(net.minecraft.world.entity.LivingEntity entity) {
             ItemStack stack = (ItemStack)(Object)this;

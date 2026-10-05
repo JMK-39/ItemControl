@@ -58,8 +58,14 @@ public class ItemProtectionMixins {
         }
 
         /** 注入物品受伤逻辑 */
+        // 26.1 damages entities on the server through hurtServer.
+        //? if >=26.1 {
+        /*@Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
+        private void itemcontrol_item$onHurt(net.minecraft.server.level.ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        *///?} else {
         @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
         private void itemcontrol_item$onHurt(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        //?}
             ItemEntityDamageEvent event = new ItemEntityDamageEvent((ItemEntity) (Object) this, source, amount);
             if (KineticExternalEvents.post(event).isCanceled()) {
                 cir.setReturnValue(false);

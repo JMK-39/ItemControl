@@ -32,7 +32,7 @@ public final class ItemProtectionHandler {
     }
 
     private static void onEntityJoinWorld(net.minecraft.world.entity.Entity entity) {
-        if (!ItemProtectionConfig.enableItemProtection || entity.level().isClientSide) return;
+        if (!ItemProtectionConfig.enableItemProtection || entity.level().isClientSide()) return;
 
         if (entity instanceof ItemEntity itemEntity) {
             ItemStack stack = itemEntity.getItem();
@@ -45,9 +45,16 @@ public final class ItemProtectionHandler {
                     itemEntity.setUnlimitedLifetime();
                 }
 
+                // 26.1 entities save through a value output; the owner and thrower keep their keys.
+                //? if >=26.1 {
+                /*net.minecraft.world.level.storage.TagValueOutput output = net.minecraft.world.level.storage.TagValueOutput.createWithoutContext(net.minecraft.util.ProblemReporter.DISCARDING);
+                itemEntity.saveWithoutId(output);
+                CompoundTag entityData = output.buildResult();
+                *///?} else {
                 CompoundTag entityData = new CompoundTag();
                 itemEntity.saveWithoutId(entityData);
-                boolean hasOwner = entityData.hasUUID("Owner") || entityData.hasUUID("Thrower");
+                //?}
+                boolean hasOwner = dev.xyat.itemcontrol.util.Nbt.hasUuid(entityData, "Owner") || dev.xyat.itemcontrol.util.Nbt.hasUuid(entityData, "Thrower");
 
                 if (!hasOwner) {
                     if ((rule != null && rule.noGravity)
