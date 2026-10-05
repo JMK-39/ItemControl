@@ -2,6 +2,8 @@
 
 ### English
 
+- The damage type list is plain striped rows instead of a column of green boxes; only the hovered row (blue) and invalid entries (red) are outlined.
+- Saving the banned-item rules or the creative tab layout answers only the player who saved; the rules are no longer sent to every online player, and other players receive them at login. Saving the item settings page updates online admins only. Item property changes (stack size, durability and so on) are still sent to everyone, because inventories must match the server.
 - Enabled Minecraft 26.1.2 / NeoForge 26.1.2.112 (Java 25); releases now cover Forge 1.20.1, NeoForge 1.21.1 and NeoForge 26.1.2. Optional JEI 29.43; KubeJS integration compiles against KubeJS 26.1.2-8 but its 26.1 build does not start on 26.1.2 yet.
 - Every version uses the same screens. On 1.21.1 and 26.1.2, item component data (`[damage=5]`) is now edited in Core's NBT editor, the same editor Forge uses for NBT, instead of a separate page. Requires KineticCore 26.10.5+.
 - Item properties on 26.1.2: food, eating time and enchantability are 26.1 item components and are applied when the game binds item components; stack size, durability, rarity, mining, attributes and block values keep their existing hooks. Armor slots, tool levels and mining speeds are read from the item's equippable and tool components.
@@ -13,6 +15,8 @@
 
 ### 简体中文
 
+- 伤害类型列表改为条纹纯文字行，不再是一列绿色方框；只有光标所在行（蓝色）与无效条目（红色）带边框。
+- 保存禁用物品规则或创造标签页布局只回复保存的玩家，不再发送给所有在线玩家，其他玩家在登录时获得。保存物品设置页面只更新在线管理员。物品属性修改（堆叠数量、耐久等）仍发送给所有人，因为背包必须与服务端一致。
 - 启用 Minecraft 26.1.2 / NeoForge 26.1.2.112（Java 25）；发布版本覆盖 Forge 1.20.1、NeoForge 1.21.1 与 NeoForge 26.1.2。可选 JEI 29.43；KubeJS 联动按 KubeJS 26.1.2-8 编译，但其 26.1 版本目前无法在 26.1.2 上启动。
 - 所有版本使用相同界面。1.21.1 与 26.1.2 的物品数据组件（`[damage=5]`）改用核心 NBT 编辑器编辑，与 Forge 编辑 NBT 的界面一致，不再使用单独页面。要求 KineticCore 26.10.5+。
 - 26.1.2 的物品属性：食物、食用时间与附魔能力在 26.1 中属于物品组件，在游戏绑定物品组件时应用；堆叠、耐久、稀有度、挖掘、属性与方块数值沿用原有挂钩。盔甲槽位、工具等级与挖掘速度从物品的可装备与工具组件读取。

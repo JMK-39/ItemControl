@@ -190,6 +190,14 @@ public class ItemNetwork {
         }
     }
 
+    /** After the item settings page is saved: online admins (the only possible editors) get the new rules; nothing is sent to other players. */
+    public static void syncServerConfigToAdmins(net.minecraft.server.MinecraftServer server) {
+        if (server == null) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (player.hasPermissions(2)) sendServerConfigToPlayer(player, false);
+        }
+    }
+
     public static void syncServerConfigToAllPlayers() {
         try {
             CHANNEL.broadcast(new SyncBanConfigPacket(BanItemConfig.getNetworkJson()));
@@ -339,7 +347,8 @@ public class ItemNetwork {
                 return;
             }
             if (BanItemConfig.applyJson(jsonData, "server packet from " + player.getGameProfile().getName(), true)) {
-                syncServerConfigToAllPlayers();
+                // Only the editor gets the saved rules; other players receive them when they log in.
+                sendServerConfigToPlayer(player, false);
                 sendEditorSaveResult(player, editorType, true, List.of(), "");
             } else {
                 sendServerConfigToPlayer(player, false);

@@ -144,7 +144,8 @@ public final class TabNetwork {
         }
 
         if (success) {
-            CHANNEL.broadcast(new SyncTabPacket(savedJson));
+            // Only the editor gets the new tab layout; other players receive it when they log in.
+            CHANNEL.sendToPlayer(sender, new SyncTabPacket(savedJson));
             CHANNEL.sendToPlayer(sender, new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.saved"));
         } else {
             CHANNEL.sendToPlayer(sender, new NotifyPacket("gui.itemcontrol.tabs.tabs.notify.save_failed"));

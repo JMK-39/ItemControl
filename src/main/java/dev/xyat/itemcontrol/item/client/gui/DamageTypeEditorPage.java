@@ -165,26 +165,11 @@ public final class DamageTypeEditorPage extends KineticPage {
                 boolean hovered = contains(mouseX, mouseY, x, y, LIST_W, ROW_H);
                 String value = entries.get(index);
                 boolean valid = isValidDamageEntry(value);
-                KineticTheme.stateSurface(
-                        graphics,
-                        x,
-                        y,
-                        LIST_W,
-                        ROW_H,
-                        KineticTheme.Surface.PANEL_ALT,
-                        false,
-                        hovered,
-                        !valid
-                );
-                if (valid) {
-                    KineticTheme.indicatorOutline(
-                            graphics,
-                            x,
-                            y,
-                            LIST_W,
-                            ROW_H,
-                            hovered ? KineticTheme.Indicator.INFO : KineticTheme.Indicator.SUCCESS
-                    );
+                // A list of damage type IDs: plain striped rows, outlined only when hovered (blue) or invalid (red).
+                KineticTheme.Palette palette = KineticTheme.current();
+                graphics.fill(x, y, x + LIST_W, y + ROW_PITCH, (index & 1) == 0 ? palette.panel() : palette.panelAlt());
+                if (hovered || !valid) {
+                    KineticTheme.stateOutline(graphics, x, y, LIST_W, ROW_H, false, hovered, !valid);
                 }
 
                 String display = displayName(value, dictionary);

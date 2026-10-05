@@ -39,7 +39,7 @@ public final class ItemModule {
                     ItemProtectionConfig.save();
                     BanItemConfig.save();
                 })
-                .afterSave(server -> ItemNetwork.syncServerConfigToAllPlayers())
+                .afterSave(ItemNetwork::syncServerConfigToAdmins)
                 .build());
         ItemNetwork.register();
         ItemProtectionHandler.register();
