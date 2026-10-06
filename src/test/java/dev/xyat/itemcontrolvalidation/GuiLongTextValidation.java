@@ -1,5 +1,4 @@
-//? if >=1.21 {
-/*package dev.xyat.itemcontrolvalidation;
+package dev.xyat.itemcontrolvalidation;
 
 import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
 import dev.xyat.kineticcore.api.client.gui.KineticGui;
@@ -18,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/^** Uses the existing client and unsaved page drafts. Never clicks or saves editor changes. *^/
+/*** Uses the existing client and unsaved page drafts. Never clicks or saves editor changes. */
 public final class GuiLongTextValidation {
     private static final Logger LOG=LoggerFactory.getLogger(GuiLongTextValidation.class);
     private static final String ROOT=System.getProperty("itemcontrol.guiValidation.output","D:/IDEAWork/ItemControl/.gradle/gui-long-text-20261004/");
@@ -204,4 +203,3 @@ public final class GuiLongTextValidation {
         @Override public net.minecraft.util.FormattedCharSequence getVisualOrder(net.minecraft.network.chat.FormattedText text){return delegate.getVisualOrder(text);}
     }
 }
-*///?}
