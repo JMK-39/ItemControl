@@ -49,6 +49,8 @@ public class MergeItemPage extends KineticPage {
     private static final int ROW_EXPAND_WIDTH = 12;
     private static final int TEXT_GAP = 4;
     private static final float SOURCE_TEXT_SCALE = 0.8F;
+    // Space between rows of the rule list, so neighbouring row frames never touch.
+    private static final int ROW_GAP = 2;
     private static String rememberedLeftSearch = "";
     private static String rememberedRightSearch = "";
     private int leftX, leftY, leftW, leftH;
@@ -281,7 +283,7 @@ public class MergeItemPage extends KineticPage {
             }
         }
         int totalLeftH = 0;
-        for (LeftEntry e : leftEntries) { e.h = (e instanceof TargetEntry) ? 22 : 12; totalLeftH += e.h + 1; }
+        for (LeftEntry e : leftEntries) { e.h = (e instanceof TargetEntry) ? 22 : 12; totalLeftH += e.h + ROW_GAP; }
         leftScroll.update(totalLeftH, leftH);
     }
 
@@ -484,7 +486,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                 e.x = leftX + 2;
                 e.y = curY; e.w = leftW - 4; e.render(g, smx, smy);
             }
-            curY += e.h + 1;
+            curY += e.h + ROW_GAP;
         }
         g.endScissor();
 
@@ -617,7 +619,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                     if (smx >= entry.x && smx < entry.x + entry.w && smy >= currentY && smy < currentY + entry.h) { entry.requestTooltip(mx, my);
                         break; }
                 }
-                currentY += entry.h + 1;
+                currentY += entry.h + ROW_GAP;
             }
         } else if ((isCreatingRule || selectedTarget != null) && smx >= rightX && smx < rightX + rightW && smy >= rightY && smy < rightY + rightH) {
             int gridX = rightX + 2, gridY = rightY;
@@ -685,7 +687,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                         if (entry.mouseClicked(input)) return true;
                     }
                 }
-                currentY += entry.h + 1;
+                currentY += entry.h + ROW_GAP;
             }
         } else if ((isCreatingRule || selectedTarget != null) && smx >= rightX && smx < rightX + rightW && smy >= rightY && smy < rightY + rightH) {
             int gridX = rightX + 2;

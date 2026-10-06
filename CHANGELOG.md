@@ -1,3 +1,15 @@
+## 26.10.6 — 2026-10-06
+
+### English
+
+- In the item merge editor, the rule rows (a target and its expanded source items) keep 2 px between them instead of 1 px, so neighbouring row frames no longer touch.
+- Checked with screenshots of all 25 screens on 1.21.1 and 26.1.2, in English and Chinese, at two window sizes and with extra-long text; both versions look the same.
+
+### 简体中文
+
+- 物品合并编辑器中，规则行（目标及展开后的来源物品）之间的间距由 1 像素改为 2 像素，相邻行的边框不再相接。
+- 已在 1.21.1 与 26.1.2 上对全部 25 个界面截图检查，涵盖英文和中文、两种窗口尺寸以及超长文本；两个版本外观一致。
+
 ## 26.10.5 — 2026-10-05
 
 ### English
