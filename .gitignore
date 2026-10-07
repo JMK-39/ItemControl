@@ -31,3 +31,6 @@ Thumbs.db
 /CF_UPDATE_LOG.md
 run-*/
 .superpowers/
+*.zip
+*.7z
+/wiki/
