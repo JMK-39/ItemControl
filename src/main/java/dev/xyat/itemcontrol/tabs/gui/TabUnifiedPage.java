@@ -929,6 +929,7 @@ public class TabUnifiedPage extends KineticPage {
                     contentDrag.payload();
 
             if (payload instanceof TabInfo tabInfo) {
+                KineticTheme.itemSlot(graphics, mouseX - 11, mouseY - 11, TAB_SIZE, false);
                 KineticTheme.item(
                         graphics,
                         tabInfo.icon,
@@ -939,13 +940,14 @@ public class TabUnifiedPage extends KineticPage {
                         false
                 );
             } else if (payload instanceof DisplayItem item) {
+                KineticTheme.itemSlot(graphics, mouseX - 9, mouseY - 9, SLOT_SIZE, false);
                 KineticTheme.item(
                         graphics,
                         item.stack,
                         mouseX - 9,
                         mouseY - 9,
                         SLOT_SIZE,
-                        1.0F,
+                        0.75F,
                         false
                 );
             }

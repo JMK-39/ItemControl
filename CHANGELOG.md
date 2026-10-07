@@ -1,3 +1,13 @@
+## 2026-10-08 — Item preview slots / 物品预览格
+
+### English
+
+- Dragged creative tabs and items show their previews on the same item-slot background as the editor, including small item previews.
+
+### 简体中文
+
+- 拖动创造模式标签页或物品时，预览使用与编辑器相同的物品格背景，小尺寸物品预览也包括在内。
+
 ## 26.10.6 — 2026-10-06
 
 ### English
