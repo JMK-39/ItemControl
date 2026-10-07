@@ -62,9 +62,10 @@ public final class ProtectionItemEditorPage extends KineticPage {
     private static final float ITEM_SCALE = 1.0F;
 
     private static final int MODAL_X = 190;
-    private static final int MODAL_Y = 99;
+    private static final int MODAL_Y = 103;
     private static final int MODAL_W = 260;
-    private static final int MODAL_H = 164;
+    // Just tall enough for the buttons plus a 10 px margin, centred in the 360 px canvas.
+    private static final int MODAL_H = 153;
     private static final int MODAL_PADDING = 14;
     // Keep both toggle rows below the modal status text and above the action buttons.
     private static final int MODAL_TOGGLE_Y = MODAL_Y + 69;
@@ -159,9 +160,9 @@ public final class ProtectionItemEditorPage extends KineticPage {
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.gravity");
 
-        modalApplyButton = ui().button(204, 222, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.apply")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.apply")).layer(1).onClick(this::applyModalRule).build();
-        modalDeleteButton = ui().button(284, 222, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.delete")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.delete")).layer(1).onClick(this::deleteModalRule).build();
-        modalCancelButton = ui().button(364, 222, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.cancel")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.cancel")).layer(1).onClick(this::closeRuleEditor).build();
+        modalApplyButton = ui().button(204, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.apply")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.apply")).layer(1).onClick(this::applyModalRule).build();
+        modalDeleteButton = ui().button(284, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.delete")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.delete")).layer(1).onClick(this::deleteModalRule).build();
+        modalCancelButton = ui().button(364, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.cancel")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.cancel")).layer(1).onClick(this::closeRuleEditor).build();
 
         setModalWidgetsVisible(false);
         refreshSpecialRuleButton();
@@ -467,20 +468,24 @@ public final class ProtectionItemEditorPage extends KineticPage {
 
     @Override
     protected void renderBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, width(), height(), 0xFF171717, 0xFF0E0E0E);
-        KineticTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
+        // The rule dialog stands alone at its own size over a light shade; the item list and its dark backdrop are
+        // not drawn behind it.
         if (layerManager.isOpen(Layer.RULE_EDITOR)) {
+            KineticTheme.shadow(graphics, width(), height());
             KineticTheme.panel(graphics, MODAL_X, MODAL_Y, MODAL_W, MODAL_H);
+        } else {
+            graphics.fillGradient(0, 0, width(), height(), 0xFF171717, 0xFF0E0E0E);
+            KineticTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
         }
     }
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 2 * TEXT_GAP, 0xFFFFFF, true);
         if (layerManager.isOpen(Layer.RULE_EDITOR)) {
             renderModal(graphics);
             return;
         }
+        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 2 * TEXT_GAP, 0xFFFFFF, true);
         renderScrollingGridBackground(graphics);
         renderItems(graphics, mouseX, mouseY);
         gridScroll.render(
@@ -493,7 +498,7 @@ public final class ProtectionItemEditorPage extends KineticPage {
                 GRID_H,
                 18
         );
-        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.hint"), GRID_X, 346, PANEL_X + PANEL_W - GRID_X - TEXT_GAP, 0xFFFFFF, false);
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.hint"), GRID_X, 345, PANEL_X + PANEL_W - GRID_X - TEXT_GAP, 0xFFFFFF, false);
         if (specialRuleButton == null || !specialRuleButton.controlVisible()) {
             Component count = KineticI18n.translatable("gui.itemcontrol.item.protection_editor.count", rules.size(), displayEntries.size());
             graphics.scrollingText(count, SPECIAL_X, SEARCH_Y + 6, SAVE_X - SPECIAL_X - TEXT_GAP, 0xFFFFFF, false);

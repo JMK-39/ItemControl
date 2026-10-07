@@ -44,11 +44,15 @@ public class MergeItemPage extends KineticPage {
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_PITCH = 19;
     // Preserve the existing row anchors while reserving space for the trailing symbol and count.
-    private static final int ROW_NAME_OFFSET = 24;
+    private static final int ROW_NAME_OFFSET = 26;
     private static final int ROW_COUNT_WIDTH = 24;
     private static final int ROW_EXPAND_WIDTH = 12;
     private static final int TEXT_GAP = 4;
-    private static final float SOURCE_TEXT_SCALE = 0.8F;
+    // Rule rows hold a 20 px slot and merged-item rows an 18 px slot with a full-size icon, both 2 px inside the row frame.
+    private static final int TARGET_ROW_H = 24;
+    private static final int SOURCE_ROW_H = 22;
+    private static final int ROW_INSET = 2;
+    private static final int SOURCE_INDENT = 12;
     // Space between rows of the rule list, so neighbouring row frames never touch.
     private static final int ROW_GAP = 2;
     private static String rememberedLeftSearch = "";
@@ -58,6 +62,8 @@ public class MergeItemPage extends KineticPage {
     private int gridCols;
     private int gridAreaH;
     private int rightInfoY;
+    // Right end of the count text; on narrow windows the buttons share its row.
+    private int rightInfoRight;
 
     public MergeItemPage() {
         super(KineticI18n.translatable("gui.itemcontrol.item.banitem.merge_overview_title"));
@@ -108,22 +114,15 @@ public class MergeItemPage extends KineticPage {
         int gap = 6;
         int buttonHeight = 20;
 
-        boolean compactLayout =
-                isPortraitLayout()
-                        || isCompactLayout()
-                        || width() < 540;
-
-        if (compactLayout) {
-            initCompactLayout(sidePadding, gap, buttonHeight);
-        } else {
-            initWideLayout(sidePadding, gap, buttonHeight);
-        }
+        initLayout(sidePadding, gap, buttonHeight);
 
         updateLeftEntries();
         updateRightPanel();
     }
 
-    private void initWideLayout(int sidePadding, int gap, int buttonHeight) {
+    // The rule list stays on the left and the item grid on the right at every window size. When the right column is
+    // too narrow for the search box, tag filter and the three buttons in one row, the buttons move down to the count row.
+    private void initLayout(int sidePadding, int gap, int buttonHeight) {
         int searchY = 5;
         int panelY = 30;
         int rightGridTop = panelY + 28;
@@ -141,49 +140,22 @@ public class MergeItemPage extends KineticPage {
         leftSearchBox = createLeftSearchBox(leftX, searchY, leftW);
 
         int buttonWidth = 60;
+        int tagWidth = 76;
+        boolean oneRow = rightW >= 80 + 4 + tagWidth + gap + buttonWidth * 3 + gap * 2;
+        int buttonsY = oneRow ? searchY : panelY;
         int closeX = rightX + rightW - buttonWidth;
         int saveX = closeX - gap - buttonWidth;
         int addX = saveX - gap - buttonWidth;
-        int rightSearchWidth = Math.max(80, Math.min(150, addX - gap - rightX));
+        int searchRight = oneRow ? addX - gap : rightX + rightW;
+        int rightSearchWidth = Math.max(80, Math.min(oneRow ? 150 : rightW, searchRight - rightX - 4 - tagWidth));
 
         searchBox = createRightSearchBox(rightX, searchY, rightSearchWidth);
-        tagFilterBtn = createTagFilterButton(rightX + rightSearchWidth + 4, searchY, 76);
-        addBtn = createAddButton(addX, searchY, buttonWidth, buttonHeight);
-        saveBtn = createSaveButton(saveX, searchY, buttonWidth, buttonHeight);
-        closeBtn = createCloseButton(closeX, searchY, buttonWidth, buttonHeight);
-        rightInfoY = panelY + 3;
-    }
-
-    private void initCompactLayout(int sidePadding, int gap, int buttonHeight) {
-        int contentW = Math.max(120, width() - sidePadding * 2);
-        leftX = sidePadding;
-        leftW = contentW;
-        leftSearchBox = createLeftSearchBox(leftX, 5, leftW);
-
-        int buttonY = 30;
-        int buttonWidth = Math.max(42, (contentW - gap * 2) / 3);
-        addBtn = createAddButton(leftX, buttonY, buttonWidth, buttonHeight);
-        saveBtn = createSaveButton(leftX + buttonWidth + gap, buttonY, buttonWidth, buttonHeight);
-        closeBtn = createCloseButton(leftX + (buttonWidth + gap) * 2, buttonY, buttonWidth, buttonHeight);
-
-        leftY = 56;
-        int minimumRightHeight = SLOT_PITCH * 4 - (SLOT_PITCH - SLOT_SIZE);
-        int reservedForRight = 20 + 4 + KineticText.lineHeight() + 4 + minimumRightHeight + 8;
-        int availableForLeft = height() - leftY - reservedForRight;
-        leftH = Math.max(56, Math.min(120, availableForLeft));
-
-        int rightSearchY = leftY + leftH + 4;
-        rightX = sidePadding;
-        rightW = contentW;
-        int tagWidth = 76;
-        int rightSearchWidth = Math.max(80, rightW - tagWidth - 4);
-        searchBox = createRightSearchBox(rightX, rightSearchY, rightSearchWidth);
-        tagFilterBtn = createTagFilterButton(rightX + rightSearchWidth + 4, rightSearchY, tagWidth);
-        rightInfoY = rightSearchY + 25;
-        rightY = rightInfoY + KineticText.lineHeight() + 4;
-        rightH = Math.max(SLOT_PITCH * 2 - (SLOT_PITCH - SLOT_SIZE), height() - rightY - 8);
-        gridCols = Math.max(1, (rightW - 10 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH);
-        gridAreaH = rightH;
+        tagFilterBtn = createTagFilterButton(rightX + rightSearchWidth + 4, searchY, tagWidth);
+        addBtn = createAddButton(addX, buttonsY, buttonWidth, buttonHeight);
+        saveBtn = createSaveButton(saveX, buttonsY, buttonWidth, buttonHeight);
+        closeBtn = createCloseButton(closeX, buttonsY, buttonWidth, buttonHeight);
+        rightInfoY = oneRow ? panelY + 3 : panelY + (buttonHeight - KineticText.lineHeight()) / 2;
+        rightInfoRight = oneRow ? rightX + rightW : addX - gap;
     }
 
     private KineticTextField createLeftSearchBox(int x, int y, int width) {
@@ -283,7 +255,7 @@ public class MergeItemPage extends KineticPage {
             }
         }
         int totalLeftH = 0;
-        for (LeftEntry e : leftEntries) { e.h = (e instanceof TargetEntry) ? 22 : 12; totalLeftH += e.h + ROW_GAP; }
+        for (LeftEntry e : leftEntries) { e.h = (e instanceof TargetEntry) ? TARGET_ROW_H : SOURCE_ROW_H; totalLeftH += e.h + ROW_GAP; }
         leftScroll.update(totalLeftH, leftH);
     }
 
@@ -508,7 +480,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                     rightDisplayList.size(),
                     allItemsCache.size()
             );
-            g.scrollingText(countText, countX, rightInfoY, rightX + rightW - countX - TEXT_GAP, 0xFFFFFF, false);
+            g.scrollingText(countText, countX, rightInfoY, rightInfoRight - countX - TEXT_GAP, 0xFFFFFF, false);
 
             int gridX = rightX + 2;
             int gridY = rightY;
@@ -603,7 +575,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                     rightDisplayList.size(),
                     allItemsCache.size()
             );
-            if (smx >= countX && smx < countX + Math.min(KineticText.width(countText), rightX + rightW - countX - TEXT_GAP) && smy >= rightInfoY && smy < rightInfoY + KineticText.lineHeight()) {
+            if (smx >= countX && smx < countX + Math.min(KineticText.width(countText), rightInfoRight - countX - TEXT_GAP) && smy >= rightInfoY && smy < rightInfoY + KineticText.lineHeight()) {
                 List<Component> tooltip = new ArrayList<>();
                 tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.title"));
                 tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.merge.desc"));
@@ -780,14 +752,14 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         void render(KineticGraphics g, int mx, int my) {
             boolean selected = id.equals(selectedTarget), hover = mx >= x && mx < x + w && my >= y && my < y + h;
             KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, selected, hover, false);
-            KineticTheme.itemSlot(g, x, y + 1, 20, 4, hover);
-            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x, y + 1, 20, 1.0F, false); return null; });
+            KineticTheme.itemSlot(g, x + ROW_INSET, y + ROW_INSET, 20, 4, hover);
+            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + ROW_INSET, y + ROW_INSET, 20, 1.0F, false); return null; });
             int nameX = x + ROW_NAME_OFFSET;
             int countX = x + w - ROW_COUNT_WIDTH;
             int expandX = countX - ROW_EXPAND_WIDTH;
-            g.scrollingText(ItemCacheHudRenderer.getDisplayNameCustom(stack), nameX, y + 7, expandX - nameX - TEXT_GAP, 0xFFFFFF, false);
-            g.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.common.count_parentheses", Component.literal(String.valueOf(count))), countX, y + 7, ROW_COUNT_WIDTH - TEXT_GAP, 0xFFFFFF, false);
-            g.text(KineticI18n.translatable(expandedTargets.contains(id) ? "gui.itemcontrol.item.common.collapse" : "gui.itemcontrol.item.common.expand"), expandX, y + 7, 0xFFFFFF, false);
+            g.scrollingText(ItemCacheHudRenderer.getDisplayNameCustom(stack), nameX, y + (TARGET_ROW_H - 8) / 2, expandX - nameX - TEXT_GAP, 0xFFFFFF, false);
+            g.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.common.count_parentheses", Component.literal(String.valueOf(count))), countX, y + (TARGET_ROW_H - 8) / 2, ROW_COUNT_WIDTH - TEXT_GAP, 0xFFFFFF, false);
+            g.text(KineticI18n.translatable(expandedTargets.contains(id) ? "gui.itemcontrol.item.common.collapse" : "gui.itemcontrol.item.common.expand"), expandX, y + (TARGET_ROW_H - 8) / 2, 0xFFFFFF, false);
         }
         boolean mouseClicked(MouseInput input) {
             if (KineticClientRuntime.shiftModifierDown() && input.isLeft()) { openNbtEditor(id, 2, "", stack);
@@ -817,24 +789,11 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         void render(KineticGraphics g, int mx, int my) {
             boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;
             KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, false, hover, false);
-            KineticTheme.itemSlot(g, x + 10, y, 12, 3, hover);
-            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + 10, y, 12, 0.5F, false); return null; });
-            Component name = ItemCacheHudRenderer.getDisplayNameCustom(stack);
-            int nameX = x + ROW_NAME_OFFSET;
-            int nameWidth = Math.max(0, x + w - TEXT_GAP - nameX);
-            int contentWidth = (int) Math.ceil(KineticText.width(name) * SOURCE_TEXT_SCALE);
-            int offset = KineticText.scrollOffset(contentWidth, nameWidth);
-            // Clip in page coordinates before scaling; the scroll offset is also in page pixels.
-            g.clipped(nameX, y, nameX + nameWidth, y + h, () -> {
-                g.push();
-                try {
-                    g.translate(nameX - offset, y + 2.5f);
-                    g.scale(SOURCE_TEXT_SCALE, SOURCE_TEXT_SCALE);
-                    g.text(name, 0, 0, 0xFFAAAAAA, false);
-                } finally {
-                    g.pop();
-                }
-            });
+            KineticTheme.itemSlot(g, x + SOURCE_INDENT, y + ROW_INSET, 18, 3, hover);
+            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + SOURCE_INDENT, y + ROW_INSET, 18, 1.0F, false); return null; });
+            int nameX = x + SOURCE_INDENT + 18 + TEXT_GAP;
+            g.scrollingText(ItemCacheHudRenderer.getDisplayNameCustom(stack), nameX, y + (SOURCE_ROW_H - 8) / 2,
+                    Math.max(0, x + w - TEXT_GAP - nameX), 0xFFAAAAAA, false);
         }
         boolean mouseClicked(MouseInput input) {
             if (KineticClientRuntime.shiftModifierDown() && input.isLeft()) { openNbtEditor(sourceId, 3, targetId, stack);

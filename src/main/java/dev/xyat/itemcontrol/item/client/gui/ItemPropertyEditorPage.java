@@ -729,7 +729,7 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
         }
         // The title's shadow shares the search box's top row, so keep its viewport to the right of the box.
         int titleWidth = 2 * (width() / 2 - GRID_X - SEARCH_W - TEXT_GAP);
-        graphics.scrollingTextCentered(title(), width() / 2, 2, titleWidth, 0xFFFFFF, true);
+        graphics.scrollingTextCentered(title(), width() / 2, 3, titleWidth, 0xFFFFFF, true);
         graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31, GRID_W - TEXT_GAP, 0xFFFFFF, false);
         for (Map.Entry<String, FieldLabel> entry : fieldLabels.entrySet()) {
             FieldLabel label = entry.getValue();

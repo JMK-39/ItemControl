@@ -64,6 +64,8 @@ public class TabUnifiedPage extends KineticPage {
     private static final int RIGHT_W = 126;
 
     private static final int ARROW_W = 20;
+    // The arrows sit inside the tab strip frame, as far from its side lines as from its top and bottom.
+    private static final int ARROW_INSET = 4;
     private static final int TAB_SIZE = 24;
     private static final int TAB_INNER_PADDING = 0;
     private static final int TAB_VIEW_W = MAIN_W - ARROW_W * 2 - TAB_INNER_PADDING * 2;
@@ -366,11 +368,11 @@ public class TabUnifiedPage extends KineticPage {
         int bottomY =
                 height() - 22;
 
-        ui.button(MAIN_X, TAB_Y + 4, ARROW_W)
+        ui.button(MAIN_X + ARROW_INSET, TAB_Y + ARROW_INSET, ARROW_W)
                 .text(Component.literal("<"))
                 .onClick(() -> mainTabScroll.setOffset(mainTabScroll.offset() - 1))
                 .build();
-        ui.button(MAIN_X + MAIN_W - ARROW_W, TAB_Y + 4, ARROW_W)
+        ui.button(MAIN_X + MAIN_W - ARROW_W - ARROW_INSET, TAB_Y + ARROW_INSET, ARROW_W)
                 .text(Component.literal(">"))
                 .onClick(() -> mainTabScroll.setOffset(mainTabScroll.offset() + 1))
                 .build();

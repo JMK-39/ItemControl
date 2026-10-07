@@ -32,7 +32,10 @@ public class ItemTagEditorPage extends KineticPage {
     private static final int SLOT_PITCH = 19;
     // Keep text clear of panel edges and the tag list's inset scrollbar.
     private static final int TEXT_GAP = 4;
-    private static final int TAG_SCROLLBAR_INSET = 6;
+    // Keeps the tag list scroll bar 2 px clear of the list box's right line.
+    private static final int TAG_SCROLLBAR_INSET = 7;
+    // The selected-item line and the tag list each sit in their own outlined box, 3 px apart.
+    private static final int INFO_BOX_H = 16;
     private static String rememberedItemSearch = "";
     private static String rememberedTagSearch = "";
     private static String rememberedSelectedItem = "";
@@ -139,8 +142,8 @@ public class ItemTagEditorPage extends KineticPage {
 
         rightY = leftY + toolbarH + 6;
         rightH = Math.max(60, height() - rightY - pad);
-        tagListY = rightY + KineticText.lineHeight() + 6;
-        tagListH = Math.max(36, rightH - KineticText.lineHeight() - 6);
+        tagListY = rightY + INFO_BOX_H + 3 + 2;
+        tagListH = Math.max(36, rightH - INFO_BOX_H - 3 - 4);
 
         refreshItems();
         refreshTagEntries();
@@ -300,6 +303,8 @@ public class ItemTagEditorPage extends KineticPage {
         KineticTheme.canvasBackground(g, width(), height());
         KineticTheme.panelAlt(g, leftX - 3, leftY - 3, leftW + 6, leftH + 6);
         KineticTheme.panelAlt(g, rightX - 3, rightY - 3, rightW + 6, rightH + 6);
+        KineticTheme.panel(g, rightX, rightY, rightW, INFO_BOX_H);
+        KineticTheme.panel(g, rightX, tagListY - 2, rightW, tagListH + 4);
     }
 
     @Override
@@ -337,7 +342,7 @@ public class ItemTagEditorPage extends KineticPage {
                 : copyMode
                 ? KineticI18n.translatable("gui.itemcontrol.item.item_tag.copy_mode_hint", selectedItemId)
                 : KineticI18n.translatable("gui.itemcontrol.item.item_tag.selected", selectedItemId);
-        g.scrollingText(selectedText, rightX + 2, rightY, rightW - 2 - TEXT_GAP, 0xFFFFFF, false);
+        g.scrollingText(selectedText, rightX + 4, rightY + (INFO_BOX_H - 8) / 2, rightW - 4 - TEXT_GAP, 0xFFFFFF, false);
 
         g.scissor(rightX, tagListY, rightX + rightW, tagListY + tagListH);
         int y = tagListY - (int) Math.round(tagScroll.smoothOffset());
@@ -358,7 +363,9 @@ public class ItemTagEditorPage extends KineticPage {
             double visual = suggestionScroll.smoothOffset();
             int first = Math.max(0, (int) Math.floor(visual / 12D));
             int last = Math.min(tagSuggestions.size(), first + maxRows + 1);
-            KineticTheme.surface(g, rightX, suggestionY, rightW, boxH, KineticTheme.Surface.PANEL_ALT);
+            // The dropdown covers the text below it, so it gets an opaque backing and its own outline, 2 px clear of its rows.
+            g.fill(rightX, suggestionY - 1, rightX + rightW, suggestionY + boxH + 2, 0xFF161616);
+            KineticTheme.panelAlt(g, rightX, suggestionY - 1, rightW, boxH + 3);
             g.scissor(rightX, suggestionY, rightX + rightW, suggestionY + boxH);
             for (int i = first; i < last; i++) {
                 String suggestion = tagSuggestions.get(i);

@@ -3,12 +3,28 @@
 ### English
 
 - In the item merge editor, the rule rows (a target and its expanded source items) keep 2 px between them instead of 1 px, so neighbouring row frames no longer touch.
-- Checked with screenshots of all 25 screens on 1.21.1 and 26.1.2, in English and Chinese, at two window sizes and with extra-long text; both versions look the same.
+- The item merge editor always shows the rule list on the left and the item grid on the right. On smaller windows it used to stack them, leaving a large empty rule panel above the grid; now the Add, Save and Back buttons move down beside the item count instead.
+- Merged items in the rule list show a full-size 16 px icon and normal-size name, instead of a half-size icon and small grey text. Rule and merged-item rows keep their slots 2 px inside the row frame.
+- The cleaner whitelist, trash bin blacklist and area tool editors fit their content and sit in the middle of the window over the dimmed world, with the title and buttons inside the panel, instead of covering the whole window with a dark backdrop. The area tool editor is a small window with just the tool's icon; its name, ID and the editing hint are in the icon's tooltip. The rule lists show as many rows as their rules need plus one free row, and grow up to the full height as rules are added.
+- The item protection rule dialog is shown on its own at its own size over the dimmed world, without the empty item-list frame and dark backdrop that were left behind it.
+- The creative tab bar's arrow buttons sit inside the bar's frame instead of on its side lines, and the tag editor's suggestion list covers the text under it instead of showing it through. The item property editor's title and the protection list's hint keep 2 px from their frame lines.
+- In the item tag editor, the selected-item line and the tag list each sit in their own outlined box, so the two are easy to tell apart.
+- The trash bin's green stack counts are drawn the way vanilla draws counts, so the item icon no longer covers them in some modpacks.
+- The trash bin header keeps the same layout in every language: the Previous/Next buttons have fixed widths and the page number starts after a fixed title area; longer text scrolls.
+- Checked with screenshots of all 25 screens on 1.21.1 and 26.1.2, in English and Chinese, at two window sizes and with extra-long text; both versions look the same. On 1.20.1 they were also captured inside an installed modpack at 1920×1080 and 854×480 with an automatic check that no text or button touches a frame line.
 
 ### 简体中文
 
 - 物品合并编辑器中，规则行（目标及展开后的来源物品）之间的间距由 1 像素改为 2 像素，相邻行的边框不再相接。
-- 已在 1.21.1 与 26.1.2 上对全部 25 个界面截图检查，涵盖英文和中文、两种窗口尺寸以及超长文本；两个版本外观一致。
+- 物品合并编辑器始终左侧为规则列表、右侧为物品网格。之前在较小窗口中改为上下排列，网格上方留下一大块空白的规则面板；现在改为把新建、保存和返回按钮移到物品数量旁边。
+- 规则列表中被合并的物品显示完整的 16 像素图标和正常大小的名称，不再是半尺寸图标和小号灰色文字。规则行与被合并物品行的物品格与行边框保持 2 像素。
+- 清理白名单、垃圾桶黑名单与范围工具编辑器的窗口随内容大小变化，位于窗口中央并透出变暗的游戏画面，标题和按钮都在面板之内，不再用深色背景遮住整个窗口。范围工具编辑器为只显示工具图标的小窗口，名称、ID 与编辑提示放在图标的悬浮提示中。规则列表按规则数量显示所需行数并多留一行空行，添加规则时最多增长到整个高度。
+- 物品保护规则对话框按自身大小单独显示并透出变暗的游戏画面，背后不再留下空的物品列表边框和深色背景。
+- 创造标签栏的箭头按钮位于标签栏边框之内，不再压在两侧边框线上；标签编辑器的建议列表会遮住下方文字，不再透出。物品属性编辑器标题和保护列表提示与边框线保持 2 像素。
+- 物品标签编辑器中，当前物品一行与标签列表各自放在带描边的框内，便于区分。
+- 垃圾桶中的绿色堆叠数量改为按原版方式绘制，在部分整合包中不再被物品图标遮住。
+- 垃圾桶标题栏在所有语言下排版相同：上一页/下一页按钮宽度固定，页码从固定的标题区域之后开始；过长文字滚动显示。
+- 已在 1.21.1 与 26.1.2 上对全部 25 个界面截图检查，涵盖英文和中文、两种窗口尺寸以及超长文本；两个版本外观一致。1.20.1 上还在已安装的整合包中以 1920×1080 与 854×480 截图，并自动检查文字和按钮都不碰到边框线。
 
 ## 26.10.5 — 2026-10-05
 

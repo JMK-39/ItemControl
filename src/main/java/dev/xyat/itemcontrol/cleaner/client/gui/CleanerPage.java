@@ -9,7 +9,6 @@ import dev.xyat.kineticcore.api.client.gui.page.KineticContainerPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
 import dev.xyat.kineticcore.api.client.gui.render.KineticTexture;
 import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
-import dev.xyat.kineticcore.api.client.gui.text.KineticText;
 import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.client.gui.widget.KineticButton;
@@ -56,8 +55,9 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
         Component next = KineticI18n.translatable("gui.itemcontrol.cleaner.cleaner.next");
         int gap = 2;
         int maxButtonWidth = (imageWidth() - 16 - MIN_HEADER_WIDTH - gap) / 2;
-        int previousWidth = Math.min(maxButtonWidth, Math.max(26, KineticText.width(previous) + 8));
-        int nextWidth = Math.min(maxButtonWidth, Math.max(26, KineticText.width(next) + 8));
+        // Fixed widths in every language; the labels scroll when longer.
+        int previousWidth = Math.min(maxButtonWidth, 44);
+        int nextWidth = Math.min(maxButtonWidth, 44);
         int nextX = leftPos() + imageWidth() - 8 - nextWidth;
         int previousX = nextX - gap - previousWidth;
         headerRightX = previousX - 4;
@@ -121,17 +121,9 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
             slot.getItem().setCount(realCount);
             String customText = formatCount(realCount);
 
-            graphics.push();
-            graphics.translate(left + slot.x, top + slot.y);
-            // 原 translate z=300：抬高一层以盖过物品 / Former z=300 translate: raise one layer above items.
-            graphics.raise(1);
-            float scale = 0.85F;
-            graphics.scale(scale, scale);
-            int textWidth = graphics.textWidth(customText);
-            float textX = (16.0f / scale) - textWidth - 0.1f;
-            float textY = (16.0f / scale) - 7.0f;
-            graphics.text(customText, (int) textX, (int) textY, 0x55FF55, true);
-            graphics.pop();
+            // Drawn the way vanilla draws stack counts: a count drawn on its own over the slot could end up behind
+            // the item in some modpacks. §a keeps the green colour (0x55FF55).
+            graphics.itemDecorations(slot.getItem(), left + slot.x, top + slot.y, "§a" + customText);
         }
         originalCounts.clear();
 
@@ -143,10 +135,10 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
         );
         int titleX = left + 8;
         int headerWidth = headerRightX - titleX;
-        int pageReservation = Math.min(graphics.textWidth(pageText), headerWidth / 2);
-        int titleWidth = headerWidth - pageReservation - 6;
+        // The title has a fixed area in every language, so the page number after it never moves.
+        int titleWidth = Math.min(50, headerWidth / 2);
         graphics.scrollingText(titleComp, titleX, top + 6, titleWidth, 4210752, false);
-        int pageX = titleX + Math.min(graphics.textWidth(titleComp), titleWidth) + 6;
+        int pageX = titleX + titleWidth + 6;
         graphics.scrollingText(pageText, pageX, top + 6, headerRightX - pageX, 4210752, false);
     }
 
