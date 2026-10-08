@@ -3,10 +3,16 @@
 ### English
 
 - Dragged creative tabs and items show their previews on the same item-slot background as the editor, including small item previews.
+- Item ban, merge, tag, protection and cleanup lists keep two pixels between slots and show complete item icons. Dense grids use fewer rows and columns within their existing panels; clicks in the gaps no longer select adjacent entries.
+- Creative tab previews keep gaps between their slots and clear the surrounding panel borders. Longer button labels continue scrolling within fixed-size buttons.
+- Creative tab editing loads vanilla items even when the creative inventory has not been opened yet.
 
 ### 简体中文
 
 - 拖动创造模式标签页或物品时，预览使用与编辑器相同的物品格背景，小尺寸物品预览也包括在内。
+- 物品封禁、合并、标签、保护与清理列表的物品格保持两像素间距，并完整显示图标。密集网格在现有面板内减少行列，点击间隙不再选中相邻条目。
+- 创造模式标签页预览格之间保留间距，并避开外围面板描边；较长按钮文字继续在固定大小的按钮内滚动显示。
+- 首次打开创造标签编辑器时，即使尚未打开过原版创造背包，也会加载原版物品列表。
 
 ## 26.10.6 — 2026-10-06
 

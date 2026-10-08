@@ -62,12 +62,13 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
         }
     }
 
-    private static final int SLOT_SIZE = 18;
-    private static final int SLOT_GAP = 1;
+    private static final int SLOT_SIZE = 22;
+    private static final int SLOT_GAP = 2;
     private static final int CELL_SIZE = SLOT_SIZE + SLOT_GAP;
-    private static final int GROUP_COLS = 30;
-    private static final int MIN_ROWS = 4;
-    private static final int MAX_ROWS = 13;
+    // Keep the original list envelope; use fewer complete slots rather than smaller icons.
+    private static final int GROUP_COLS = (569 + SLOT_GAP) / CELL_SIZE;
+    private static final int MIN_ROWS = 3;
+    private static final int MAX_ROWS = (246 + SLOT_GAP) / CELL_SIZE;
     private static final int PANEL_PAD = 16;
     private static final int MIN_SINGLE_PANEL_W = 316;
     private static final int MAX_PANEL_W = 604;

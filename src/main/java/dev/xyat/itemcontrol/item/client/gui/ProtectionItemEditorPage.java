@@ -52,13 +52,17 @@ public final class ProtectionItemEditorPage extends KineticPage {
     private static final int TEXT_GAP = 4;
     private static final int GRID_X = 26;
     private static final int GRID_Y = 58;
-    private static final int SLOT_SIZE = 18;
-    private static final int SLOT_PITCH = 19;
-    private static final int GRID_COLS = 30;
-    private static final int GRID_ROWS = 15;
-    private static final int GRID_W = GRID_COLS * SLOT_PITCH;
-    private static final int GRID_H = GRID_ROWS * SLOT_PITCH;
-    private static final int SCROLL_X = GRID_X + GRID_W + 5;
+    private static final int SLOT_SIZE = 22;
+    private static final int SLOT_GAP = 2;
+    private static final int SLOT_PITCH = SLOT_SIZE + SLOT_GAP;
+    // Fit complete icons in the existing panel and keep its scrollbar at the original X.
+    private static final int GRID_MAX_W = 570;
+    private static final int GRID_MAX_H = 285;
+    private static final int GRID_COLS = (GRID_MAX_W + SLOT_GAP) / SLOT_PITCH;
+    private static final int GRID_ROWS = (GRID_MAX_H + SLOT_GAP) / SLOT_PITCH;
+    private static final int GRID_W = GRID_COLS * SLOT_PITCH - SLOT_GAP;
+    private static final int GRID_H = GRID_ROWS * SLOT_PITCH - SLOT_GAP;
+    private static final int SCROLL_X = GRID_X + GRID_MAX_W + 5;
     private static final float ITEM_SCALE = 1.0F;
 
     private static final int MODAL_X = 190;

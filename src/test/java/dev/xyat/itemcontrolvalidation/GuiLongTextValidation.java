@@ -26,6 +26,7 @@ public final class GuiLongTextValidation {
     private static String originalLanguage;
     private static int originalScale,originalWidth,originalHeight,phase=-1,page=-1,captures,failures;
     private static long due;
+    private static final BitSet capturedPages = new BitSet();
     private static CompletableFuture<Void> reload;
     private static Language stressOriginal;
     private static dev.xyat.itemcontrol.tabs.TabConfig.Data originalTabEditing;
@@ -141,7 +142,12 @@ public final class GuiLongTextValidation {
             case 22 -> {
                 if(!tabEditingCaptured){originalTabEditing=dev.xyat.itemcontrol.tabs.TabConfig.currentEditing;tabEditingCaptured=true;}
                 dev.xyat.itemcontrol.tabs.TabConfig.currentEditing=new dev.xyat.itemcontrol.tabs.TabConfig.Data();
-                KineticGui.open(new dev.xyat.itemcontrol.tabs.gui.TabUnifiedPage());
+                var p=new dev.xyat.itemcontrol.tabs.gui.TabUnifiedPage();KineticGui.open(p);
+                var tabs=(List<?>)field(p,"mainTabs");
+                for(int i=0;i<tabs.size();i++)if("minecraft:building_blocks".equals(String.valueOf(field(tabs.get(i),"id")))){
+                    setField(p,"mainSelectedTabIdx",i);invoke(p,"refreshData");break;
+                }
+                if(((List<?>)field(p,"mainItems")).isEmpty())throw new AssertionError("Creative tab contents were not initialized");
             }
             case 23,24 -> dev.xyat.itemcontrol.item.client.gui.ItemDataEditor.open(null,"minecraft:diamond_sword",index==23?"[damage=1]":"[invalid=]",value->{});
         }
@@ -176,7 +182,7 @@ public final class GuiLongTextValidation {
     private static void capture(String frame)throws Exception {
         var mc=Minecraft.getInstance();Path path=Path.of(ROOT,String.format("%d-%02d-%s-%s.png",phase,page,NAMES[page],frame));Files.createDirectories(path.getParent());
         try(var image=Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(path);}
-        captures++;LOG.info("ITEM_GUI_CAPTURE phase={} case={} image={}x{}",phase,NAMES[page],mc.getWindow().getWidth(),mc.getWindow().getHeight());
+        capturedPages.set(page);captures++;LOG.info("ITEM_GUI_CAPTURE phase={} case={} image={}x{}",phase,NAMES[page],mc.getWindow().getWidth(),mc.getWindow().getHeight());
     }
     private static void finish() {
         finished=true;
@@ -188,7 +194,7 @@ public final class GuiLongTextValidation {
         mc.setScreen(null);
         mc.getWindow().setWindowed(originalWidth,originalHeight);
         if(originalFullscreen && !mc.getWindow().isFullscreen())mc.getWindow().toggleFullScreen();
-        LOG.info("ITEM_GUI_{} pages={} captures={} failures={} userSettingsRestored=true",failures==0?"PASS":"FAIL",NAMES.length,captures,failures);
+        LOG.info("ITEM_GUI_{} pages={} captures={} failures={} userSettingsRestored=true",failures==0?"PASS":"FAIL",capturedPages.cardinality(),captures,failures);
         dev.xyat.kineticcore.api.runtime.KineticClientRuntime.stopClient();
     }
     private static final class StressLanguage extends Language {

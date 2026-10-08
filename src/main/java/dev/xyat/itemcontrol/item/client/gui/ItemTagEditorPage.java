@@ -28,8 +28,8 @@ import java.util.Set;
 import java.util.TreeSet;
 
 public class ItemTagEditorPage extends KineticPage {
-    private static final int SLOT_SIZE = 18;
-    private static final int SLOT_PITCH = 19;
+    private static final int SLOT_SIZE = 22;
+    private static final int SLOT_PITCH = SLOT_SIZE + 2;
     // Keep text clear of panel edges and the tag list's inset scrollbar.
     private static final int TEXT_GAP = 4;
     // Keeps the tag list scroll bar 2 px clear of the list box's right line.

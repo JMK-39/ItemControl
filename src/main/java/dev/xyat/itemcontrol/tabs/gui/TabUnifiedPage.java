@@ -67,21 +67,25 @@ public class TabUnifiedPage extends KineticPage {
     // The arrows sit inside the tab strip frame, as far from its side lines as from its top and bottom.
     private static final int ARROW_INSET = 4;
     private static final int TAB_SIZE = 24;
+    private static final int TAB_GAP = 2;
+    private static final int TAB_PITCH = TAB_SIZE + TAB_GAP;
     private static final int TAB_INNER_PADDING = 0;
     private static final int TAB_VIEW_W = MAIN_W - ARROW_W * 2 - TAB_INNER_PADDING * 2;
-    private static final int MAIN_TAB_COLS = TAB_VIEW_W / TAB_SIZE;
-    private static final int TAB_CONTENT_W = MAIN_TAB_COLS * TAB_SIZE;
+    private static final int MAIN_TAB_COLS = (TAB_VIEW_W + TAB_GAP) / TAB_PITCH;
+    private static final int TAB_CONTENT_W = MAIN_TAB_COLS * TAB_PITCH - TAB_GAP;
     private static final int TAB_CONTENT_X = MAIN_X + ARROW_W + TAB_INNER_PADDING + (TAB_VIEW_W - TAB_CONTENT_W) / 2;
 
-    private static final int SLOT_SIZE = 18;
-    private static final int MAIN_ITEM_COLS = 26;
-    private static final int RIGHT_ITEM_COLS = 7;
+    private static final int SLOT_SIZE = 22;
+    private static final int SLOT_GAP = 2;
+    private static final int SLOT_PITCH = SLOT_SIZE + SLOT_GAP;
+    private static final int MAIN_ITEM_COLS = (MAIN_W + SLOT_GAP) / SLOT_PITCH;
+    private static final int RIGHT_ITEM_COLS = (RIGHT_W + SLOT_GAP) / SLOT_PITCH;
 
     private static final int TAB_Y = 32;
-    private static final int TAB_SCROLL_Y = 60;
+    private static final int TAB_SCROLL_Y = 61;
     private static final int ITEM_Y = 72;
     private static final int ITEM_H = 234;
-    private static final int ITEM_VISIBLE_ROWS = 13;
+    private static final int ITEM_VISIBLE_ROWS = (ITEM_H + SLOT_GAP) / SLOT_PITCH;
 
     private final List<TabInfo> allGameTabs =
             new ArrayList<>();
@@ -228,6 +232,14 @@ public class TabUnifiedPage extends KineticPage {
                 mainTabs.get(mainSelectedTabIdx);
 
         Collection<ItemStack> rawItems;
+
+        var level = KineticClientRuntime.currentLevel();
+        var player = KineticClientRuntime.localPlayer();
+        if (level != null && player != null) {
+            // Vanilla may not have built tab contents until its creative inventory is first opened.
+            net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(
+                    level.enabledFeatures(), player.canUseGameMasterBlocks(), level.registryAccess());
+        }
 
         TabModule.bypassAllModifications = true;
 
@@ -531,10 +543,10 @@ public class TabUnifiedPage extends KineticPage {
             int mouseX,
             int mouseY
     ) {
-        KineticTheme.panel(graphics, MAIN_X, TAB_Y, MAIN_W, TAB_SIZE);
+        KineticTheme.panel(graphics, MAIN_X, TAB_Y - 3, MAIN_W, TAB_SIZE + 6);
 
         int firstTab = mainTabScroll.smoothIndexOffset();
-        int tabShift = mainTabScroll.visualShift(TAB_SIZE);
+        int tabShift = mainTabScroll.visualShift(TAB_PITCH);
         graphics.scissor(TAB_CONTENT_X, TAB_Y, TAB_CONTENT_X + TAB_CONTENT_W, TAB_Y + TAB_SIZE);
         for (int i = 0;
              i < MAIN_TAB_COLS + 1;
@@ -550,7 +562,7 @@ public class TabUnifiedPage extends KineticPage {
                     mainTabs.get(index);
 
             int tabX =
-                    TAB_CONTENT_X + i * TAB_SIZE - tabShift;
+                    TAB_CONTENT_X + i * TAB_PITCH - tabShift;
 
             boolean selected =
                     index == mainSelectedTabIdx;
@@ -615,7 +627,7 @@ public class TabUnifiedPage extends KineticPage {
                 20
         );
 
-        KineticTheme.panel(graphics, MAIN_X - 2, ITEM_Y - 2, MAIN_W + 4, ITEM_H + 4);
+        KineticTheme.panel(graphics, MAIN_X - 3, ITEM_Y - 3, MAIN_W + 6, ITEM_H + 6);
 
         KineticTheme.surface(graphics, MAIN_X, ITEM_Y, MAIN_W, ITEM_H, KineticTheme.Surface.PANEL_ALT);
 
@@ -647,7 +659,7 @@ public class TabUnifiedPage extends KineticPage {
             int mouseX,
             int mouseY
     ) {
-        KineticTheme.panel(graphics, RIGHT_X - 2, ITEM_Y - 2, RIGHT_W + 4, ITEM_H + 4);
+        KineticTheme.panel(graphics, RIGHT_X - 3, ITEM_Y - 3, RIGHT_W + 6, ITEM_H + 6);
 
         KineticTheme.surface(graphics, RIGHT_X, ITEM_Y, RIGHT_W, ITEM_H, KineticTheme.Surface.PANEL_ALT);
 
@@ -685,7 +697,7 @@ public class TabUnifiedPage extends KineticPage {
             int mouseY
     ) {
         int firstRow = scroll.smoothIndexOffset();
-        int itemShift = scroll.visualShift(SLOT_SIZE);
+        int itemShift = scroll.visualShift(SLOT_PITCH);
         int startIndex =
                 firstRow * columns;
 
@@ -696,7 +708,7 @@ public class TabUnifiedPage extends KineticPage {
                         items.size()
                 );
 
-        graphics.scissor(gridX, ITEM_Y, gridX + columns * SLOT_SIZE, ITEM_Y + ITEM_H);
+        graphics.scissor(gridX, ITEM_Y, gridX + columns * SLOT_PITCH - SLOT_GAP, ITEM_Y + ITEM_H);
         for (int i = startIndex;
              i < endIndex;
              i++) {
@@ -714,11 +726,11 @@ public class TabUnifiedPage extends KineticPage {
 
             int x =
                     gridX
-                            + column * SLOT_SIZE;
+                            + column * SLOT_PITCH;
 
             int y =
                     ITEM_Y
-                            + row * SLOT_SIZE
+                            + row * SLOT_PITCH
                             - itemShift;
 
             boolean hovered =
@@ -940,14 +952,14 @@ public class TabUnifiedPage extends KineticPage {
                         false
                 );
             } else if (payload instanceof DisplayItem item) {
-                KineticTheme.itemSlot(graphics, mouseX - 9, mouseY - 9, SLOT_SIZE, false);
+                KineticTheme.itemSlot(graphics, mouseX - SLOT_SIZE / 2, mouseY - SLOT_SIZE / 2, SLOT_SIZE, false);
                 KineticTheme.item(
                         graphics,
                         item.stack,
-                        mouseX - 9,
-                        mouseY - 9,
+                        mouseX - SLOT_SIZE / 2,
+                        mouseY - SLOT_SIZE / 2,
                         SLOT_SIZE,
-                        0.75F,
+                        1.0F,
                         false
                 );
             }
@@ -1108,12 +1120,13 @@ public class TabUnifiedPage extends KineticPage {
             return false;
         }
 
-        int tabShift = mainTabScroll.visualShift(TAB_SIZE);
+        int tabShift = mainTabScroll.visualShift(TAB_PITCH);
+        if ((mouseX - TAB_CONTENT_X + tabShift) % TAB_PITCH >= TAB_SIZE) return false;
         int index =
                 mainTabScroll.smoothIndexOffset()
                         + (int) (
                         (mouseX - TAB_CONTENT_X + tabShift)
-                                / TAB_SIZE
+                                / TAB_PITCH
                 );
 
         if (index < 0
@@ -1267,16 +1280,13 @@ public class TabUnifiedPage extends KineticPage {
             double mouseX,
             double mouseY
     ) {
-        int itemShift = scroll.visualShift(SLOT_SIZE);
-        int row =
-                (int) ((mouseY - ITEM_Y + itemShift) / SLOT_SIZE);
-
-        int column =
-                (int) ((mouseX - gridX) / SLOT_SIZE);
-
-        return scroll.smoothIndexOffset() * columns
-                + row * columns
-                + column;
+        double localX = mouseX - gridX;
+        double localY = mouseY - ITEM_Y + scroll.visualShift(SLOT_PITCH);
+        int column = (int) (localX / SLOT_PITCH);
+        int row = (int) (localY / SLOT_PITCH);
+        if (localX < 0 || localY < 0 || column >= columns
+                || localX % SLOT_PITCH >= SLOT_SIZE || localY % SLOT_PITCH >= SLOT_SIZE) return -1;
+        return scroll.smoothIndexOffset() * columns + row * columns + column;
     }
 
     private void hideItem(

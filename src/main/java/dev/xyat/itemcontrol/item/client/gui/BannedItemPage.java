@@ -41,8 +41,8 @@ public class BannedItemPage extends KineticPage {
     private final List<String> allTags = new ArrayList<>();
     private final List<String> allMods = new ArrayList<>();
 
-    private static final int SLOT_SIZE = 18;
-    private static final int SLOT_PITCH = 19;
+    private static final int SLOT_SIZE = 22;
+    private static final int SLOT_PITCH = SLOT_SIZE + 2;
     // Leave a gap between self-drawn text and the next control or panel edge.
     private static final int TEXT_GAP = 4;
     private final KineticScrollController gridScroll = new KineticScrollController();

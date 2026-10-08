@@ -41,17 +41,17 @@ public class MergeItemPage extends KineticPage {
     private final List<LeftEntry> leftEntries = new ArrayList<>();
     private List<KineticItemSearch.CachedItem> rightDisplayList = new ArrayList<>();
 
-    private static final int SLOT_SIZE = 18;
-    private static final int SLOT_PITCH = 19;
+    private static final int SLOT_SIZE = 22;
+    private static final int SLOT_PITCH = SLOT_SIZE + 2;
     // Preserve the existing row anchors while reserving space for the trailing symbol and count.
-    private static final int ROW_NAME_OFFSET = 26;
+    private static final int ROW_NAME_OFFSET = 28;
     private static final int ROW_COUNT_WIDTH = 24;
     private static final int ROW_EXPAND_WIDTH = 12;
     private static final int TEXT_GAP = 4;
-    // Rule rows hold a 20 px slot and merged-item rows an 18 px slot with a full-size icon, both 2 px inside the row frame.
-    private static final int TARGET_ROW_H = 24;
-    private static final int SOURCE_ROW_H = 22;
-    private static final int ROW_INSET = 2;
+    // Full-size icons fit in 22 px slots, two pixels inside each rule row.
+    private static final int TARGET_ROW_H = 28;
+    private static final int SOURCE_ROW_H = 28;
+    private static final int ROW_INSET = 3;
     private static final int SOURCE_INDENT = 12;
     // Space between rows of the rule list, so neighbouring row frames never touch.
     private static final int ROW_GAP = 2;
@@ -752,8 +752,8 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         void render(KineticGraphics g, int mx, int my) {
             boolean selected = id.equals(selectedTarget), hover = mx >= x && mx < x + w && my >= y && my < y + h;
             KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, selected, hover, false);
-            KineticTheme.itemSlot(g, x + ROW_INSET, y + ROW_INSET, 20, 4, hover);
-            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + ROW_INSET, y + ROW_INSET, 20, 1.0F, false); return null; });
+            KineticTheme.itemSlot(g, x + ROW_INSET, y + ROW_INSET, SLOT_SIZE, 4, hover);
+            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + ROW_INSET, y + ROW_INSET, SLOT_SIZE, 1.0F, false); return null; });
             int nameX = x + ROW_NAME_OFFSET;
             int countX = x + w - ROW_COUNT_WIDTH;
             int expandX = countX - ROW_EXPAND_WIDTH;
@@ -789,9 +789,9 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         void render(KineticGraphics g, int mx, int my) {
             boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;
             KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, false, hover, false);
-            KineticTheme.itemSlot(g, x + SOURCE_INDENT, y + ROW_INSET, 18, 3, hover);
-            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + SOURCE_INDENT, y + ROW_INSET, 18, 1.0F, false); return null; });
-            int nameX = x + SOURCE_INDENT + 18 + TEXT_GAP;
+            KineticTheme.itemSlot(g, x + SOURCE_INDENT, y + ROW_INSET, SLOT_SIZE, 3, hover);
+            ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + SOURCE_INDENT, y + ROW_INSET, SLOT_SIZE, 1.0F, false); return null; });
+            int nameX = x + SOURCE_INDENT + SLOT_SIZE + TEXT_GAP;
             g.scrollingText(ItemCacheHudRenderer.getDisplayNameCustom(stack), nameX, y + (SOURCE_ROW_H - 8) / 2,
                     Math.max(0, x + w - TEXT_GAP - nameX), 0xFFAAAAAA, false);
         }
