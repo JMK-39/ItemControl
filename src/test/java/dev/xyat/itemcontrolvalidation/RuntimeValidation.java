@@ -22,6 +22,7 @@ public final class RuntimeValidation {
     private BanItemConfig.ItemRule preheatedBan;
     private boolean preheatedTab;
     public RuntimeValidation() {
+        if (Boolean.getBoolean("itemcontrol.propertyValidation")) ItemPropertyRuntimeChecks.install();
         if (Boolean.getBoolean("itemcontrol.guiValidation")) {
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(this::started);
             return;

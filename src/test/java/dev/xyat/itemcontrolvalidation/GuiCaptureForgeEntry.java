@@ -5,6 +5,7 @@ package dev.xyat.itemcontrolvalidation;
 @net.minecraftforge.fml.common.Mod("itemcontrol_validation")
 public final class GuiCaptureForgeEntry {
     public GuiCaptureForgeEntry() {
+        if (Boolean.getBoolean("itemcontrol.propertyValidation")) ItemPropertyRuntimeChecks.install();
         if (Boolean.getBoolean("itemcontrol.guiValidation")) {
             dev.xyat.kineticcore.api.runtime.KineticPlatform.runOnClient(() -> GuiLongTextValidation::install);
         }

@@ -27,7 +27,8 @@ public record ItemPropertyRule(
         Boolean explosionImmune,
         Boolean glowing,
         Boolean noGravity,
-        Boolean persistent
+        Boolean persistent,
+        ItemCurioSettings curio
 ) {
     public ItemPropertyRule {
         attributes = attributes == null ? List.of() : List.copyOf(attributes);
@@ -57,7 +58,8 @@ public record ItemPropertyRule(
                 && explosionImmune == null
                 && glowing == null
                 && noGravity == null
-                && persistent == null;
+                && persistent == null
+                && curio == null;
 
     }
 

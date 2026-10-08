@@ -681,9 +681,10 @@ public class ItemNetwork {
                 ));
                 return;
             }
+            dev.xyat.itemcontrol.item.property.ItemEquipmentRefresh.applyPending(player.getServer());
             syncItemPropertiesToAllPlayers();
             CHANNEL.sendToPlayer(player, new ItemPropertySaveResultPacket(
-                    true, ItemPropertyConfig.pendingJson(), "msg.itemcontrol.item_property.saved_restart"
+                    true, ItemPropertyConfig.pendingJson(), "msg.itemcontrol.item_property.saved_applied"
             ));
         }
     }

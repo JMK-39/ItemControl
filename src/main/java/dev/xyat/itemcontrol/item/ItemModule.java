@@ -44,6 +44,7 @@ public final class ItemModule {
         ItemNetwork.register();
         ItemProtectionHandler.register();
         ItemPropertyEventHandler.register();
+        dev.xyat.itemcontrol.item.compat.ItemCuriosCompat.register();
         VoidItemEventHandler.register();
         WorldLoadEventHandler.register();
         ItemCommandExtension.install();

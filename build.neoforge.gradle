@@ -57,6 +57,8 @@ kineticConfigureReleaseJar(tasks.named('jar', Jar))
 // (versions/<node>/gradle.properties, comma-separated coordinates). A "compileOnly:" prefix keeps a mod
 // off the dev runtime.
 dependencies {
+    compileOnly "maven.modrinth:curios:${project.property('curios_version')}"
+    testCompileOnly "maven.modrinth:curios:${project.property('curios_version')}"
     (project.findProperty('mod_dependencies')?.toString() ?: '').split(',')*.trim().findAll { it }.each {
         if (it.startsWith('compileOnly:')) compileOnly it.substring('compileOnly:'.length())
         else implementation it

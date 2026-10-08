@@ -276,7 +276,7 @@ if (!(Attributes.ATTACK_DAMAGE instanceof RangedAttribute ranged)) return;
     }
 
     //? if >=1.21 {
-/*private static AttributeModifier.Operation parseOperation(String operation) {
+/*public static AttributeModifier.Operation parseOperation(String operation) {
         if (operation == null) return null;
         try {
             return AttributeModifier.Operation.valueOf(switch (operation.toUpperCase(java.util.Locale.ROOT)) { case "ADDITION" -> "ADD_VALUE"; case "MULTIPLY_BASE" -> "ADD_MULTIPLIED_BASE"; case "MULTIPLY_TOTAL" -> "ADD_MULTIPLIED_TOTAL"; default -> operation.toUpperCase(java.util.Locale.ROOT); });
@@ -285,7 +285,7 @@ if (!(Attributes.ATTACK_DAMAGE instanceof RangedAttribute ranged)) return;
         }
     }*/
 //?} else {
-private static AttributeModifier.Operation parseOperation(String operation) {
+public static AttributeModifier.Operation parseOperation(String operation) {
         if (operation == null) return null;
         try {
             return AttributeModifier.Operation.valueOf(operation.toUpperCase(java.util.Locale.ROOT));

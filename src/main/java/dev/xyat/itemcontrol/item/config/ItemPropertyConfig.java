@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-/** Persistence and immutable startup snapshot for per-item property overrides. */
+/** Persistence and immutable active snapshots for per-item property overrides. */
 public final class ItemPropertyConfig {
     private static final String CONFIG_FILE = "kineticcore/item_properties.json";
     private static final int MAX_RULES = 16_384;
@@ -87,7 +87,7 @@ public final class ItemPropertyConfig {
         return active(itemId);
     }
 
-    /** Immutable copy of the active startup snapshot for login synchronization. */
+    /** Immutable copy of the active snapshot for login synchronization. */
     public static Map<ResourceLocation, ItemPropertyRule> activeSnapshot() {
         return ACTIVE.get().items();
     }
@@ -376,8 +376,23 @@ public final class ItemPropertyConfig {
                 readBoolean(json, "explosion_immune", errors),
                 readBoolean(json, "glowing", errors),
                 readBoolean(json, "no_gravity", errors),
-                readBoolean(json, "persistent", errors)
+                readBoolean(json, "persistent", errors),
+                parseCurio(json.get("curio"), errors)
         );
+    }
+
+    private static ItemCurioSettings parseCurio(JsonElement raw, List<String> errors) {
+        try {
+            ItemCurioSettings settings = ItemCurioSettings.parse(raw);
+            if (settings != null) for (var row : settings.attributes()) {
+                if (dev.xyat.itemcontrol.item.property.ItemPropertyOverrides.attribute(ResourceLocation.tryParse(row.attribute())) == null)
+                    throw new IllegalArgumentException("Unknown attribute");
+            }
+            return settings;
+        } catch (RuntimeException exception) {
+            errors.add("gui.itemcontrol.item_property.error.invalid_curio");
+            return null;
+        }
     }
 
     private static List<ItemPropertyRule.AttributeModifier> parseAttributes(JsonElement raw, List<String> errors) {

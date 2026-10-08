@@ -57,6 +57,8 @@ dependencies {
     modImplementation 'maven.modrinth:kubejs:g5igndAv'
     modImplementation 'maven.modrinth:rhino:uNALdylI'
     modImplementation 'maven.modrinth:jei:RTFeXsvE'
+    modCompileOnly 'maven.modrinth:curios:IPQlZkz1'
+    testCompileOnly 'maven.modrinth:curios:IPQlZkz1'
 
     constraints {
         // terminalconsoleappender requires log4j-core 2.8.1 while Minecraft only prefers 2.19.0,

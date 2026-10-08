@@ -223,6 +223,13 @@ tasks.named('test', Test).configure {
     failOnNoDiscoveredTests = false
 }
 
+def curioSettingsCheck = tasks.register('checkCurioSettings', JavaExec) {
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.xyat.itemcontrolvalidation.CurioSettingsTest'
+}
+tasks.named('check') { dependsOn curioSettingsCheck }
+
 configurations {
     kineticMixinCheck
 }

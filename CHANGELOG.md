@@ -1,3 +1,23 @@
+## 2026-10-09 — Item and accessory properties / 物品与饰品属性
+
+### English
+
+- Saving item property changes now updates held and equipped attack damage, armor and durability without rejoining or re-equipping. Resetting saved rules restores the original values.
+- Renamed the entry to **Item and Accessory Properties** and added optional Curios accessory conversion, a compact striped dropdown showing slot IDs and localized names, multiple slot selection, any-slot compatibility and an unequip switch.
+- Accessory attributes can be added, replaced or removed, including attributes supplied by other mods. The visual editor shows original values and preserves unrelated accessory attributes and behavior.
+- Existing accessories show their native slots for editing, with a `#curios:` tag-search shortcut. Slot IDs stay white; localized names appear in gold only outside English, and selection changes only the border.
+- The property item browser uses spare left-side space to show nine complete columns while keeping the existing divider and controls in place.
+- Accessory controls are disabled with a dependency tooltip when Curios is not installed. On Minecraft 26.1.2, food components and enchantability still require restarting the game.
+
+### 简体中文
+
+- 保存物品属性后，已持有和装备物品的攻击伤害、护甲和耐久立即更新，无需重新进入或重新装备；保存重置规则后恢复原有数值。
+- 入口改为**物品与饰品属性修改**，新增可选 Curios 饰品转换、显示 ID 与本地化名称的深浅交替细条下拉列表、多选槽位、任意槽位兼容及允许脱下开关。
+- 饰品属性支持追加、替换与移除，也可调整其他模组提供的饰品属性；可视化编辑器展示原有数值，保留未指定的属性及其他饰品行为。
+- 已有饰品会显示原生槽位以供修改，并提供 `#curios:` 标签搜索快捷入口；槽位 ID 始终纯白，非英文下的翻译为金色，选中仅改变边框颜色。
+- 物品属性列表利用左侧留白显示九列完整物品，保留原有分隔线与控件位置。
+- 未安装 Curios 时饰品控件禁用，悬浮提示说明依赖要求；Minecraft 26.1.2 的食物组件与附魔能力仍需重启游戏。
+
 ## 2026-10-08 — Item preview slots / 物品预览格
 
 ### English

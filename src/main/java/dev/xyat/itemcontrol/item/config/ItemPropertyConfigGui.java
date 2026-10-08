@@ -7,7 +7,7 @@ import dev.xyat.kineticcore.api.config.client.KTConfigApi;
 import dev.xyat.kineticcore.api.config.client.KTConfigPage;
 import dev.xyat.kineticcore.api.config.client.KTConfigScope;
 
-/** Server-authoritative entry point for the restart-required item property editor. */
+/** Server-authoritative entry point for item and optional accessory properties. */
 public final class ItemPropertyConfigGui {
     public static final String PAGE_ID = "itemcontrol:item_properties";
 
@@ -21,7 +21,7 @@ public final class ItemPropertyConfigGui {
                 )
                 .scope(KTConfigScope.SERVER_AUTHORITATIVE)
                 .serverManaged()
-                .applyTiming(KTConfigPage.ApplyTiming.RESTART_GAME)
+                .applyTiming(KTConfigPage.ApplyTiming.IMMEDIATE)
                 .applyNotice(KineticI18n.translatable("cfg.itemcontrol.item_property.restart_notice"))
                 .pageDescription(KineticI18n.translatable("cfg.itemcontrol.item_property.description"))
                 .action(

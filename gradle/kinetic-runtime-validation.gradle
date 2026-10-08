@@ -6,6 +6,12 @@ if (project.property('loader') == 'neoforge') {
             File target = new File(metadata.get().asFile, 'META-INF/neoforge.mods.toml')
             target.parentFile.mkdirs()
             target.setText('modLoader="javafml"\nloaderVersion="[1,)"\nlicense="LGPLv3"\n[[mods]]\nmodId="itemcontrol_validation"\nversion="1.0.0"\ndisplayName="ItemControl runtime validation"\n', 'UTF-8')
+            File slots = new File(metadata.get().asFile, 'data/itemcontrol_validation/curios/entities/player.json')
+            slots.parentFile.mkdirs()
+            slots.setText('{"entities":["minecraft:player"],"slots":["curio","ring","necklace"]}', 'UTF-8')
+            File nativeRing = new File(metadata.get().asFile, 'data/curios/tags/item/ring.json')
+            nativeRing.parentFile.mkdirs()
+            nativeRing.setText('{"values":["minecraft:blaze_rod"]}', 'UTF-8')
         }
     }
     tasks.register('runtimeValidationJar', Jar) {
@@ -26,11 +32,17 @@ if (project.property('loader') == 'forge') {
             target.parentFile.mkdirs()
             target.setText('modLoader="javafml"\nloaderVersion="[1,)"\nlicense="LGPLv3"\n[[mods]]\nmodId="itemcontrol_validation"\nversion="1.0.0"\ndisplayName="ItemControl GUI capture"\n', 'UTF-8')
             new File(captureMetadata.get().asFile, 'pack.mcmeta').setText('{"pack":{"description":"Opt-in GUI capture fixture","pack_format":15}}', 'UTF-8')
+            File slots = new File(captureMetadata.get().asFile, 'data/itemcontrol_validation/curios/entities/player.json')
+            slots.parentFile.mkdirs()
+            slots.setText('{"entities":["minecraft:player"],"slots":["curio","ring","necklace"]}', 'UTF-8')
+            File nativeRing = new File(captureMetadata.get().asFile, 'data/curios/tags/items/ring.json')
+            nativeRing.parentFile.mkdirs()
+            nativeRing.setText('{"values":["minecraft:blaze_rod"]}', 'UTF-8')
         }
     }
     def captureJar = tasks.register('guiCaptureValidationJar', Jar) {
         dependsOn 'testClasses', writeCaptureMetadata
-        from(sourceSets.test.output) { include 'dev/xyat/itemcontrolvalidation/GuiLongTextValidation*.class', 'dev/xyat/itemcontrolvalidation/GuiCaptureForgeEntry.class' }
+        from(sourceSets.test.output) { include 'dev/xyat/itemcontrolvalidation/GuiLongTextValidation*.class', 'dev/xyat/itemcontrolvalidation/GuiCaptureForgeEntry.class', 'dev/xyat/itemcontrolvalidation/ItemPropertyRuntimeChecks*.class', 'dev/xyat/itemcontrolvalidation/CurioRuntimeChecks*.class' }
         from captureMetadata
         archiveFileName = 'itemcontrol-gui-capture.jar'
     }

@@ -1,5 +1,7 @@
 package dev.xyat.itemcontrol.item.client.gui;
 
+import dev.xyat.kineticcore.api.client.gui.input.KeyInput;
+import dev.xyat.kineticcore.api.client.gui.input.MouseInput;
 import dev.xyat.kineticcore.api.client.gui.overlay.KineticOverlays;
 import dev.xyat.kineticcore.api.client.gui.page.KineticPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
@@ -14,6 +16,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.xyat.itemcontrol.item.config.ItemPropertyConfig;
+import dev.xyat.itemcontrol.item.compat.ItemCuriosCompat;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.itemcontrol.item.property.ItemPropertyOverrides;
 import dev.xyat.itemcontrol.item.property.ItemPropertyReads;
@@ -48,9 +51,10 @@ import java.util.Set;
 /** Server-authoritative per-item vanilla-property editor. */
 public final class ItemPropertyEditorPage extends KineticPage {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final int GRID_X = 12;
+    // Four pixels of left-side spare room allow a ninth complete column without moving the divider.
+    private static final int GRID_X = 8;
     private static final int GRID_Y = 44;
-    private static final int GRID_W = 222;
+    private static final int GRID_W = 226;
     private static final int GRID_H = 284;
     private static final int SEARCH_W = 220;
     private static final int PANEL_X = 246;
@@ -68,7 +72,8 @@ public final class ItemPropertyEditorPage extends KineticPage {
         FOOD(ItemCategory.FOOD),
         GENERAL(ItemCategory.GENERAL),
         BLOCK(ItemCategory.BLOCK),
-        PROTECTION(ItemCategory.GENERAL);
+        PROTECTION(ItemCategory.GENERAL),
+        CURIO(ItemCategory.GENERAL);
 
         private final ItemCategory itemCategory;
 
@@ -98,6 +103,13 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private int gridScrollOffset;
     private boolean saving;
     private boolean populatingFields;
+    private boolean curioSlotsExpanded;
+    private KineticToggleList curioSlotList;
+    private KineticButton curioSlotButton;
+    private KineticToggle curioEnabledToggle;
+    private static final int CURIO_SLOT_LIST_Y = 152;
+    private static final int CURIO_SLOT_LIST_WIDTH = 242;
+    private static final int CURIO_SLOT_LIST_HEIGHT = 140;
 
     public ItemPropertyEditorPage(String pendingJson) {
         super(KineticI18n.translatable("gui.itemcontrol.item_property.title"));
@@ -126,6 +138,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         fieldSpecs.clear();
         fieldLabels.clear();
         attributesBox = null;
+        curioSlotList = null;
         lastAttributesValue = null;
         searchBox = ui().textField(GRID_X, 10, SEARCH_W).build();
         searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item_property.search"));
@@ -145,6 +158,14 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 .build();
 
         buildCategoryFields();
+        if (category == EditorCategory.CURIO) {
+            var existing = ui.button(GRID_X + GRID_W - 94, 27, 94).compact()
+                    .text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.existing"))
+                    .tooltip(KineticI18n.translatable(ItemCuriosCompat.available()
+                            ? "gui.itemcontrol.item_property.curio.existing.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
+                    .onClick(this::searchExistingAccessories).build();
+            existing.setEnabled(ItemCuriosCompat.available());
+        }
         itemGrid = ui.itemGrid(GRID_X, GRID_Y, GRID_W, GRID_H, ItemGridDensity.COMPACT, buildGridItems())
                 .scrollOffset(gridScrollOffset)
                 .onClick(this::selectGridIndex)
@@ -161,13 +182,23 @@ public final class ItemPropertyEditorPage extends KineticPage {
         refreshGrid();
     }
 
+    private void searchExistingAccessories() {
+        if (!ItemCuriosCompat.available() || !flushFields()) return;
+        searchQuery = "#curios:";
+        searchBox.setTextValue(searchQuery);
+        if (itemGrid != null) itemGrid.setScrollOffset(0);
+        refreshGrid();
+    }
+
     private List<KineticDropdown.Option> categoryOptions() {
         List<KineticDropdown.Option> options = new ArrayList<>();
         for (EditorCategory value : EditorCategory.values()) {
             options.add(new KineticDropdown.Option(
                     categoryDropdownValue(value),
-                    Component.empty(),
-                    Component.empty()
+                    value == EditorCategory.CURIO && !ItemCuriosCompat.available()
+                            ? Component.literal(categoryDropdownValue(value)).withStyle(style -> style.withColor(0x888888)) : Component.empty(),
+                    value == EditorCategory.CURIO && !ItemCuriosCompat.available()
+                            ? KineticI18n.translatable("gui.itemcontrol.item_property.curio.requires") : Component.empty()
             ));
         }
         return List.copyOf(options);
@@ -233,7 +264,156 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addBooleanButton("no_gravity", 3);
                 addBooleanButton("persistent", 4);
             }
+            case CURIO -> buildCurioFields();
         }
+    }
+
+    private void buildCurioFields() {
+        JsonObject curio = curioObject();
+        boolean available = ItemCuriosCompat.available();
+        Component tooltip = KineticI18n.translatable(available
+                ? "gui.itemcontrol.item_property.curio.enabled.tooltip" : "gui.itemcontrol.item_property.curio.requires");
+        curioEnabledToggle = ui().toggle(PANEL_X, 82, 118)
+                .value(curio.has("enabled") && curio.get("enabled").getAsBoolean())
+                .labels(KineticI18n.translatable("gui.itemcontrol.item_property.boolean.true"), KineticI18n.translatable("gui.itemcontrol.item_property.boolean.false"))
+                .tooltip(tooltip).onChange(value -> changeCurioBoolean("enabled", value)).build();
+        curioEnabledToggle.setEnabled(available && canEditSelected());
+        fieldLabels.put("curio_enabled", new FieldLabel(PANEL_X, 71, 118));
+        var removal = ui().toggle(PANEL_X + 124, 82, 118)
+                .value(!curio.has("can_unequip") || curio.get("can_unequip").getAsBoolean())
+                .labels(KineticI18n.translatable("gui.itemcontrol.item_property.boolean.true"), KineticI18n.translatable("gui.itemcontrol.item_property.boolean.false"))
+                .tooltip(KineticI18n.translatable(available ? "gui.itemcontrol.item_property.curio.unequip.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
+                .onChange(value -> changeCurioBoolean("can_unequip", value)).build();
+        removal.setEnabled(available && canEditSelected());
+        fieldLabels.put("curio_unequip", new FieldLabel(PANEL_X + 124, 71, 118));
+        var slots = displayedCurioSlots(curio);
+        curioSlotButton = ui().button(PANEL_X, 130, CURIO_SLOT_LIST_WIDTH)
+                .text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.slots", slots.size()))
+                .tooltip(available ? Component.literal(slots.toString()) : KineticI18n.translatable("gui.itemcontrol.item_property.curio.requires"))
+                .onClick(this::openCurioSlots).build();
+        curioSlotButton.setEnabled(available && canEditSelected());
+        curioSlotButton.setSelected(curioSlotsExpanded);
+        var editAttributes = ui().button(PANEL_X + 248, 130, 128)
+                .text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.edit_attributes"))
+                .tooltip(KineticI18n.translatable(available ? "gui.itemcontrol.item_property.curio.attributes.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
+                .onClick(this::openCurioAttributes).build();
+        editAttributes.setEnabled(available && canEditSelected());
+        if (curioSlotsExpanded && available && canEditSelected()) {
+            buildCurioSlotList();
+            return;
+        }
+        attributesBox = ui().textArea(PANEL_X, 190, ATTRIBUTES_WIDTH, 88)
+                .placeholder(KineticI18n.translatable("gui.itemcontrol.item_property.curio.attributes.placeholder"))
+                .tooltip(KineticI18n.translatable(available ? "gui.itemcontrol.item_property.curio.attributes.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
+                .build();
+        attributesBox.setEnabled(available && canEditSelected());
+        fieldLabels.put("curio_attributes", new FieldLabel(PANEL_X, 178, ATTRIBUTES_WIDTH - TEXT_GAP));
+    }
+
+    private JsonObject curioObject() {
+        JsonElement raw = currentRuleObject().get("curio");
+        if (raw != null && raw.isJsonObject()) return raw.getAsJsonObject().deepCopy();
+        JsonObject original = new JsonObject();
+        original.addProperty("enabled", false);
+        return original;
+    }
+
+    private com.google.gson.JsonArray displayedCurioSlots(JsonObject curio) {
+        if (curio.has("slots") && curio.get("slots").isJsonArray()) return curio.getAsJsonArray("slots").deepCopy();
+        var slots = new com.google.gson.JsonArray();
+        if (selectedId != null) ItemCuriosCompat.originalSlots(stackForId(selectedId), net.minecraft.client.Minecraft.getInstance().player).forEach(slots::add);
+        if (slots.isEmpty()) slots.add("curio");
+        return slots;
+    }
+
+    private void enableCurioOverride(JsonObject curio) {
+        curio.addProperty("enabled", true);
+        if (!curio.has("slots") && selectedId != null
+                && ItemCuriosCompat.originalSlots(stackForId(selectedId), net.minecraft.client.Minecraft.getInstance().player).isEmpty()) {
+            curio.add("slots", displayedCurioSlots(curio));
+        }
+    }
+
+    private void changeCurioBoolean(String key, boolean value) {
+        if (!ItemCuriosCompat.available() || !canEditSelected() || !flushFields()) return;
+        JsonObject rule = currentRuleObject();
+        JsonObject curio = curioObject();
+        curio.addProperty(key, value);
+        if (key.equals("enabled") && value) enableCurioOverride(curio);
+        rule.add("curio", curio);
+        drafts.put(selectedId, rule);
+        rebuildEditor();
+    }
+
+    private void openCurioSlots() {
+        if (!flushFields() || !canEditSelected() || !ItemCuriosCompat.available()) return;
+        curioSlotsExpanded = !curioSlotsExpanded;
+        rebuildEditor();
+    }
+
+    private void buildCurioSlotList() {
+        var selected = new java.util.LinkedHashSet<String>();
+        JsonObject curio = curioObject();
+        displayedCurioSlots(curio).forEach(raw -> selected.add(raw.getAsString()));
+        var candidates = new java.util.LinkedHashSet<String>(); candidates.add("curio");
+        candidates.addAll(ItemCuriosCompat.slots(net.minecraft.client.Minecraft.getInstance().player)); candidates.addAll(selected);
+        List<String> ids = List.copyOf(candidates);
+        List<ToggleItem> rows = new ArrayList<>();
+        boolean english = dev.xyat.kineticcore.api.runtime.KineticClientRuntime.selectedLanguage().startsWith("en_");
+        for (String id : candidates) {
+            String translation = id.equals("curio") ? "gui.itemcontrol.item_property.curio.any_slot"
+                    : List.of("back","belt","body","bracelet","charm","feet","hands","head","necklace","ring").contains(id)
+                            ? "gui.itemcontrol.item_property.curio.slot." + id : "curios.identifier." + id;
+            Component label = Component.literal(id).withStyle(net.minecraft.ChatFormatting.WHITE);
+            if (!english && KineticI18n.hasTranslation(translation)) label = label.copy().append(" — ").append(KineticI18n.translatable(translation).withStyle(net.minecraft.ChatFormatting.GOLD));
+            Component tooltip = id.equals("curio") ? KineticI18n.translatable(translation) : label;
+            rows.add(new ToggleItem(label, tooltip, selected.contains(id), true));
+        }
+        curioSlotList = ui().toggleList(PANEL_X, CURIO_SLOT_LIST_Y, CURIO_SLOT_LIST_WIDTH, CURIO_SLOT_LIST_HEIGHT, rows)
+                .textRows().onToggle((index, checked) -> changeCurioSlot(ids.get(index), checked)).build();
+    }
+
+    private void changeCurioSlot(String id, boolean checked) {
+        JsonObject changed = curioObject();
+        changed.addProperty("enabled", true);
+        var selected = new java.util.LinkedHashSet<String>();
+        displayedCurioSlots(changed).forEach(raw -> selected.add(raw.getAsString()));
+        if (checked) selected.add(id); else selected.remove(id);
+        var slots = new com.google.gson.JsonArray(); selected.forEach(slots::add); changed.add("slots", slots);
+        JsonObject rule = currentRuleObject(); rule.add("curio", changed); drafts.put(selectedId, rule);
+        curioEnabledToggle.setValue(true);
+        curioSlotButton.setText(KineticI18n.translatable("gui.itemcontrol.item_property.curio.slots", slots.size()));
+        refreshGrid();
+    }
+
+    @Override protected boolean onMouseClickCapture(MouseInput input) {
+        if (curioSlotsExpanded && !input.inside(PANEL_X, 130, CURIO_SLOT_LIST_WIDTH, CURIO_SLOT_LIST_Y + CURIO_SLOT_LIST_HEIGHT - 130)) {
+            curioSlotsExpanded = false;
+            rebuildEditor();
+        }
+        return false;
+    }
+
+    @Override protected boolean onKeyPress(KeyInput input) {
+        if (curioSlotsExpanded && input.isEscape()) {
+            curioSlotsExpanded = false;
+            rebuildEditor();
+            return true;
+        }
+        return false;
+    }
+
+    private void openCurioAttributes() {
+        if (!flushFields() || !canEditSelected() || !ItemCuriosCompat.available()) return;
+        curioSlotsExpanded = false;
+        JsonObject curio = curioObject();
+        var rows = curio.has("attributes") && curio.get("attributes").isJsonArray()
+                ? curio.getAsJsonArray("attributes").deepCopy() : new com.google.gson.JsonArray();
+        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new CurioAttributeEditorPage(stackForId(selectedId), rows, values -> {
+            JsonObject rule = currentRuleObject();
+            JsonObject changed = curioObject(); changed.add("attributes", values); enableCurioOverride(changed);
+            rule.add("curio", changed); drafts.put(selectedId, rule); rebuildEditor();
+        }));
     }
 
     private void addNumericField(String key, boolean integer, double minimum, double maximum, int index) {
@@ -353,7 +533,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 field.setDefaultText(field.textValue());
             }
             if (attributesBox != null) {
-                JsonElement attributes = rule.get("attributes");
+                JsonElement attributes = (category == EditorCategory.CURIO ? curioObject() : rule).get("attributes");
                 attributesBox.setTextValue(attributes == null ? "" : GSON.toJson(attributes));
             }
         } finally {
@@ -473,6 +653,7 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
 
     private void changeCategory(EditorCategory next) {
         if (!flushFields()) return;
+        curioSlotsExpanded = false;
         category = next;
         selectedId = null;
         if (itemGrid != null) itemGrid.setScrollOffset(0);
@@ -481,6 +662,7 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
 
     private void selectGridIndex(int index) {
         if (index < 0 || index >= visibleIds.size() || !flushFields()) return;
+        curioSlotsExpanded = false;
         selectedId = visibleIds.get(index);
         rebuildEditor();
     }
@@ -663,19 +845,24 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
                         : new BigDecimal(value).subtract(base).doubleValue());
             }
         }
-        if (attributesBox != null) {
+        if (attributesBox != null && (category != EditorCategory.CURIO || ItemCuriosCompat.available())) {
+            JsonObject attributeOwner = category == EditorCategory.CURIO ? curioObject() : rule;
             String raw = attributesBox.textValue().trim();
             if (raw.isEmpty()) {
-                rule.remove("attributes");
+                attributeOwner.remove("attributes");
             } else {
                 try {
                     JsonElement parsed = JsonParser.parseString(raw);
                     if (!parsed.isJsonArray()) throw new IllegalArgumentException("attributes must be an array");
-                    rule.add("attributes", parsed);
+                    attributeOwner.add("attributes", parsed);
                 } catch (RuntimeException exception) {
                     setMessage("gui.itemcontrol.item_property.error.invalid_attributes");
                     return false;
                 }
+            }
+            if (category == EditorCategory.CURIO && (rule.has("curio") || !raw.isEmpty())) {
+                if (!rule.has("curio")) enableCurioOverride(attributeOwner);
+                rule.add("curio", attributeOwner);
             }
         }
         if (!rule.entrySet().isEmpty() || drafts.containsKey(selectedId)) {
@@ -730,7 +917,8 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
         // The title's shadow shares the search box's top row, so keep its viewport to the right of the box.
         int titleWidth = 2 * (width() / 2 - GRID_X - SEARCH_W - TEXT_GAP);
         graphics.scrollingTextCentered(title(), width() / 2, 3, titleWidth, 0xFFFFFF, true);
-        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31, GRID_W - TEXT_GAP, 0xFFFFFF, false);
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31,
+                category == EditorCategory.CURIO ? GRID_W - 98 : GRID_W - TEXT_GAP, 0xFFFFFF, false);
         for (Map.Entry<String, FieldLabel> entry : fieldLabels.entrySet()) {
             FieldLabel label = entry.getValue();
             graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.field." + entry.getKey()),
@@ -744,7 +932,8 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
         if (transientMessage != null && !transientMessage.isBlank()) {
             graphics.scrollingText(KineticI18n.translatable(transientMessage), PANEL_X, 302, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFFFF7777, false);
         } else {
-            graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.restart_hint"), PANEL_X, 302, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFF9BB8FF, false);
+            graphics.scrollingText(KineticI18n.translatable(category == EditorCategory.CURIO && !ItemCuriosCompat.available()
+                    ? "gui.itemcontrol.item_property.curio.requires" : "gui.itemcontrol.item_property.restart_hint"), PANEL_X, 302, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFF9BB8FF, false);
         }
     }
 
