@@ -135,7 +135,7 @@ public class MergeItemPage extends KineticPage {
         rightW = Math.max(SLOT_SIZE + 10, width() - sidePadding - rightX);
         rightH = Math.max(SLOT_PITCH * 2 - (SLOT_PITCH - SLOT_SIZE), height() - rightY - 8);
         gridCols = Math.max(1, (rightW - 10 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH);
-        gridAreaH = rightH;
+        gridAreaH = ((rightH - 4 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH) * SLOT_PITCH - (SLOT_PITCH - SLOT_SIZE);
 
         leftSearchBox = createLeftSearchBox(leftX, searchY, leftW);
 
@@ -284,7 +284,7 @@ public class MergeItemPage extends KineticPage {
         }, sourceHash));
 
         int totalRightRows = (int) Math.ceil((double) rightDisplayList.size() / gridCols);
-        int totalRightH = totalRightRows * SLOT_PITCH;
+        int totalRightH = Math.max(0, totalRightRows * SLOT_PITCH - (SLOT_PITCH - SLOT_SIZE));
         rightScroll.update(totalRightH, gridAreaH);
     }
 
@@ -483,8 +483,8 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
             g.scrollingText(countText, countX, rightInfoY, rightInfoRight - countX - TEXT_GAP, 0xFFFFFF, false);
 
             int gridX = rightX + 2;
-            int gridY = rightY;
-            g.scissor(rightX, gridY, rightX + rightW, gridY + gridAreaH);
+            int gridY = rightY + 2;
+            g.scissor(rightX + 2, gridY, rightX + rightW - 2, gridY + gridAreaH);
             for (int i = 0; i < rightDisplayList.size(); i++) {
                 int col = i % gridCols;
                 int row = i / gridCols;
@@ -492,7 +492,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                 int rY = gridY + row * SLOT_PITCH - (int) Math.round(rightScroll.smoothOffset());
                 if (rY + SLOT_SIZE > gridY && rY < gridY + gridAreaH) {
                     ItemStack stack = rightDisplayList.get(i).stack();
-                    boolean hovered = smx >= rX && smx < rX + SLOT_SIZE
+                    boolean hovered = insideRightGrid(smx, smy) && smx >= rX && smx < rX + SLOT_SIZE
                             && smy >= rY && smy < rY + SLOT_SIZE;
                     KineticTheme.itemSlot(
                             g,
@@ -535,6 +535,11 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
 
     private int getRightCountX() {
         return rightX;
+    }
+
+    private boolean insideRightGrid(double x, double y) {
+        return x >= rightX + 2 && x < rightX + rightW - 10
+                && y >= rightY + 2 && y < rightY + 2 + gridAreaH;
     }
 
     private boolean isHoveringButton(KineticButton btn, double mx, double my) { return btn != null && btn.controlVisible() && btn.contains(mx, my);
@@ -593,9 +598,8 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                 }
                 currentY += entry.h + ROW_GAP;
             }
-        } else if ((isCreatingRule || selectedTarget != null) && smx >= rightX && smx < rightX + rightW && smy >= rightY && smy < rightY + rightH) {
-            int gridX = rightX + 2, gridY = rightY;
-            if (smy >= gridY + gridAreaH) return;
+        } else if ((isCreatingRule || selectedTarget != null) && insideRightGrid(smx, smy)) {
+            int gridX = rightX + 2, gridY = rightY + 2;
             int localX = smx - gridX;
             int localY = (int) Math.floor(smy - gridY + rightScroll.smoothOffset());
             int col = localX / SLOT_PITCH;
@@ -635,7 +639,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
             return true;
         }
 
-        int gridY = rightY;
+        int gridY = rightY + 2;
 
         if (rightScroll.beginDrag(
                         smx,
@@ -661,7 +665,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                 }
                 currentY += entry.h + ROW_GAP;
             }
-        } else if ((isCreatingRule || selectedTarget != null) && smx >= rightX && smx < rightX + rightW && smy >= rightY && smy < rightY + rightH) {
+        } else if ((isCreatingRule || selectedTarget != null) && insideRightGrid(smx, smy)) {
             int gridX = rightX + 2;
             int localX = (int) (smx - gridX);
             int localY = (int) (smy - gridY + rightScroll.smoothOffset());
@@ -706,7 +710,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
 
         if (rightScroll.drag(
                 smy,
-                rightY,
+                rightY + 2,
                 gridAreaH,
                 20
         )) {

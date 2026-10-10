@@ -58,7 +58,7 @@ public final class GuiLongTextValidation {
                 nextPage();return;
             }
             long now=System.currentTimeMillis();
-            if(!screenshot && now>=due) { capture("start");screenshot=true;due=now+(phase==4?3400:550);return; }
+            if(!screenshot && now>=due) { if(page==14)verifyMergeGridBoundary();capture("start");screenshot=true;due=now+(phase==4?3400:550);return; }
             if(screenshot && now>=due) {
                 if(phase==4)capture("scroll");
                 nextPage();
@@ -71,13 +71,14 @@ public final class GuiLongTextValidation {
     private static void nextPhase() {
         if(stressOriginal!=null){Language.inject(stressOriginal);stressOriginal=null;}
         phase++;page=-1;
-        if(phase>=5){finish();return;}
+        boolean fullHd=Boolean.getBoolean("itemcontrol.guiValidation.fullHdOnly");
+        if(phase>=(fullHd?2:5)){finish();return;}
         var mc=Minecraft.getInstance();
         mc.setScreen(null);
-        String lang=phase==2 || phase==3?"zh_cn":"en_us";
+        String lang=fullHd?(phase==1?"zh_cn":"en_us"):phase==2 || phase==3?"zh_cn":"en_us";
         mc.getLanguageManager().setSelected(lang);
         mc.options.languageCode=lang;
-        int width=phase==1 || phase==3?1920:854,height=phase==1 || phase==3?1080:480;
+        int width=fullHd||phase==1 || phase==3?1920:854,height=fullHd||phase==1 || phase==3?1080:480;
         mc.getWindow().setWindowed(width,height);mc.resizeDisplay();
         reload=mc.reloadResourcePacks();
         LOG.info("ITEM_GUI_PHASE phase={} language={} requested={}x{} autoScale=true",phase,lang,width,height);
@@ -270,6 +271,20 @@ public final class GuiLongTextValidation {
         var mc=Minecraft.getInstance();Path path=Path.of(ROOT,String.format("%d-%02d-%s-%s.png",phase,page,NAMES[page],frame));Files.createDirectories(path.getParent());
         try(var image=Screenshot.takeScreenshot(mc.getMainRenderTarget())){image.writeToFile(path);}
         capturedPages.set(page);captures++;LOG.info("ITEM_GUI_CAPTURE phase={} case={} image={}x{}",phase,NAMES[page],mc.getWindow().getWidth(),mc.getWindow().getHeight());
+    }
+    @SuppressWarnings("unchecked")
+    private static void verifyMergeGridBoundary()throws Exception {
+        var page=KineticGui.currentPage();
+        int x=(int)field(page,"rightX"),y=(int)field(page,"rightY"),h=(int)field(page,"gridAreaH");
+        var rules=(Map<String,List<String>>)field(page,"tempRules");
+        var target=(String)field(page,"selectedTarget");
+        int before=rules.get(target).size();
+        for(double[] point:new double[][]{{x+1,y+3},{x+3,y+1},{x+3,y+2+h+3}}) {
+            var input=new dev.xyat.kineticcore.api.client.gui.input.MouseInput(point[0],point[1],dev.xyat.kineticcore.api.client.gui.input.MouseButton.LEFT,0,0);
+            invoke(page,"onMouseClickCapture",input);
+            if(rules.get(target).size()!=before)throw new AssertionError("Merge grid padding selected an invisible item at "+Arrays.toString(point));
+        }
+        LOG.info("ITEM_MERGE_GRID_BOUNDARY_PASS language={}",Minecraft.getInstance().getLanguageManager().getSelected());
     }
     private static void finish() {
         finished=true;

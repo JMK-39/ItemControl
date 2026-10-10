@@ -1,3 +1,11 @@
+2026年10月10日 — Merge editor spacing / 物品合并编辑器间距
+
+- The merge editor's item browser keeps two pixels of space above and below complete item rows. Hovering and clicking the padding no longer targets hidden items, and scrollbar dragging uses the same padded track.
+
+- 物品合并编辑器的右侧网格在完整物品行的顶部和底部保留两像素间距；悬停或点击空白边距不会选中隐藏物品，拖动滚动条与有间距的轨道保持一致。
+
+---
+
 ## 2026-10-09 — Item and accessory properties / 物品与饰品属性
 
 ### English
