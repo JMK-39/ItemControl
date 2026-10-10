@@ -105,7 +105,7 @@ public final class DirectEntityImmunityEditorPage extends KineticPage {
 
         saveButton = ui().button(SAVE_X, 30, 52).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.save")).onClick(this::save).build();
 
-        ui().button(558, 30, 56).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.back")).onClick(this::close).build();
+        ui().button(26, 2, 56).text(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.direct_entity_editor.tooltip.back")).onClick(this::close).build();
 
         refreshDisplay(false);
     }
@@ -221,7 +221,7 @@ public final class DirectEntityImmunityEditorPage extends KineticPage {
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 2 * TEXT_GAP, 0xFFFFFF, true);
+        graphics.scrollingText(title(), 90, 9, PANEL_X + PANEL_W - 90 - TEXT_GAP, 0xFFFFFF, true);
         if (specialRuleButton == null || !specialRuleButton.controlVisible()) {
             Component count = KineticI18n.translatable(
                     "gui.itemcontrol.item.direct_entity_editor.count",

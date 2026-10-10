@@ -156,11 +156,11 @@ public class BannedItemPage extends KineticPage {
                                 80,
                                 contentW
                                         - ruleBtnW
-                                        - 2
+                                        - 2 - btnW - spacing
                         )
                         : 120;
 
-        searchBox = ui().textField(gridX, searchY, searchW).build();
+        searchBox = ui().textField(gridX + btnW + spacing, searchY, searchW).build();
         searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item.banitem.search.hint"));
         searchBox.setTextValue(lastSearchQuery);
         searchBox.setDefaultText(lastSearchQuery);
@@ -194,10 +194,10 @@ public class BannedItemPage extends KineticPage {
         if (compactToolbar) {
             saveX = gridX;
             viewX = saveX + btnW + spacing;
-            closeX = viewX + btnW + spacing;
+            closeX = gridX;
         } else {
-            closeX = rightEdge - btnW;
-            viewX = closeX - spacing - btnW;
+            closeX = gridX;
+            viewX = rightEdge - btnW;
             saveX = viewX - spacing - btnW;
         }
         saveBtn = ui().button(saveX, buttonY, btnW).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.save")).onClick(() -> {
@@ -213,7 +213,7 @@ public class BannedItemPage extends KineticPage {
                     updateSearch(searchBox.textValue());
                 }).build();
 
-        closeBtn = ui().button(closeX, buttonY, btnW).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back")).onClick(this::close).build();
+        closeBtn = ui().button(closeX, searchY, btnW).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.btn.back")).onClick(this::close).build();
 
         // Keep the permanent toolbar controls explicit through the public Kinetic contract.
         // The rule button is the only conditional control in this row.

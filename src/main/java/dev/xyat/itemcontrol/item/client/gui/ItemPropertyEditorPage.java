@@ -172,11 +172,11 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 .build();
         gridScrollOffset = 0;
 
-        ui().button(12, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule.tooltip")).compact().onClick(this::addSelectedRule).build();
-        ui().button(98, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item.tooltip")).compact().onClick(this::resetSelectedRule).build();
-        ui().button(184, 337, 52).text(KineticI18n.translatable("gui.itemcontrol.item_property.delete")).compact().onClick(this::deleteSelectedRule).build();
+        ui().button(90, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule.tooltip")).compact().onClick(this::addSelectedRule).build();
+        ui().button(176, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item.tooltip")).compact().onClick(this::resetSelectedRule).build();
+        ui().button(262, 337, 52).text(KineticI18n.translatable("gui.itemcontrol.item_property.delete")).compact().onClick(this::deleteSelectedRule).build();
         ui().button(478, 337, 70).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.save.tooltip")).onClick(this::save).build();
-        ui().button(554, 337, 72).text(KineticI18n.translatable("gui.itemcontrol.item_property.cancel")).onClick(this::close).build();
+        ui().button(12, 337, 72).text(KineticI18n.translatable("gui.itemcontrol.item_property.cancel")).onClick(this::close).build();
 
         populateFields();
         refreshGrid();

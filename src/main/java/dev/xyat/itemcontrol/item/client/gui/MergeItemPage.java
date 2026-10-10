@@ -111,7 +111,7 @@ public class MergeItemPage extends KineticPage {
                     case COMPACT -> 6;
                 };
 
-        int gap = 6;
+        int gap = 8;
         int buttonHeight = 20;
 
         initLayout(sidePadding, gap, buttonHeight);
@@ -133,18 +133,25 @@ public class MergeItemPage extends KineticPage {
         rightX = leftX + leftW + gap;
         rightY = rightGridTop;
         rightW = Math.max(SLOT_SIZE + 10, width() - sidePadding - rightX);
+        int initialColumns = Math.max(1, (rightW - 8) / SLOT_PITCH);
+        int nextColumnWidth = (initialColumns + 1) * SLOT_PITCH + 8;
+        int neededWidth = nextColumnWidth - rightW;
+        if (neededWidth > 0 && leftW - neededWidth >= 120) {
+            leftW -= neededWidth;
+            rightX -= neededWidth;
+            rightW += neededWidth;
+        }
         rightH = Math.max(SLOT_PITCH * 2 - (SLOT_PITCH - SLOT_SIZE), height() - rightY - 8);
         gridCols = Math.max(1, (rightW - 10 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH);
         gridAreaH = ((rightH - 4 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH) * SLOT_PITCH - (SLOT_PITCH - SLOT_SIZE);
 
-        leftSearchBox = createLeftSearchBox(leftX, searchY, leftW);
+        leftSearchBox = createLeftSearchBox(leftX + 66, searchY, leftW - 66);
 
         int buttonWidth = 60;
         int tagWidth = 76;
         boolean oneRow = rightW >= 80 + 4 + tagWidth + gap + buttonWidth * 3 + gap * 2;
         int buttonsY = oneRow ? searchY : panelY;
-        int closeX = rightX + rightW - buttonWidth;
-        int saveX = closeX - gap - buttonWidth;
+        int saveX = rightX + rightW - buttonWidth;
         int addX = saveX - gap - buttonWidth;
         int searchRight = oneRow ? addX - gap : rightX + rightW;
         int rightSearchWidth = Math.max(80, Math.min(oneRow ? 150 : rightW, searchRight - rightX - 4 - tagWidth));
@@ -153,7 +160,7 @@ public class MergeItemPage extends KineticPage {
         tagFilterBtn = createTagFilterButton(rightX + rightSearchWidth + 4, searchY, tagWidth);
         addBtn = createAddButton(addX, buttonsY, buttonWidth, buttonHeight);
         saveBtn = createSaveButton(saveX, buttonsY, buttonWidth, buttonHeight);
-        closeBtn = createCloseButton(closeX, buttonsY, buttonWidth, buttonHeight);
+        closeBtn = createCloseButton(leftX, searchY, buttonWidth, buttonHeight);
         rightInfoY = oneRow ? panelY + 3 : panelY + (buttonHeight - KineticText.lineHeight()) / 2;
         rightInfoRight = oneRow ? rightX + rightW : addX - gap;
     }
@@ -538,7 +545,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
     }
 
     private boolean insideRightGrid(double x, double y) {
-        return x >= rightX + 2 && x < rightX + rightW - 10
+        return x >= rightX + 2 && x < rightX + gridCols * SLOT_PITCH
                 && y >= rightY + 2 && y < rightY + 2 + gridAreaH;
     }
 

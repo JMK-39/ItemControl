@@ -86,7 +86,7 @@ public final class DamageTypeEditorPage extends KineticPage {
 
         saveButton = ui().button(424, 328, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.save")).onClick(this::save).build();
 
-        ui().button(524, 328, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.back")).onClick(this::close).build();
+        ui().button(26, 2, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.back")).onClick(this::close).build();
 
         refreshAddButton();
     }
@@ -144,7 +144,7 @@ public final class DamageTypeEditorPage extends KineticPage {
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 4, KineticTheme.current().text(), true);
+        graphics.scrollingText(title(), 124, 9, PANEL_X + PANEL_W - 128, KineticTheme.current().text(), true);
         renderEntries(graphics, mouseX, mouseY);
         graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.hint"), LIST_X, 307, LIST_W - 4, KineticTheme.current().text(), false);
     }

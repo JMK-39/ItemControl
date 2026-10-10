@@ -103,7 +103,9 @@ public class ItemTagEditorPage extends KineticPage {
         leftX = pad;
         rightX = leftX + leftW + gap;
 
-        itemSearch = ui().textField(leftX, topY, leftW).build();
+        int buttonGap = 4;
+        int smallButtonW = Math.max(42, (rightW - buttonGap * 3) / 4);
+        itemSearch = ui().textField(leftX + smallButtonW + buttonGap, topY, leftW - smallButtonW - buttonGap).build();
         itemSearch.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item.item_tag.item_search_hint"));
         itemSearch.setTextValue(rememberedItemSearch);
         itemSearch.setDefaultText(rememberedItemSearch);
@@ -112,8 +114,6 @@ public class ItemTagEditorPage extends KineticPage {
             refreshItems();
         });
 
-        int buttonGap = 4;
-        int smallButtonW = Math.max(42, (rightW - buttonGap * 3) / 4);
         copyButton = ui().button(rightX, topY, smallButtonW).text(copyButtonText()).onClick(() -> {
             if (selectedItemId.isEmpty()) return;
             copyMode = !copyMode;
@@ -122,7 +122,7 @@ public class ItemTagEditorPage extends KineticPage {
 
         saveButton = ui().button(rightX + smallButtonW + buttonGap, topY, smallButtonW).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.save")).onClick(this::saveConfig).build();
 
-        backButton = ui().button(rightX + (smallButtonW + buttonGap) * 2, topY, smallButtonW).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.back")).onClick(this::close).build();
+        backButton = ui().button(leftX, topY, smallButtonW).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.back")).onClick(this::close).build();
 
         addTagButton = ui().button(rightX + (smallButtonW + buttonGap) * 3, topY, smallButtonW).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.add")).onClick(this::addTagFromInput).build();
 

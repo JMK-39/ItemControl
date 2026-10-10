@@ -27,7 +27,17 @@ public final class RuntimeValidation {
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(this::started);
             return;
         }
+        if (!Boolean.getBoolean("itemcontrol.runtimeValidation")) return;
         try {
+            if (net.minecraft.client.Minecraft.getInstance() == null) {
+                require(dev.xyat.kineticcore.api.runtime.KineticClientRuntime.currentLevel() == null, "startup client level unavailable");
+                require(dev.xyat.kineticcore.api.runtime.KineticClientRuntime.currentScreen() == null, "startup client screen unavailable");
+                require(dev.xyat.kineticcore.api.runtime.KineticClientRuntime.localPlayer() == null, "startup client player unavailable");
+                require(!dev.xyat.kineticcore.api.runtime.KineticClientRuntime.connected(), "startup client disconnected");
+                require(dev.xyat.kineticcore.api.runtime.KineticClientRuntime.currentServerAddress() == null, "startup server address unavailable");
+                require(dev.xyat.kineticcore.api.runtime.KineticClientRuntime.connectionRevision() >= 0, "startup connection revision available");
+                org.slf4j.LoggerFactory.getLogger(RuntimeValidation.class).info("ITEMCONTROL_VALIDATION_CLIENT_STARTUP_PASS");
+            }
             String enchanted = ENCHANTED;
             preheatedBan = new BanItemConfig.ItemRule(enchanted);
             var tabs = new TabConfig.Data();

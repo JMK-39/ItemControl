@@ -391,7 +391,7 @@ public class TabUnifiedPage extends KineticPage {
 
         ui.button(MAIN_X, bottomY, 160).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.unified.btn_add_item")).onClick(this::openItemSelector).build();
 
-        ui.button(width() / 2 - 40, bottomY, 80).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.back")).onClick(this::returnToParent).build();
+        ui.button(MAIN_X, 2, 80).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.back")).onClick(this::returnToParent).build();
 
         ui.button(RIGHT_X, bottomY, RIGHT_W).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.save_apply")).onClick(() -> {
                     String json = TabConfig.GSON.toJson(TabConfig.currentEditing);
@@ -519,7 +519,7 @@ public class TabUnifiedPage extends KineticPage {
 
         graphics.scrollingText(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.left_title.colored"
-                ), MAIN_X, 8, MAIN_W - 4, 0xFFFFFF, true);
+                ), MAIN_X + 86, 8, MAIN_W - 90, 0xFFFFFF, true);
 
         graphics.scrollingText(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.right_title.colored"

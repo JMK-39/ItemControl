@@ -1,7 +1,13 @@
-2026年10月10日 — Merge editor spacing / 物品合并编辑器间距
+2026年10月10日 — Item editor spacing and navigation / 物品编辑页间距与导航
 
+- Item editor Back controls use the upper left, or the lower left when the header is occupied.
+- Return controls use white text. Protection and merge item lists use their horizontal space for another complete item column, with the protection rule action and count area widened.
+- Accessory slot choices have outlined text rows with two-pixel gaps and preserve their ID and translation colors when selected.
 - The merge editor's item browser keeps two pixels of space above and below complete item rows. Hovering and clicking the padding no longer targets hidden items, and scrollbar dragging uses the same padded track.
 
+- 物品编辑页的返回入口优先放在左上角，顶部空间不足时放在左下角。
+- 返回入口统一使用白色文字；保护规则和物品合并列表利用横向空间增加完整的一列物品，并加宽保护规则操作与计数显示区域。
+- 饰品槽位选择使用带描边的文字条，条目间保留两像素间距，选中后 ID 和翻译文字颜色保持不变。
 - 物品合并编辑器的右侧网格在完整物品行的顶部和底部保留两像素间距；悬停或点击空白边距不会选中隐藏物品，拖动滚动条与有间距的轨道保持一致。
 
 ---

@@ -128,17 +128,17 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
         updateScrollRange();
 
         int buttonY = panelY + panelH - 8 - 20;
-        ui.button(panelX + PANEL_PAD, buttonY, 104)
+        ui.button(panelX + PANEL_PAD + 90, buttonY, 104)
                 .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.add"))
                 .onClick(this::openItemSelector)
                 .build();
 
-        ui.button(panelX + panelW - 190, buttonY, 80)
+        ui.button(panelX + panelW - 100, buttonY, 80)
                 .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.save"))
                 .onClick(this::save)
                 .build();
 
-        ui.button(panelX + panelW - 100, buttonY, 80)
+        ui.button(panelX + PANEL_PAD, buttonY, 80)
                 .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.back"))
                 .onClick(this::closeToParent)
                 .build();

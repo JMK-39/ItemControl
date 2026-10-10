@@ -47,16 +47,16 @@ public final class ProtectionItemEditorPage extends KineticPage {
     private static final int SEARCH_Y = 30;
     private static final int SEARCH_W = 300;
     private static final int SPECIAL_X = 334;
-    private static final int SPECIAL_W = 120;
-    private static final int SAVE_X = 500;
+    private static final int SPECIAL_W = 220;
+    private static final int SAVE_X = 562;
     private static final int TEXT_GAP = 4;
     private static final int GRID_X = 26;
     private static final int GRID_Y = 58;
     private static final int SLOT_SIZE = 22;
     private static final int SLOT_GAP = 2;
     private static final int SLOT_PITCH = SLOT_SIZE + SLOT_GAP;
-    // Fit complete icons in the existing panel and keep its scrollbar at the original X.
-    private static final int GRID_MAX_W = 570;
+    // Use the horizontal remainder for one more complete column, with room for the scrollbar.
+    private static final int GRID_MAX_W = 582;
     private static final int GRID_MAX_H = 285;
     private static final int GRID_COLS = (GRID_MAX_W + SLOT_GAP) / SLOT_PITCH;
     private static final int GRID_ROWS = (GRID_MAX_H + SLOT_GAP) / SLOT_PITCH;
@@ -145,7 +145,7 @@ public final class ProtectionItemEditorPage extends KineticPage {
 
         saveButton = ui().button(SAVE_X, 30, 52).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.save")).onClick(this::save).build();
 
-        backButton = ui().button(558, 30, 56).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.back")).onClick(this::close).build();
+        backButton = ui().button(26, 2, 56).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.back")).onClick(this::close).build();
 
         modalFireButton = addModalButton(204, MODAL_TOGGLE_Y, 108, () -> {
             modalFireImmune = !modalFireImmune;
@@ -164,9 +164,9 @@ public final class ProtectionItemEditorPage extends KineticPage {
             refreshModalButtons();
         }, "gui.itemcontrol.item.protection_editor.tooltip.gravity");
 
-        modalApplyButton = ui().button(204, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.apply")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.apply")).layer(1).onClick(this::applyModalRule).build();
-        modalDeleteButton = ui().button(284, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.delete")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.delete")).layer(1).onClick(this::deleteModalRule).build();
-        modalCancelButton = ui().button(364, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.cancel")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.cancel")).layer(1).onClick(this::closeRuleEditor).build();
+        modalApplyButton = ui().button(284, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.apply")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.apply")).layer(1).onClick(this::applyModalRule).build();
+        modalDeleteButton = ui().button(364, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.delete")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.delete")).layer(1).onClick(this::deleteModalRule).build();
+        modalCancelButton = ui().button(204, MODAL_Y + 123, 72).text(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.cancel")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.protection_editor.tooltip.cancel")).layer(1).onClick(this::closeRuleEditor).build();
 
         setModalWidgetsVisible(false);
         refreshSpecialRuleButton();
@@ -489,7 +489,7 @@ public final class ProtectionItemEditorPage extends KineticPage {
             renderModal(graphics);
             return;
         }
-        graphics.scrollingTextCentered(title(), width() / 2, 9, PANEL_W - 2 * TEXT_GAP, 0xFFFFFF, true);
+        graphics.scrollingText(title(), 90, 9, PANEL_X + PANEL_W - 90 - TEXT_GAP, 0xFFFFFF, true);
         renderScrollingGridBackground(graphics);
         renderItems(graphics, mouseX, mouseY);
         gridScroll.render(
