@@ -397,7 +397,7 @@
   "tip.itemcontrol.cleaner.cleaner.area_tool.line5": "§dAdmin Clear: §6%1$s+Alt+Left click§a clears all protected areas",
   "cfg.itemcontrol.cleaner.cleaner.whitelist.tooltip": "§aOpen the visual cleaner whitelist editor. Add specific items, #tags, or @mods through the item selector and right-click a rule to remove it.",
   "cfg.itemcontrol.item_property.title": "Item and Accessory Properties",
-  "cfg.itemcontrol.item_property.restart_notice": "Apply item and accessory changes on save. Enchantability on 26.1.2 requires restarting the game.",
+  "cfg.itemcontrol.item_property.restart_notice": "Apply item and accessory changes immediately on save.",
   "cfg.itemcontrol.item_property.description": "Override item properties and optional Curios accessories by item ID. Blank fields preserve original behavior. Drop protection also supports item tags and mod namespaces.",
   "cfg.itemcontrol.item_property.open_editor": "Edit Item and Accessory Properties",
   "cfg.itemcontrol.item_property.open_editor.tooltip": "Edit combat, tools, food, blocks, drop protection and optional Curios slots, bonuses and removal rules.",
@@ -412,7 +412,7 @@
   "gui.itemcontrol.item_property.save": "Save",
   "gui.itemcontrol.item_property.save.tooltip": "Save and apply rules, including held and equipped attribute changes. Food components and enchantability on 26.1.2 require a restart.",
   "gui.itemcontrol.item_property.cancel": "Cancel",
-  "gui.itemcontrol.item_property.restart_hint": "Apply on save; enchantability on 26.1.2 requires a restart.",
+  "gui.itemcontrol.item_property.restart_hint": "Apply immediately on save.",
   "gui.itemcontrol.item_property.inherit": "Blank: keep current value",
   "gui.itemcontrol.item_property.category.tooltip": "Switch property fields. Items can combine weapon, equipment, food and accessory capabilities. The block category shows blocks only.",
   "gui.itemcontrol.item_property.item.unresolved": "Unresolved item rule",
@@ -623,4 +623,8 @@
   "gui.itemcontrol.item_property.equipment.operation.tooltip": "Addition adds a value; base multiplication scales the base value; total multiplication scales the final value."
 ,
   "gui.itemcontrol.item_property.equipment.original": "Original equipment modifiers: %s"
+,
+  "gui.itemcontrol.item_property.compare.unavailable": "Not listed here; see the related editor"
+,
+  "gui.itemcontrol.item_property.back": "Back"
 }

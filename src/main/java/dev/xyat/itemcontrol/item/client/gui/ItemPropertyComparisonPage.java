@@ -15,9 +15,9 @@ import java.util.Map;
 public final class ItemPropertyComparisonPage extends KineticPage {
     private final String id;private final JsonObject draft;private final Map<String,String> originals;
     public ItemPropertyComparisonPage(String id,JsonObject draft,Map<String,String> originals){super(ItemRuleLabels.text("compare"));this.id=id;this.draft=draft.deepCopy();this.originals=Map.copyOf(originals);useCanvas(620,360,6);}
-    @Override protected void build(KineticUi ui){ui.button(12,6,90).text(ItemRuleLabels.text("cancel")).onClick(this::close).build();
+    @Override protected void build(KineticUi ui){ui.button(12,6,90).text(ItemRuleLabels.text("back")).onClick(this::close).build();
         var rows=new ArrayList<SelectionItem>();for(String path:ItemRuleDrafts.FIELDS){var value=ItemRuleDrafts.value(draft,path);String original=originals.getOrDefault(path,"");if(value==null&&original.isBlank())continue;
-            String before=original.isBlank()?ItemRuleLabels.text("inherit").getString():original;String after=value==null?ItemRuleLabels.text("inherit").getString():display(path,value);
+            String before=original.isBlank()?ItemRuleLabels.text("compare.unavailable").getString():original;String after=value==null?ItemRuleLabels.text("inherit").getString():display(path,value);
             String timing="compare.live";
             //? if >=26.1 {
             /*if(path.equals("enchantability"))timing="compare.restart";*/

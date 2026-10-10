@@ -20,6 +20,10 @@ public final class ItemRuleDraftsTest {
         var decoded=ItemRuleDrafts.decodeTemplate(encoded);require(decoded.name().equals("战士加餐") && decoded.fields().has("armor") && !decoded.fields().has("equipment_slot"),"named selective template round trip");
         var inherited=ItemRuleDrafts.decodeTemplate(ItemRuleDrafts.encodeTemplate("继承耐久",source,Set.of("max_damage")));
         require(inherited.selectedFields().contains("max_damage")&&!inherited.fields().has("max_damage"),"template preserves a checked inherited field");
+        var futureSource=JsonParser.parseString("{\"armor\":8,\"nutrition\":4,\"future_field\":{\"a\":1},\"curio\":{\"slots\":[\"ring\"],\"future_mode\":true}}").getAsJsonObject();
+        var futureTemplate=ItemRuleDrafts.decodeTemplate(ItemRuleDrafts.encodeTemplate("未来模板",futureSource,Set.of("armor")));
+        require(futureTemplate.fields().has("future_field")&&futureTemplate.fields().getAsJsonObject("curio").has("future_mode"),"template serialization retains unknown imported fields");
+        require(!futureTemplate.fields().has("nutrition")&&!futureTemplate.fields().getAsJsonObject("curio").has("slots"),"template excludes unchecked supported fields");
         boolean rejected=false;try{ItemRuleDrafts.decodeTemplate("{\"format\":\"other\",\"version\":1,\"name\":\"x\",\"fields\":{}}");}catch(IllegalArgumentException expected){rejected=true;}require(rejected,"reject unrelated imported document");
         rejected=false;try{ItemRuleDrafts.merge(target,source,Set.of("future_field.a"));}catch(IllegalArgumentException expected){rejected=true;}require(rejected,"only editable property paths accepted");
         System.out.println("ITEM_RULE_DRAFTS_PASS");

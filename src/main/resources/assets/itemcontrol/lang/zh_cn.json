@@ -397,7 +397,7 @@
   "tip.itemcontrol.cleaner.cleaner.area_tool.line5": "§d管理员清理：§6%1$s+Alt+左键§a清空所有保护区",
   "cfg.itemcontrol.cleaner.cleaner.whitelist.tooltip": "§a打开可视化清理白名单编辑器。通过物品选择器添加具体物品、#标签或@模组，右键规则即可移除。",
   "cfg.itemcontrol.item_property.title": "物品与饰品属性修改",
-  "cfg.itemcontrol.item_property.restart_notice": "保存后应用物品与饰品改动。26.1.2 的附魔能力需重启游戏。",
+  "cfg.itemcontrol.item_property.restart_notice": "保存后立即应用物品与饰品改动。",
   "cfg.itemcontrol.item_property.description": "按物品 ID 修改属性，可选联动 Curios 饰品。留空保留原有行为。掉落物保护也支持物品标签与模组命名空间。",
   "cfg.itemcontrol.item_property.open_editor": "物品与饰品属性修改",
   "cfg.itemcontrol.item_property.open_editor.tooltip": "编辑战斗、工具、食物、方块、掉落物保护，以及 Curios 饰品槽位、属性加成和脱下规则。",
@@ -412,7 +412,7 @@
   "gui.itemcontrol.item_property.save": "保存",
   "gui.itemcontrol.item_property.save.tooltip": "保存并应用规则，包括已持有和装备物品的属性。26.1.2 的食物组件及附魔能力需重启。",
   "gui.itemcontrol.item_property.cancel": "取消",
-  "gui.itemcontrol.item_property.restart_hint": "保存后应用；26.1.2 的附魔能力需重启。",
+  "gui.itemcontrol.item_property.restart_hint": "保存后立即应用。",
   "gui.itemcontrol.item_property.inherit": "留空：保留原值",
   "gui.itemcontrol.item_property.category.tooltip": "切换属性分类；物品可以同时拥有武器、装备、食物和饰品能力。方块分类只显示方块。",
   "gui.itemcontrol.item_property.item.unresolved": "无法解析的物品规则",
@@ -623,4 +623,8 @@
   "gui.itemcontrol.item_property.equipment.operation.tooltip": "加法直接加数值；基础乘算按基础值增加；总值乘算在最终值上相乘。"
 ,
   "gui.itemcontrol.item_property.equipment.original": "原装备属性：%s"
+,
+  "gui.itemcontrol.item_property.compare.unavailable": "本页未列出；请在对应编辑器查看"
+,
+  "gui.itemcontrol.item_property.back": "返回"
 }

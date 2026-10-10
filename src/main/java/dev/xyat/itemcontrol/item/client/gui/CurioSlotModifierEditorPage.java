@@ -22,7 +22,7 @@ public final class CurioSlotModifierEditorPage extends KineticPage {
     private String slot="curio",amount="1",error="";
     public CurioSlotModifierEditorPage(JsonArray rules,Consumer<JsonArray> done){super(ItemRuleLabels.text("curio.slot_counts"));this.rules=rules.deepCopy();this.done=done;useCanvas(480,300,6);if(!rules.isEmpty())select(0);}
     @Override protected void build(KineticUi ui){
-        ui.button(12,6,90).text(ItemRuleLabels.text("cancel")).onClick(this::close).build();
+        ui.button(12,6,90).text(ItemRuleLabels.text("back")).onClick(this::close).build();
         var ids=new LinkedHashSet<String>(ItemCuriosCompat.slots(Minecraft.getInstance().player));ids.add("curio");for(var raw:rules)ids.add(raw.getAsJsonObject().get("slot").getAsString());
         var options=ids.stream().map(id->new KineticDropdown.Option(id,ItemRuleLabels.id(id,"curios.identifier."+id))).toList();
         ui.dropdown(12,58,302,options).selected(slot).tooltip(ItemRuleLabels.text("curio.slot_counts.tooltip")).onChange(value->{slot=value;rebuild();}).build();

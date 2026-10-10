@@ -26,7 +26,7 @@ public final class FoodEffectEditorPage extends KineticPage {
         if(!rules.isEmpty())select(0);
     }
     @Override protected void build(KineticUi ui) {
-        ui.button(12,6,90).text(ItemRuleLabels.text("cancel")).onClick(this::close).build();
+        ui.button(12,6,90).text(ItemRuleLabels.text("back")).onClick(this::close).build();
         var options=new ArrayList<KineticDropdown.Option>();
         for(var id:KineticRegistries.mobEffects().ids().stream().sorted(java.util.Comparator.comparing(Object::toString)).toList()) {
             var effect=KineticRegistries.mobEffects().get(id);

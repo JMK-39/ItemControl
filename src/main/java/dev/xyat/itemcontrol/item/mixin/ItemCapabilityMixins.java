@@ -20,6 +20,13 @@ public final class ItemCapabilityMixins {
     private ItemCapabilityMixins() {}
     @Mixin(ItemStack.class)
     public abstract static class StackUse {
+        //? if <26.1 {
+        public boolean canEquip(EquipmentSlot slot,LivingEntity wearer){
+            ItemStack stack=(ItemStack)(Object)this;
+            if(ItemCapabilityRuntime.overridesEquipment(stack))return slot==ItemCapabilityRuntime.equipmentSlot(stack);
+            return stack.getItem().canEquip(stack,slot,wearer);
+        }
+        //?}
         //? if >=26.1 {
         /*@org.spongepowered.asm.mixin.Shadow public abstract net.minecraft.core.component.DataComponentMap getComponents();
         @SuppressWarnings("unchecked")
@@ -94,6 +101,12 @@ public final class ItemCapabilityMixins {
     }
     @Mixin(LivingEntity.class)
     public abstract static class Equipment {
+        //? if >=26.1 {
+        /*@Inject(method="isEquippableInSlot",at=@At("HEAD"),cancellable=true)
+        private void itemcontrol$canEquip(ItemStack stack,EquipmentSlot slot,CallbackInfoReturnable<Boolean> cir){
+            if(ItemCapabilityRuntime.overridesEquipment(stack))cir.setReturnValue(slot==ItemCapabilityRuntime.equipmentSlot(stack)&&((LivingEntity)(Object)this).canUseSlot(slot));
+        }*/
+        //?}
         //? if >=1.21 {
         /*@Unique private java.util.Map<EquipmentSlot,Integer> itemcontrol$equipmentDamage;
         @Inject(method="doHurtEquipment",at=@At("HEAD"))

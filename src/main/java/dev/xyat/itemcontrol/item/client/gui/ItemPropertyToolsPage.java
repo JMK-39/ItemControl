@@ -37,7 +37,7 @@ public final class ItemPropertyToolsPage extends KineticPage {
     }
     private void selectSourceFields(){checked.clear();for(String path:ItemRuleDrafts.FIELDS)if(ItemRuleDrafts.value(source,path)!=null)checked.add(path);}
     @Override protected void build(KineticUi ui){
-        ui.button(8,6,68).text(ItemRuleLabels.text("cancel")).onClick(this::close).build();
+        ui.button(8,6,68).text(ItemRuleLabels.text("back")).onClick(this::close).build();
         ui.button(420,6,100).text(ItemRuleLabels.text("copy.source")).tooltip(ItemRuleLabels.text("copy.source.tooltip")).onClick(this::chooseSource).build();
         ui.button(528,6,104).text(ItemRuleLabels.text("compare")).tooltip(ItemRuleLabels.text("compare.tooltip")).onClick(()->KineticGui.open(new ItemPropertyComparisonPage(sourceId,source,originals.apply(sourceId)))).build();
         var field=ui.textField(8,44,184).tooltip(ItemRuleLabels.text("templates.name.tooltip")).build();field.setTextValue(name);field.setPlaceholder(ItemRuleLabels.text("templates.name"));field.onTextChange(value->name=value);

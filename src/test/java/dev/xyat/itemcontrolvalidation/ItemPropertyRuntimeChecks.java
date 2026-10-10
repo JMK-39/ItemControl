@@ -101,6 +101,7 @@ public final class ItemPropertyRuntimeChecks {
     private static void verifyCapabilities(MinecraftServer server) {
         var player = server.getPlayerList().getPlayers().get(0);
         JsonObject document = JsonParser.parseString(ItemPropertyConfig.pendingJson()).getAsJsonObject();
+        var originalChestRule=document.has("minecraft:diamond_chestplate")?document.get("minecraft:diamond_chestplate").deepCopy():null;
         document.add("minecraft:brick", JsonParser.parseString("{\"equipment_slot\":\"chest\",\"armor\":8,\"edible\":true,\"nutrition\":4,\"saturation\":0.25,\"food_remainder\":\"minecraft:bowl\",\"food_effects\":[{\"effect\":\"minecraft:speed\",\"duration\":200,\"amplifier\":1,\"probability\":1}]}"));
         document.add("minecraft:iron_sword", JsonParser.parseString("{\"attributes\":[{\"attribute\":\"minecraft:generic.attack_damage\",\"slot\":\"mainhand\",\"mode\":\"add\",\"amount\":3,\"operation\":\"ADDITION\"}]}"));
         document.add("minecraft:stick",JsonParser.parseString("{\"attack_damage\":5,\"max_damage\":16,\"equipment_slot\":\"head\"}"));
@@ -127,6 +128,21 @@ public final class ItemPropertyRuntimeChecks {
         for(int index=0;index<player.getInventory().getContainerSize();index++)inventory.add(player.getInventory().getItem(index).copy());
         try {
             player.getAbilities().instabuild = false;
+            player.setItemSlot(EquipmentSlot.CHEST,ItemStack.EMPTY);
+            document.add("minecraft:diamond_chestplate",JsonParser.parseString("{\"equipment_slot\":\"none\"}"));
+            require(ItemPropertyConfig.savePending(document.toString()).success(),"save armor not wearable");ItemEquipmentRefresh.applyPending(server);
+            var chestplate=new ItemStack(Items.DIAMOND_CHESTPLATE);player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,chestplate);player.setShiftKeyDown(false);
+            chestplate.use(server.overworld(),player,net.minecraft.world.InteractionHand.MAIN_HAND);
+            require(player.getItemBySlot(EquipmentSlot.CHEST).isEmpty()&&chestplate.getCount()==1,"not wearable blocks original armor use");
+            require(!player.inventoryMenu.slots.get(6).mayPlace(chestplate),"not wearable blocks inventory armor placement");
+            document.add("minecraft:diamond_chestplate",JsonParser.parseString("{\"edible\":true,\"nutrition\":4}"));
+            require(ItemPropertyConfig.savePending(document.toString()).success(),"save inherited armor food");ItemEquipmentRefresh.applyPending(server);
+            player.setItemSlot(EquipmentSlot.CHEST,ItemStack.EMPTY);
+            chestplate=new ItemStack(Items.DIAMOND_CHESTPLATE);player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,chestplate);player.setShiftKeyDown(true);
+            chestplate.use(server.overworld(),player,net.minecraft.world.InteractionHand.MAIN_HAND);
+            require(player.getItemBySlot(EquipmentSlot.CHEST).is(Items.DIAMOND_CHESTPLATE)&&!player.isUsingItem(),"native food armor inherits sneak-equipping");
+            if(originalChestRule==null)document.remove("minecraft:diamond_chestplate");else document.add("minecraft:diamond_chestplate",originalChestRule);require(ItemPropertyConfig.savePending(document.toString()).success(),"restore native armor rule");ItemEquipmentRefresh.applyPending(server);
+            org.slf4j.LoggerFactory.getLogger(ItemPropertyRuntimeChecks.class).info("ITEM_NATIVE_EQUIPMENT_PASS inherited food armor and explicit not-wearable use/inventory");
             player.setItemSlot(EquipmentSlot.CHEST, ItemStack.EMPTY);
             player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, brick);
             player.setShiftKeyDown(true);

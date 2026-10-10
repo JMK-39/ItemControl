@@ -65,7 +65,7 @@ public final class EquipmentAttributeEditorPage extends KineticPage {
         ui.button(12, 246, 110).text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.apply_rule")).tooltip(ItemRuleLabels.text("equipment.apply.tooltip")).onClick(this::applyRule).build();
         ui.button(130, 246, 110).text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.delete_rule")).tooltip(ItemRuleLabels.text("equipment.delete.tooltip")).onClick(()->{deleteRule();rebuild();}).build();
         ui.button(248, 246, 106).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(ItemRuleLabels.text("draft.apply.tooltip")).onClick(()->{done.accept(rules.deepCopy());close();}).build();
-        ui.button(12, 6, 106).text(KineticI18n.translatable("gui.itemcontrol.item_property.cancel")).onClick(this::close).build();
+        ui.button(12, 6, 106).text(KineticI18n.translatable("gui.itemcontrol.item_property.back")).onClick(this::close).build();
     }
     private List<KineticDropdown.Option> options(List<String> values,String kind) {
         return values.stream().map(value->new KineticDropdown.Option(value,KineticI18n.translatable("gui.itemcontrol.item_property.curio."+kind+"."+value.toLowerCase(java.util.Locale.ROOT)))).toList();

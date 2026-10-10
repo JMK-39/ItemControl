@@ -9,5 +9,7 @@
   "cfg.itemcontrol.tabs.tabs.open_editor.tooltip": "§aSupports single items, components items, #item tags, @mod namespaces, hidden tabs, and item additions. §eThe server validates tabs, items, and components before saving.",
   "gui.itemcontrol.item_property.add_rule.tooltip": "Select an item to add a rule. In Drop Protection, you can also enter #namespace:tag, @modid, or item_id[components] in Search, then click Add Rule.",
   "gui.itemcontrol.item_property.category.tooltip": "Choose a property group. Drop Protection includes all items and supports item tags, mods, and components rules.",
-  "key.category.itemcontrol.cleaner": "Dropped-Item Cleanup"
+  "key.category.itemcontrol.cleaner": "Dropped-Item Cleanup",
+  "cfg.itemcontrol.item_property.restart_notice": "Apply item and accessory changes immediately on save; enchantability takes effect after restarting the game.",
+  "gui.itemcontrol.item_property.restart_hint": "Apply immediately on save; enchantability requires a restart."
 }

@@ -140,7 +140,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         attributesBox = null;
         curioSlotList = null;
         lastAttributesValue = null;
-        ui.button(GRID_X,10,64).text(ItemRuleLabels.text("cancel")).onClick(this::close).build();
+        ui.button(GRID_X,10,64).text(ItemRuleLabels.text("back")).onClick(this::close).build();
         searchBox = ui().textField(78, 10, 156).build();
         searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item_property.search"));
         searchBox.limitTextLength(1024);

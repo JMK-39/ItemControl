@@ -32,7 +32,9 @@ public final class ItemRuleDrafts {
     }
     public record Template(String name,JsonObject fields,Set<String> selectedFields) {public Template{selectedFields=Set.copyOf(selectedFields);}}
     public static String encodeTemplate(String name,JsonObject source,Set<String> selected){
-        validateName(name);JsonObject root=new JsonObject();root.addProperty("format","itemcontrol-properties");root.addProperty("version",1);root.addProperty("name",name.trim());root.add("fields",merge(new JsonObject(),source,selected));
+        validateName(name);JsonObject opaque=source.deepCopy();
+        for(String path:FIELDS){int dot=path.indexOf('.');if(dot<0)opaque.remove(path);else {String owner=path.substring(0,dot);var nested=opaque.get(owner);if(nested!=null&&nested.isJsonObject()){nested.getAsJsonObject().remove(path.substring(dot+1));if(nested.getAsJsonObject().size()==0)opaque.remove(owner);}}}
+        JsonObject root=new JsonObject();root.addProperty("format","itemcontrol-properties");root.addProperty("version",1);root.addProperty("name",name.trim());root.add("fields",merge(opaque,source,selected));
         var paths=new com.google.gson.JsonArray();FIELDS.stream().filter(selected::contains).forEach(paths::add);root.add("selected_fields",paths);
         return new GsonBuilder().setPrettyPrinting().create().toJson(root);
     }

@@ -22,7 +22,8 @@ public final class ItemCapabilityRuntime {
     public static EquipmentSlot equipmentSlot(ItemStack stack) {
         var rule = ItemPropertyOverrides.active(stack);
         String slot = rule == null ? null : rule.capabilities().equipmentSlot();
-        return slot == null || slot.equals("none") ? null : EquipmentSlot.valueOf(slot.toUpperCase(java.util.Locale.ROOT));
+        if(slot==null)return ItemPropertyConfig.previewOriginal(()->ItemPropertyReads.armorSlot(stack));
+        return slot.equals("none") ? null : EquipmentSlot.valueOf(slot.toUpperCase(java.util.Locale.ROOT));
     }
     public static boolean overridesEquipment(ItemStack stack) {
         var rule = ItemPropertyOverrides.active(stack);
@@ -129,7 +130,7 @@ public final class ItemCapabilityRuntime {
             if (!player.canEat(ItemPropertyReads.canAlwaysEat(stack))) return false;
             player.startUsingItem(hand); return true;
         }
-        return Boolean.FALSE.equals(edibleOverride(stack)) ? false : null;
+        return overridesEquipment(stack)||Boolean.FALSE.equals(edibleOverride(stack)) ? false : null;
     }
     public static int duration(ItemStack stack) {
         var rule = ItemPropertyOverrides.active(stack);
