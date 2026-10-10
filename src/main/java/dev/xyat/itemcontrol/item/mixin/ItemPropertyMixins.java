@@ -66,29 +66,14 @@ public final class ItemPropertyMixins {
 
         @Inject(method = "getFoodProperties()Lnet/minecraft/world/food/FoodProperties;", at = @At("RETURN"), cancellable = true)
         private void itemcontrol$foodProperties(CallbackInfoReturnable<FoodProperties> cir) {
-            ItemPropertyRule rule = ItemPropertyConfig.active((Item) (Object) this);
-            if (rule == null || (rule.nutrition() == null && rule.saturation() == null && rule.alwaysEat() == null)) return;
-            FoodProperties original = cir.getReturnValue();
-            int nutrition = rule.nutrition() != null ? rule.nutrition() : original == null ? 0 : original.getNutrition();
-            float saturation = rule.saturation() != null
-                    ? rule.saturation().floatValue()
-                    : original == null ? 0.0F : original.getSaturationModifier();
-            FoodProperties.Builder builder = new FoodProperties.Builder()
-                    .nutrition(nutrition)
-                    .saturationMod(saturation);
-            if (rule.alwaysEat() != null ? rule.alwaysEat() : original != null && original.canAlwaysEat()) {
-                builder.alwaysEat();
-            }
-            if (original != null) {
-                if (original.isMeat()) builder.meat();
-                if (original.isFastFood()) builder.fast();
-                for (Pair<MobEffectInstance, Float> effect : original.getEffects()) {
-                    builder.effect(() -> new MobEffectInstance(effect.getFirst()), effect.getSecond());
-                }
-            }
-            cir.setReturnValue(builder.build());
+            cir.setReturnValue(dev.xyat.itemcontrol.item.property.ItemCapabilityRuntime.food(new ItemStack((Item)(Object)this), cir.getReturnValue()));
         }
 
+        @Inject(method = "isEdible", at = @At("HEAD"), cancellable = true)
+        private void itemcontrol$edible(CallbackInfoReturnable<Boolean> cir) {
+            Boolean value = dev.xyat.itemcontrol.item.property.ItemCapabilityRuntime.edibleOverride(new ItemStack((Item)(Object)this));
+            if (value != null) cir.setReturnValue(value);
+        }
         @Inject(method = "getUseDuration(Lnet/minecraft/world/item/ItemStack;)I", at = @At("RETURN"), cancellable = true)
         private void itemcontrol$useDuration(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
             ItemPropertyRule rule = ItemPropertyOverrides.active(stack);
@@ -125,13 +110,23 @@ public final class ItemPropertyMixins {
         public FoodProperties getFoodProperties(net.minecraft.world.entity.LivingEntity entity) {
             ItemStack stack = (ItemStack)(Object)this;
             FoodProperties original = stack.getItem().getFoodProperties(stack, entity);
-            return ItemPropertyOverrides.food(stack, original);
+            return dev.xyat.itemcontrol.item.property.ItemCapabilityRuntime.food(stack, original);
         }
 */
 //?}
         @Inject(method = "isDamageableItem()Z", at = @At("HEAD"), cancellable = true)
         private void itemcontrol$unbreakable(CallbackInfoReturnable<Boolean> cir) {
-            if (ItemPropertyOverrides.isUnbreakable((ItemStack) (Object) this)) cir.setReturnValue(false);
+            ItemStack stack=(ItemStack)(Object)this;
+            if (ItemPropertyOverrides.isUnbreakable(stack)) {cir.setReturnValue(false);return;}
+            var rule=ItemPropertyOverrides.active(stack);
+            if(rule!=null && Integer.valueOf(0).equals(rule.maxDamage())){cir.setReturnValue(false);return;}
+            if(rule!=null && rule.maxDamage()!=null && rule.maxDamage()>0){
+                //? if >=1.21 {
+                /*if(!stack.has(net.minecraft.core.component.DataComponents.UNBREAKABLE))cir.setReturnValue(true);*/
+                //?} else {
+                if(stack.getTag()==null||!stack.getTag().getBoolean("Unbreakable"))cir.setReturnValue(true);
+                //?}
+            }
         }
 
         @Inject(method = "getDestroySpeed(Lnet/minecraft/world/level/block/state/BlockState;)F", at = @At("RETURN"), cancellable = true)

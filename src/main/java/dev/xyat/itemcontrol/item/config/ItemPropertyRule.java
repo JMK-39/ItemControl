@@ -28,10 +28,12 @@ public record ItemPropertyRule(
         Boolean glowing,
         Boolean noGravity,
         Boolean persistent,
-        ItemCurioSettings curio
+        ItemCurioSettings curio,
+        ItemCapabilitySettings capabilities
 ) {
     public ItemPropertyRule {
         attributes = attributes == null ? List.of() : List.copyOf(attributes);
+        capabilities = capabilities == null ? ItemCapabilitySettings.EMPTY : capabilities;
     }
 
     public boolean isEmpty() {
@@ -59,7 +61,8 @@ public record ItemPropertyRule(
                 && glowing == null
                 && noGravity == null
                 && persistent == null
-                && curio == null;
+                && curio == null
+                && capabilities.isEmpty();
 
     }
 
@@ -75,6 +78,9 @@ public record ItemPropertyRule(
     }
 
     /** A generic replacement modifier for one registered attribute and equipment slot. */
-    public record AttributeModifier(String attribute, String slot, String operation, double amount) {
+    public record AttributeModifier(String attribute, String slot, String operation, double amount, String mode) {
+        public AttributeModifier(String attribute, String slot, String operation, double amount) {
+            this(attribute, slot, operation, amount, "replace");
+        }
     }
 }

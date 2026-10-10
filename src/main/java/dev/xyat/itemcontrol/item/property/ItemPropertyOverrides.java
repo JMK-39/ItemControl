@@ -102,7 +102,8 @@ public final class ItemPropertyOverrides {
 
     public static int maxStackSize(Item item, int original) {
         ItemPropertyRule rule = ItemPropertyConfig.active(item);
-        return rule == null || rule.maxStackSize() == null ? original : rule.maxStackSize();
+        if(rule==null)return original;
+        return rule.maxStackSize()!=null?rule.maxStackSize():rule.maxDamage()!=null&&rule.maxDamage()>0?1:original;
     }
 
     public static int maxDamage(Item item, int original) {
@@ -150,6 +151,7 @@ public final class ItemPropertyOverrides {
             addNeo(replacements, Attributes.ARMOR_TOUGHNESS, rule.armorToughness(), slot, "armor_toughness");
             addNeo(replacements, Attributes.KNOCKBACK_RESISTANCE, rule.knockbackResistance(), slot, "knockback_resistance");
         }
+        var overwritten = new java.util.HashSet<>(replacements.keySet());
         for (int index = 0; index < rule.attributes().size(); index++) {
             var row = rule.attributes().get(index);
             EquipmentSlot slot = parseSlot(row.slot());
@@ -157,16 +159,19 @@ public final class ItemPropertyOverrides {
             Attribute attribute = attribute(id);
             AttributeModifier.Operation operation = parseOperation(row.operation());
             if (slot == null || attribute == null || operation == null || !Double.isFinite(row.amount())) continue;
-            replacements.computeIfAbsent(new SlotAttribute(net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute), slot), ignored -> new ArrayList<>())
+            var key = new SlotAttribute(net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute), slot);
+            if (!row.mode().equals("add")) overwritten.add(key);
+            if (row.mode().equals("remove")) continue;
+            replacements.computeIfAbsent(key, ignored -> new ArrayList<>())
                 .add(new ModifierSpec(row.amount(), operation, "attribute_" + index));
         }
         // Neo computes all slots in one event. Preserve the unaffected slots of grouped modifiers.
         for (var entry : List.copyOf(event.getModifiers())) {
-            boolean affected = replacements.keySet().stream().anyMatch(key -> key.attribute.equals(entry.attribute()) && entry.slot().test(key.slot));
+            boolean affected = overwritten.stream().anyMatch(key -> key.attribute.equals(entry.attribute()) && entry.slot().test(key.slot));
             if (!affected) continue;
             event.removeModifier(entry.attribute(), entry.modifier().id());
             for (EquipmentSlot slot : EquipmentSlot.values()) {
-                if (entry.slot().test(slot) && !replacements.containsKey(new SlotAttribute(entry.attribute(), slot))) {
+                if (entry.slot().test(slot) && !overwritten.contains(new SlotAttribute(entry.attribute(), slot))) {
                     var modifier = entry.modifier();
                     event.addModifier(entry.attribute(), new AttributeModifier(dev.xyat.kineticcore.api.resource.KineticResourceIds.of("itemcontrol", "preserved/" + modifier.id().getNamespace() + "/" + modifier.id().getPath() + "/" + slot.getName()), modifier.amount(), modifier.operation()), net.minecraft.world.entity.EquipmentSlotGroup.bySlot(slot));
                 }
@@ -205,6 +210,7 @@ public static void applyAttributeOverrides(net.minecraftforge.event.ItemAttribut
             addConvenience(replacements, Attributes.KNOCKBACK_RESISTANCE, rule.knockbackResistance(), eventSlot);
         }
 
+        var overwritten = new java.util.HashSet<>(replacements.keySet());
         for (int index = 0; index < rule.attributes().size(); index++) {
             ItemPropertyRule.AttributeModifier row = rule.attributes().get(index);
             EquipmentSlot slot = parseSlot(row.slot());
@@ -213,12 +219,14 @@ public static void applyAttributeOverrides(net.minecraftforge.event.ItemAttribut
             Attribute attribute = attribute(id);
             AttributeModifier.Operation operation = parseOperation(row.operation());
             if (attribute == null || operation == null || !Double.isFinite(row.amount())) continue;
+            if (!row.mode().equals("add")) overwritten.add(attribute);
+            if (row.mode().equals("remove")) continue;
             replacements.computeIfAbsent(attribute, ignored -> new ArrayList<>())
                     .add(new ModifierSpec(row.amount(), operation, "itemcontrol.attribute." + index));
         }
 
+        overwritten.forEach(event::removeAttribute);
         replacements.forEach((attribute, modifiers) -> {
-            event.removeAttribute(attribute);
             for (ModifierSpec modifier : modifiers) {
                 UUID id = UUID.nameUUIDFromBytes((stack.getItem() + "/" + eventSlot + "/" + modifier.name)
                         .getBytes(StandardCharsets.UTF_8));
@@ -298,34 +306,20 @@ public static AttributeModifier.Operation parseOperation(String operation) {
 
     //? if >=26.1 {
     /*/^*
-     * 26.1 items keep food, eating time and enchantability only in their default components; these are rebuilt from the
-     * active rules whenever the game binds item components (NeoForge's ModifyDefaultComponentsEvent initializer).
+     * Enchantability still binds through item defaults. Food is read dynamically from the original stack components.
      ^/
     public static void applyDefaultComponents(Item item, net.minecraft.core.component.DataComponentMap.Builder components) {
+        var enchantable = components.get(net.minecraft.core.component.DataComponents.ENCHANTABLE);
+        ORIGINAL_ENCHANTABILITY.putIfAbsent(item, enchantable == null ? 0 : enchantable.value());
         ItemPropertyRule rule = ItemPropertyConfig.active(item);
         if (rule == null) return;
-        net.minecraft.world.food.FoodProperties original = components.get(net.minecraft.core.component.DataComponents.FOOD);
-        if (rule.nutrition() != null || rule.saturation() != null || rule.alwaysEat() != null) {
-            int nutrition = rule.nutrition() != null ? rule.nutrition() : original == null ? 0 : original.nutrition();
-            float coefficient = rule.saturation() != null ? rule.saturation().floatValue()
-                    : original == null || original.nutrition() == 0 ? 0.0F : original.saturation() / (2.0F * original.nutrition());
-            boolean always = rule.alwaysEat() != null ? rule.alwaysEat() : original != null && original.canAlwaysEat();
-            components.set(net.minecraft.core.component.DataComponents.FOOD,
-                    new net.minecraft.world.food.FoodProperties(nutrition, 2.0F * nutrition * coefficient, always));
-            if (components.get(net.minecraft.core.component.DataComponents.CONSUMABLE) == null) {
-                components.set(net.minecraft.core.component.DataComponents.CONSUMABLE, net.minecraft.world.item.component.Consumables.DEFAULT_FOOD);
-            }
-        }
-        net.minecraft.world.item.component.Consumable consumable = components.get(net.minecraft.core.component.DataComponents.CONSUMABLE);
-        if (rule.eatSeconds() != null && consumable != null && components.get(net.minecraft.core.component.DataComponents.FOOD) != null) {
-            components.set(net.minecraft.core.component.DataComponents.CONSUMABLE, new net.minecraft.world.item.component.Consumable(
-                    rule.eatSeconds().floatValue(), consumable.animation(), consumable.sound(), consumable.hasConsumeParticles(), consumable.onConsumeEffects()));
-        }
         if (rule.enchantability() != null) {
             components.set(net.minecraft.core.component.DataComponents.ENCHANTABLE,
                     rule.enchantability() > 0 ? new net.minecraft.world.item.enchantment.Enchantable(rule.enchantability()) : null);
         }
     }
+    private static final java.util.Map<Item,Integer> ORIGINAL_ENCHANTABILITY = new java.util.concurrent.ConcurrentHashMap<>();
+    public static Integer originalEnchantability(Item item) { return ORIGINAL_ENCHANTABILITY.get(item); }
     *///?} else if >=1.21 {
     /*public static net.minecraft.world.food.FoodProperties food(ItemStack stack, net.minecraft.world.food.FoodProperties original) {
         ItemPropertyRule rule = active(stack);

@@ -18,6 +18,13 @@ public final class CurioSettingsTest {
         require(!ItemCurioSettings.parse(JsonParser.parseString("{\"enabled\":true}")).overridesUnequip(), "missing unequip setting inherits native restrictions");
         require(ItemCurioSettings.parse(JsonParser.parseString("{\"enabled\":true,\"slots\":[]}")).overridesSlots(), "explicit empty slots override native admission");
         require(!ItemCurioSettings.parse(JsonParser.parseString("{\"enabled\":false,\"slots\":[\"curio\"]}")).allows("ring"), "disabled conversion");
+        var counts = ItemCurioSettings.parse(JsonParser.parseString("{\"slot_modifiers\":[{\"slot\":\"ring\",\"amount\":2},{\"slot\":\"necklace\",\"amount\":-1,\"operation\":\"ADDITION\"}]}"));
+        require(counts.slotModifiers().size()==2 && counts.slotModifiers().get(0).amount()==2 && counts.slotModifiers().get(1).amount()==-1, "independent positive and negative equipped slot counts");
+        for (String raw : new String[]{"{\"slot_modifiers\":[{\"slot\":\"Ring!\",\"amount\":1}]}","{\"slot_modifiers\":[{\"slot\":\"ring\",\"amount\":1.5}]}","{\"slot_modifiers\":[{\"slot\":\"ring\",\"amount\":1025}]}","{\"slot_modifiers\":[{\"slot\":\"ring\",\"amount\":1,\"operation\":\"typo\"}]}"}) {
+            boolean rejected=false;
+            try { ItemCurioSettings.parse(JsonParser.parseString(raw)); } catch (IllegalArgumentException expected) { rejected=true; }
+            require(rejected, "reject invalid slot modifiers: "+raw);
+        }
         for (String raw : new String[]{"[]", "{\"enabled\":\"true\"}", "{\"slots\":[\"Ring!\"]}", "{\"attributes\":[{\"attribute\":\"minecraft:armor\",\"amount\":1,\"operation\":\"typo\"}]}", "{\"attributes\":[{\"attribute\":\"minecraft:armor\",\"amount\":\"NaN\",\"operation\":\"ADDITION\"}]}"}) {
             boolean rejected = false;
             try { ItemCurioSettings.parse(JsonParser.parseString(raw)); } catch (IllegalArgumentException expected) { rejected = true; }

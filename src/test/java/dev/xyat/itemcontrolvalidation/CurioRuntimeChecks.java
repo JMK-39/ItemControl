@@ -15,19 +15,34 @@ final class CurioRuntimeChecks {
     private static top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler equipped;
     private static ItemStack previous;
     private static double originalArmor;
+    private static int ringCount,necklaceCount;
+    private static top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler second;
+    private static ItemStack secondPrevious;
     static void run(MinecraftServer server) {
         seed = dev.xyat.kineticcore.api.event.KineticExternalEvents.subscribe(top.theillusivec4.curios.api.event.CurioAttributeModifierEvent.class,
                 dev.xyat.kineticcore.api.event.KineticEventPriority.HIGHEST, false, CurioRuntimeChecks::seedOriginal);
         var player = server.getPlayerList().getPlayers().get(0);
+        // Failed, interrupted validation runs can save their transient count modifiers before the next Curios tick.
+        CuriosApi.getCuriosInventory(player).ifPresent(inventory->{
+            var stale=com.google.common.collect.HashMultimap.<String,net.minecraft.world.entity.ai.attributes.AttributeModifier>create();
+            inventory.getModifiers().forEach((slot,modifier)->{
+                //? if >=1.21 {
+                /*if(modifier.id().getNamespace().equals("itemcontrol")&&modifier.id().getPath().startsWith("curio_slots/"))stale.put(slot,modifier);*/
+                //?}
+            });
+            if(!stale.isEmpty())inventory.removeSlotModifiers(stale);
+        });
         verifyNativeSlots(server, player);
         ItemPropertyRuntimeChecks.require(CuriosApi.getCuriosInventory(player).isPresent(), "fixture player Curios inventory attached");
         CuriosApi.getCuriosInventory(player).ifPresent(inventory -> {
             var slots = inventory.getCurios();
+            ringCount=slots.get("ring").getStacks().getSlots();necklaceCount=slots.get("necklace").getStacks().getSlots();
             ItemPropertyRuntimeChecks.require(!slots.isEmpty(), "existing Curios slots available");
             String first = slots.entrySet().stream().filter(row -> row.getValue().getStacks().getSlots() > 0)
                     .map(java.util.Map.Entry::getKey).findFirst().orElseThrow(() -> new AssertionError("nonempty real Curios slot available"));
             var document = JsonParser.parseString(ItemPropertyConfig.pendingJson()).getAsJsonObject();
             document.add("minecraft:stick", JsonParser.parseString("{\"curio\":{\"enabled\":true,\"slots\":[\""+first+"\",\"validation_secondary\"],\"can_unequip\":false,\"attributes\":[{\"attribute\":\"minecraft:generic.armor\",\"operation\":\"ADDITION\",\"amount\":3}]}}"));
+            document.getAsJsonObject("minecraft:stick").getAsJsonObject("curio").add("slot_modifiers",JsonParser.parseString("[{\"slot\":\"ring\",\"amount\":2},{\"slot\":\"necklace\",\"amount\":1}]"));
             ItemPropertyRuntimeChecks.require(ItemPropertyConfig.savePending(document.toString()).success(), "save curio conversion");
             ItemEquipmentRefresh.applyPending(server);
             ItemStack stick = new ItemStack(Items.STICK);
@@ -47,7 +62,7 @@ final class CurioRuntimeChecks {
             /^ItemPropertyRuntimeChecks.require(unequip.getUnequipResult() == net.neoforged.neoforge.common.util.TriState.FALSE, "removal lock");^/
             //?}
             var modifiers = CuriosApi.getAttributeModifiers(context, CuriosApi.getSlotId(context), stick);
-            ItemPropertyRuntimeChecks.require(modifiers.entries().stream().anyMatch(row -> row.getKey().equals(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR) && row.getValue().amount()==3), "accessory armor bonus");
+            ItemPropertyRuntimeChecks.require(modifiers.entries().stream().anyMatch(row -> row.getKey().equals(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR) && row.getValue().amount()==3), "accessory armor bonus actual="+modifiers);
             *///?} else {
             var unequip = new top.theillusivec4.curios.api.event.CurioUnequipEvent(stick, context);
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(unequip);
@@ -98,17 +113,24 @@ final class CurioRuntimeChecks {
     }
     static void verifyMode(MinecraftServer server, String mode, double expectedBefore, double expectedAfter) {
         if(wearer==null)return;
+        verifyCounts(mode.equals("replace")?2:3,mode.equals("replace")?1:2);
         ItemPropertyRuntimeChecks.require(Math.abs(wearer.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR)-originalArmor-expectedBefore)<0.0001, "native equipped Curios modifier stable before "+mode);
         var document=JsonParser.parseString(ItemPropertyConfig.pendingJson()).getAsJsonObject();
         document.getAsJsonObject("minecraft:stick").getAsJsonObject("curio").add("attributes",JsonParser.parseString("[{\"attribute\":\"minecraft:generic.armor\",\"operation\":\"ADDITION\",\"amount\":5,\"mode\":\""+mode+"\"}]"));
+        document.getAsJsonObject("minecraft:stick").getAsJsonObject("curio").add("slot_modifiers",JsonParser.parseString("[{\"slot\":\"ring\",\"amount\":3},{\"slot\":\"necklace\",\"amount\":2}]"));
         ItemPropertyRuntimeChecks.require(ItemPropertyConfig.savePending(document.toString()).success(), "save "+mode);
         ItemEquipmentRefresh.applyPending(server);
         ItemPropertyRuntimeChecks.require(Math.abs(wearer.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR)-originalArmor-expectedAfter)<0.0001, "equipped accessory live "+mode);
         ItemPropertyRuntimeChecks.require(wearer.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)>=22, "unrelated original attribute preserved");
         org.slf4j.LoggerFactory.getLogger(CurioRuntimeChecks.class).info("ITEM_CURIO_EDIT_PASS {}", mode);
     }
-    static void removeFixture() { if(equipped!=null)equipped.setStackInSlot(0,previous); }
-    static void close() { if(seed!=null)seed.close(); }
+    static void equipSecond(){if(wearer==null)return;second=CuriosApi.getCuriosInventory(wearer).orElseThrow(()->new IllegalStateException("Missing Curios inventory")).getCurios().get("ring").getStacks();secondPrevious=second.getStackInSlot(1).copy();ItemPropertyRuntimeChecks.require(secondPrevious.isEmpty(),"second test slot is empty");second.setStackInSlot(1,new ItemStack(Items.STICK));}
+    static void verifyStackedAndRemoveFirst(){if(wearer==null)return;verifyCounts(6,4);equipped.setStackInSlot(0,previous);}
+    static void verifyRemainingAndNegative(MinecraftServer server){if(wearer==null)return;verifyCounts(3,2);var document=JsonParser.parseString(ItemPropertyConfig.pendingJson()).getAsJsonObject();document.getAsJsonObject("minecraft:stick").getAsJsonObject("curio").add("slot_modifiers",JsonParser.parseString("[{\"slot\":\"ring\",\"amount\":3},{\"slot\":\"necklace\",\"amount\":-1}]"));ItemPropertyRuntimeChecks.require(ItemPropertyConfig.savePending(document.toString()).success(),"save negative count");ItemEquipmentRefresh.applyPending(server);}
+    static void verifyNegativeAndRemove(){if(wearer==null)return;verifyCounts(3,-1);removeFixture();org.slf4j.LoggerFactory.getLogger(CurioRuntimeChecks.class).info("ITEM_CURIO_COUNTS_PASS multiple copies, independent unequip, live negative count");}
+    static void removeFixture() { if(equipped!=null)equipped.setStackInSlot(0,previous);if(second!=null&&second.getSlots()>1)second.setStackInSlot(1,secondPrevious); }
+    static void close() { if(seed!=null)seed.close(); if(!ItemPropertyRuntimeChecks.failed)verifyCounts(0,0); }
+    private static void verifyCounts(int ring,int necklace){if(wearer==null)return;var slots=CuriosApi.getCuriosInventory(wearer).orElseThrow(()->new IllegalStateException("Missing Curios inventory")).getCurios();ItemPropertyRuntimeChecks.require(slots.get("ring").getStacks().getSlots()==ringCount+ring,"equipped/live/removed ring slot modifier expected="+(ringCount+ring)+" actual="+slots.get("ring").getStacks().getSlots());ItemPropertyRuntimeChecks.require(slots.get("necklace").getStacks().getSlots()==necklaceCount+necklace,"independent necklace slot modifier");}
     private static void seedOriginal(top.theillusivec4.curios.api.event.CurioAttributeModifierEvent event) {
         if(!event.getItemStack().is(Items.STICK))return;
         //? if >=1.21 {

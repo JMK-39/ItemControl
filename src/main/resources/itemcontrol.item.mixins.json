@@ -11,6 +11,9 @@
     "ItemPropertyMixins$ItemStackProperties",
     "ItemPropertyMixins$BlockStateProperties",
     "ItemPropertyMixins$BlockPropertyAccess",
+    "ItemCapabilityMixins$StackUse",
+    "ItemCapabilityMixins$Equipment",
+    "ItemCapabilityMixins$InventoryArmor",
     "ItemProtectionMixins$ItemEntityTweaks",
     "ItemProtectionMixins$EntityTweaks"
   ],

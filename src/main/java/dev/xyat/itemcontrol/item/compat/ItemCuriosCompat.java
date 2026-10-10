@@ -22,6 +22,9 @@ public final class ItemCuriosCompat {
     public static List<String> slots(LivingEntity wearer) {
         return available() && wearer != null ? Loaded.slots(wearer) : List.of();
     }
+    public static void refreshSlotModifiers(LivingEntity wearer,List<ItemEquipmentRefresh.ModifierEntry> previous,List<ItemEquipmentRefresh.ModifierEntry> current){
+        if(available())Loaded.refreshSlotModifiers(wearer,previous,current);
+    }
     public static List<String> originalSlots(ItemStack stack, LivingEntity wearer) {
         return available() && wearer != null && !stack.isEmpty()
                 ? dev.xyat.itemcontrol.item.config.ItemPropertyConfig.previewOriginal(() -> Loaded.originalSlots(stack, wearer)) : List.of();
@@ -109,6 +112,33 @@ public final class ItemCuriosCompat {
             //? if <26.1 {
             if (rule.overridesSlots() && !rule.allows(event.getSlotContext().identifier())) return;
             //?}
+            for (int i = 0; i < rule.slotModifiers().size(); i++) {
+                var row = rule.slotModifiers().get(i);
+                //? if >=1.21 {
+                /*com.google.common.collect.Multimap<net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute>, AttributeModifier> modifiers = com.google.common.collect.HashMultimap.create();
+                //? if >=26.1 {
+                var id = KineticResourceIds.of("itemcontrol", "curio_slots/" + dev.xyat.kineticcore.api.registry.KineticRegistries.items().id(event.getItemStack().getItem()).getNamespace() + "/" + dev.xyat.kineticcore.api.registry.KineticRegistries.items().id(event.getItemStack().getItem()).getPath() + "/" + i);
+                //?} else {
+                /^var context = event.getSlotContext();
+                var id = KineticResourceIds.of("itemcontrol", "curio_slots/" + context.identifier() + "/" + context.index() + "/" + i);^/
+                //?}
+                top.theillusivec4.curios.api.CuriosApi.addSlotModifier(modifiers, row.slot(), id, row.amount(), AttributeModifier.Operation.ADD_VALUE);
+                //? if >=26.1 {
+                modifiers.forEach((attribute, modifier) -> {
+                    addScopedModifier(event, rule, attribute, modifier);
+                });
+                //?} else {
+                /^modifiers.forEach(event::addModifier);^/
+                //?}
+                */
+                //?} else {
+                com.google.common.collect.Multimap<net.minecraft.world.entity.ai.attributes.Attribute, AttributeModifier> modifiers = com.google.common.collect.HashMultimap.create();
+                var context = event.getSlotContext();
+                UUID id = UUID.nameUUIDFromBytes(("itemcontrol/curio_slots/" + context.identifier() + "/" + context.index() + "/" + i).getBytes(StandardCharsets.UTF_8));
+                top.theillusivec4.curios.api.CuriosApi.addSlotModifier(modifiers, row.slot(), id, row.amount(), AttributeModifier.Operation.ADDITION);
+                modifiers.forEach(event::addModifier);
+                //?}
+            }
             // Remove originals first so multiple replacement rows can coexist for one attribute.
             for (var row : rule.attributes()) {
                 if (row.mode().equals("add")) continue;
@@ -129,8 +159,7 @@ public final class ItemCuriosCompat {
                 //? if >=26.1 {
                 /*var modifier = new AttributeModifier(KineticResourceIds.of("itemcontrol", "curio/" + i), row.amount(), operation);
                 var holder = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute);
-                if (!rule.overridesSlots() || rule.slots().contains("curio")) event.addModifier(holder, modifier);
-                else if (!rule.slots().isEmpty()) event.addModifier(holder, modifier, rule.slots().toArray(String[]::new));
+                addScopedModifier(event, rule, holder, modifier);
                 *///?} else if >=1.21 {
                 /*var context = event.getSlotContext();
                 event.addModifier(net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute),
@@ -143,6 +172,34 @@ public final class ItemCuriosCompat {
             }
         }
 
+        //? if >=26.1 {
+        /*private static void addScopedModifier(top.theillusivec4.curios.api.event.CurioAttributeModifierEvent event, ItemCurioSettings rule,
+                net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, AttributeModifier modifier) {
+            if (!rule.overridesSlots() || rule.slots().contains("curio")) event.addModifier(attribute, modifier);
+            else for (String slot : rule.slots()) {
+                // Curios 15's list predicate requires every ID to match. Use a separate entry per permitted slot.
+                event.addModifier(attribute, new AttributeModifier(modifier.id().withSuffix("/" + slot), modifier.amount(), modifier.operation()), slot);
+            }
+        }*/
+        //?}
+
+        private static void refreshSlotModifiers(LivingEntity wearer,List<ItemEquipmentRefresh.ModifierEntry> previous,List<ItemEquipmentRefresh.ModifierEntry> current){
+            top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(wearer).ifPresent(inventory->{
+                com.google.common.collect.Multimap<String,AttributeModifier> removed=com.google.common.collect.HashMultimap.create(),added=com.google.common.collect.HashMultimap.create();
+                for(var row:previous)if(row.attribute() instanceof top.theillusivec4.curios.api.SlotAttribute slot && current.stream().noneMatch(next->sameSlotModifier(row,next)))removed.put(slot.getIdentifier(),row.modifier());
+                for(var row:current)if(row.attribute() instanceof top.theillusivec4.curios.api.SlotAttribute slot && previous.stream().noneMatch(before->sameSlotModifier(before,row)))added.put(slot.getIdentifier(),row.modifier());
+                if(!removed.isEmpty())inventory.removeSlotModifiers(removed);
+                if(!added.isEmpty())inventory.addTransientSlotModifiers(added);
+            });
+        }
+        private static boolean sameSlotModifier(ItemEquipmentRefresh.ModifierEntry left,ItemEquipmentRefresh.ModifierEntry right){
+            if(!(left.attribute() instanceof top.theillusivec4.curios.api.SlotAttribute first)||!(right.attribute() instanceof top.theillusivec4.curios.api.SlotAttribute second)||!first.getIdentifier().equals(second.getIdentifier()))return false;
+            //? if >=1.21 {
+            /*return left.modifier().id().equals(right.modifier().id()) && left.modifier().amount()==right.modifier().amount() && left.modifier().operation()==right.modifier().operation();*/
+            //?} else {
+            return left.modifier().getId().equals(right.modifier().getId()) && left.modifier().getAmount()==right.modifier().getAmount() && left.modifier().getOperation()==right.modifier().getOperation();
+            //?}
+        }
         private static void collect(LivingEntity wearer, List<ItemEquipmentRefresh.ModifierEntry> target) {
             top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(wearer).ifPresent(inventory -> {
                 inventory.getCurios().forEach((name, handler) -> {

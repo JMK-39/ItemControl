@@ -80,6 +80,10 @@ public final class ItemPropertyConfig {
         }
     }
 
+    public static boolean isOriginalPreview() {
+        return PREVIEW_ORIGINAL.get();
+    }
+
     /** Current process rules for a registered item. */
     public static ItemPropertyRule active(Item item) {
         if (item == null || item == Items.AIR) return null;
@@ -184,6 +188,7 @@ public final class ItemPropertyConfig {
     public static int maxJsonChars() {
         return MAX_JSON_CHARS;
     }
+    public static List<String> validateRule(JsonElement raw){var errors=new ArrayList<String>();parseRule(raw,errors);return List.copyOf(errors);}
 
     private static Map<String, JsonElement> parseDocument(String json) {
         if (json == null || json.length() > MAX_JSON_CHARS) throw new IllegalArgumentException("document size");
@@ -377,8 +382,22 @@ public final class ItemPropertyConfig {
                 readBoolean(json, "glowing", errors),
                 readBoolean(json, "no_gravity", errors),
                 readBoolean(json, "persistent", errors),
-                parseCurio(json.get("curio"), errors)
+                parseCurio(json.get("curio"), errors),
+                parseCapabilities(json, errors)
         );
+    }
+
+    private static ItemCapabilitySettings parseCapabilities(JsonObject json, List<String> errors) {
+        try {
+            var settings = ItemCapabilitySettings.parse(json);
+            for (var row : settings.foodEffects()) if (KineticRegistries.mobEffects().get(ResourceLocation.tryParse(row.effect())) == null) throw new IllegalArgumentException("Unknown food effect");
+            if (settings.foodRemainder() != null && !settings.foodRemainder().equals("minecraft:air")
+                    && (KineticRegistries.items().get(ResourceLocation.tryParse(settings.foodRemainder())) == null || KineticRegistries.items().get(ResourceLocation.tryParse(settings.foodRemainder())) == Items.AIR)) throw new IllegalArgumentException("Unknown food return item");
+            return settings;
+        } catch (RuntimeException exception) {
+            errors.add("gui.itemcontrol.item_property.error.invalid_capabilities");
+            return ItemCapabilitySettings.EMPTY;
+        }
     }
 
     private static ItemCurioSettings parseCurio(JsonElement raw, List<String> errors) {
@@ -396,60 +415,18 @@ public final class ItemPropertyConfig {
     }
 
     private static List<ItemPropertyRule.AttributeModifier> parseAttributes(JsonElement raw, List<String> errors) {
-        if (raw == null) return List.of();
-        if (!raw.isJsonArray()) {
+        try {
+            var rows = ItemAttributeSettings.parse(raw);
+            for (var row : rows) {
+                EquipmentSlot.valueOf(row.slot());
+                if (dev.xyat.itemcontrol.item.property.ItemPropertyOverrides.attribute(ResourceLocation.tryParse(row.attribute())) == null)
+                    throw new IllegalArgumentException("unknown attribute");
+            }
+            return rows;
+        } catch (RuntimeException exception) {
             errors.add("gui.itemcontrol.item_property.error.invalid_attributes");
             return List.of();
         }
-        JsonArray array = raw.getAsJsonArray();
-        if (array.size() > 128) {
-            errors.add("gui.itemcontrol.item_property.error.too_many_attributes");
-            return List.of();
-        }
-        ArrayList<ItemPropertyRule.AttributeModifier> result = new ArrayList<>();
-        for (JsonElement element : array) {
-            if (!element.isJsonObject()) {
-                errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
-                continue;
-            }
-            JsonObject value = element.getAsJsonObject();
-            String attribute = primitiveString(value.get("attribute"));
-            String slot = primitiveString(value.get("slot"));
-            String operation = primitiveString(value.get("operation"));
-            Double amount = primitiveNumber(value.get("amount"));
-            if (attribute == null || slot == null || operation == null || amount == null || !Double.isFinite(amount)) {
-                errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
-                continue;
-            }
-            ResourceLocation attributeId = ResourceLocation.tryParse(attribute);
-            EquipmentSlot equipmentSlot;
-            AttributeModifier.Operation modifierOperation;
-            try {
-                equipmentSlot = EquipmentSlot.valueOf(slot.toUpperCase(Locale.ROOT));
-//? if >=1.21 {
-/*                modifierOperation = AttributeModifier.Operation.valueOf(switch (operation.toUpperCase(Locale.ROOT)) {
-                    case "ADDITION" -> "ADD_VALUE";
-                    case "MULTIPLY_BASE" -> "ADD_MULTIPLIED_BASE";
-                    case "MULTIPLY_TOTAL" -> "ADD_MULTIPLIED_TOTAL";
-                    default -> operation.toUpperCase(Locale.ROOT);
-                });*/
-//?} else {
-                modifierOperation = AttributeModifier.Operation.valueOf(operation.toUpperCase(Locale.ROOT));
-//?}
-
-            } catch (IllegalArgumentException ignored) {
-                errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
-                continue;
-            }
-            if (dev.xyat.itemcontrol.item.property.ItemPropertyOverrides.attribute(attributeId) == null) {
-                errors.add("gui.itemcontrol.item_property.error.invalid_attribute");
-                continue;
-            }
-            result.add(new ItemPropertyRule.AttributeModifier(
-                    attributeId.toString(), equipmentSlot.name(), modifierOperation.name(), amount
-            ));
-        }
-        return List.copyOf(result);
     }
 
     private static Double readNumber(JsonObject json, String key, List<String> errors) {

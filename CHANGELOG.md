@@ -1,3 +1,25 @@
+## 26.10.11 — 2026-10-11
+
+### English
+
+- Items can combine melee weapon, wearable equipment, food and accessory abilities. Converted weapons and equipment consume durability when used or hit. Mixed equipment/food items eat on right-click and equip on sneak-right-click into an empty slot.
+- Added visual equipment attribute editing with slot selection, add/replace/remove modes and arithmetic operations.
+- Added food effect duration, level and chance editing, effect inheritance/replacement, and a visual returned-item selector. Minecraft 26.1.2 food changes now apply on save.
+- Added selective batch edits, rule copying, named templates with JSON import/export, and original/draft comparison with application timing.
+- Added equipped Curios slot-count modifiers, including updates on save and removal on unequip. Curios remains optional.
+- Property categories preserve the selected item and support independent abilities instead of filtering out ordinary items. New controls include explanatory tooltips.
+
+### 简体中文
+
+- 物品可以同时拥有近战武器、装备、食物与饰品能力；转换后的武器与装备会在攻击或受击时消耗耐久。装备同时为食物时，右键食用，潜行右键穿戴到空槽位。
+- 新增普通装备属性可视化编辑，支持槽位选择、追加／替换／移除和属性运算方式。
+- 新增食物效果持续时间、等级与概率编辑，支持继承／替换原有效果；返还物品使用可视化选择器。26.1.2 的食物修改改为保存后生效。
+- 新增只修改勾选字段的批量编辑、规则复制、命名模板与 JSON 文件导入导出，以及原值／草稿／生效时间对照。
+- 新增佩戴饰品时的 Curios 槽位数量修饰，保存后更新，脱下后移除；Curios 仍为可选依赖。
+- 切换属性分类保留当前物品，普通物品也可编辑各项独立能力；新增控件补充悬浮说明。
+
+---
+
 2026年10月10日 — Item editor spacing and navigation / 物品编辑页间距与导航
 
 - Item editor Back controls use the upper left, or the lower left when the header is occupied.

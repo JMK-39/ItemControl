@@ -228,6 +228,19 @@ def curioSettingsCheck = tasks.register('checkCurioSettings', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'dev.xyat.itemcontrolvalidation.CurioSettingsTest'
 }
+
+def itemCapabilitiesCheck = tasks.register('checkItemCapabilities', JavaExec) {
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.xyat.itemcontrolvalidation.ItemCapabilitySettingsTest'
+}
+def itemRuleDraftsCheck = tasks.register('checkItemRuleDrafts', JavaExec) {
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.xyat.itemcontrolvalidation.ItemRuleDraftsTest'
+}
+tasks.named('check') { dependsOn itemRuleDraftsCheck }
+tasks.named('check').configure { dependsOn itemCapabilitiesCheck }
 tasks.named('check') { dependsOn curioSettingsCheck }
 
 configurations {

@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 public final class GuiLongTextValidation {
     private static final Logger LOG=LoggerFactory.getLogger(GuiLongTextValidation.class);
     private static final String ROOT=System.getProperty("itemcontrol.guiValidation.output","D:/IDEAWork/ItemControl/.gradle/gui-long-text-20261004/");
-    private static final String[] NAMES={"property-combat","property-tool","property-food","property-general","property-block","property-protection","protection-list","protection-modal-new","protection-modal-existing","direct-immunity","damage-types","banned","banned-mods","banned-tags","merge-collapsed","merge-expanded","item-tags","tag-suggestions","cleaner","rules-empty","rules-blacklist","rules-area","creative-tabs","components","components-invalid","property-curio","curio-slots","curio-attributes"};
+    private static final String[] NAMES={"property-combat","property-tool","property-food","property-general","property-block","property-protection","protection-list","protection-modal-new","protection-modal-existing","direct-immunity","damage-types","banned","banned-mods","banned-tags","merge-collapsed","merge-expanded","item-tags","tag-suggestions","cleaner","rules-empty","rules-blacklist","rules-area","creative-tabs","components","components-invalid","property-curio","curio-slots","curio-attributes","equipment-attributes","food-effects","curio-slot-counts","batch-templates","property-comparison"};
     private static boolean installed,started,screenshot,finished,originalFullscreen;
     private static String originalLanguage;
     private static int originalScale,originalWidth,originalHeight,phase=-1,page=-1,captures,failures;
@@ -37,6 +37,7 @@ public final class GuiLongTextValidation {
         if(finished)return;
         try {
             var mc=Minecraft.getInstance();
+            if(Boolean.getBoolean("itemcontrol.propertyValidation"))mc.options.pauseOnLostFocus=false;
             if(!started) {
                 if(mc.player==null || mc.level==null || mc.getSingleplayerServer()==null)return;
                 if(Boolean.getBoolean("itemcontrol.propertyValidation") && !ItemPropertyRuntimeChecks.done)return;
@@ -88,10 +89,32 @@ public final class GuiLongTextValidation {
         String selectedPages=System.getProperty("itemcontrol.guiValidation.pages", "");
         while(page<NAMES.length && !selectedPages.isBlank() && !List.of(selectedPages.split(",")).contains(String.valueOf(page)))page++;
         if(page>=NAMES.length){nextPhase();return;}
-        if(phase==0 && capturedPages.isEmpty())verifyTextListSpacing();
+        if(phase==0 && capturedPages.isEmpty()){verifyTextListSpacing();verifyTemplateFilesAndBatch();}
         openPage(page);
         screenshot=false;due=System.currentTimeMillis()+1000;
         LOG.info("ITEM_GUI_OPEN phase={} case={} page={}",phase,NAMES[page],KineticGui.currentPage()!=null?KineticGui.currentPage().getClass().getName():String.valueOf(Minecraft.getInstance().screen));
+    }
+    @SuppressWarnings("unchecked")
+    private static void verifyTemplateFilesAndBatch() throws Exception {
+        String active=dev.xyat.itemcontrol.item.config.ItemPropertyConfig.pendingJson();
+        var document=com.google.gson.JsonParser.parseString("{\"minecraft:brick\":{\"armor\":8,\"nutrition\":4},\"minecraft:stick\":{\"armor\":1,\"nutrition\":2,\"max_damage\":16,\"external\":true}}").getAsJsonObject();
+        var changed=new java.util.concurrent.atomic.AtomicReference<com.google.gson.JsonObject>();
+        var page=new dev.xyat.itemcontrol.item.client.gui.ItemPropertyToolsPage(document,"minecraft:brick",changed::set,id->Map.of());KineticGui.open(page);
+        var selected=(Set<String>)field(page,"checked");selected.clear();selected.add("armor");
+        var targets=(Set<String>)field(page,"targets");targets.clear();targets.add("minecraft:stick");invoke(page,"apply");
+        var result=changed.get().getAsJsonObject("minecraft:stick");
+        if(result.get("armor").getAsInt()!=8||result.get("nutrition").getAsInt()!=2||result.get("max_damage").getAsInt()!=16||!result.get("external").getAsBoolean()||!document.getAsJsonObject("minecraft:stick").get("armor").getAsString().equals("1"))throw new AssertionError("selective batch draft preservation");
+        var io=Class.forName("dev.xyat.itemcontrol.item.client.gui.ItemPropertyTemplates");var write=io.getDeclaredMethod("write",Path.class,String.class);var read=io.getDeclaredMethod("read",Path.class);write.setAccessible(true);read.setAccessible(true);
+        Path file=Files.createTempFile(Path.of(ROOT),"模板验证-",".json");
+        try{
+            var fields=document.getAsJsonObject("minecraft:brick");var encoded=dev.xyat.itemcontrol.item.config.ItemRuleDrafts.encodeTemplate("装备模板",fields,Set.of("armor","max_damage"));write.invoke(null,file,encoded);
+            var imported=(dev.xyat.itemcontrol.item.config.ItemRuleDrafts.Template)read.invoke(null,file);
+            if(!imported.name().equals("装备模板")||!imported.selectedFields().contains("max_damage")||imported.fields().has("max_damage")||imported.fields().get("armor").getAsInt()!=8)throw new AssertionError("template file round trip including checked inheritance");
+            write.invoke(null,file,dev.xyat.itemcontrol.item.config.ItemRuleDrafts.encodeTemplate("无效模板",com.google.gson.JsonParser.parseString("{\"equipment_slot\":\"not_a_slot\"}").getAsJsonObject(),Set.of("equipment_slot")));
+            try{read.invoke(null,file);throw new AssertionError("invalid template must be rejected");}catch(java.lang.reflect.InvocationTargetException expected){if(!(expected.getCause() instanceof java.io.IOException))throw expected;}
+        }finally{Files.deleteIfExists(file);}
+        if(!active.equals(dev.xyat.itemcontrol.item.config.ItemPropertyConfig.pendingJson()))throw new AssertionError("tools and template import must not save server rules");
+        LOG.info("ITEM_TEMPLATE_BATCH_PASS real JSON file import/export, validation, checked inheritance, selective draft application");
     }
     @SuppressWarnings("unchecked")
     private static void openPage(int index) throws Exception {
@@ -99,6 +122,11 @@ public final class GuiLongTextValidation {
         String longText="A deliberately very long named sword to exercise bounded source and target scrolling without changing player inventory ".repeat(3);
         String longItem = "minecraft:diamond_sword[custom_name='\"" + longText + "\"']";
         switch(index) {
+            case 28 -> KineticGui.open(new dev.xyat.itemcontrol.item.client.gui.EquipmentAttributeEditorPage(new ItemStack(Items.DIAMOND_SWORD),com.google.gson.JsonParser.parseString("[{\"attribute\":\"minecraft:generic.attack_damage\",\"slot\":\"mainhand\",\"mode\":\"add\",\"amount\":3,\"operation\":\"ADDITION\"}]").getAsJsonArray(),rules->{}));
+            case 29 -> KineticGui.open(new dev.xyat.itemcontrol.item.client.gui.FoodEffectEditorPage(com.google.gson.JsonParser.parseString("[{\"effect\":\"minecraft:speed\",\"duration\":200,\"amplifier\":1,\"probability\":0.5}]").getAsJsonArray(),"append",(rules,mode)->{}));
+            case 30 -> KineticGui.open(new dev.xyat.itemcontrol.item.client.gui.CurioSlotModifierEditorPage(com.google.gson.JsonParser.parseString("[{\"slot\":\"ring\",\"amount\":2},{\"slot\":\"necklace\",\"amount\":-1}]").getAsJsonArray(),rules->{}));
+            case 31 -> KineticGui.open(new dev.xyat.itemcontrol.item.client.gui.ItemPropertyToolsPage(com.google.gson.JsonParser.parseString("{\"minecraft:brick\":{\"equipment_slot\":\"chest\",\"armor\":8,\"edible\":true,\"nutrition\":4}}").getAsJsonObject(),"minecraft:brick",rules->{},id->java.util.Map.of("armor","0","nutrition","0")));
+            case 32 -> KineticGui.open(new dev.xyat.itemcontrol.item.client.gui.ItemPropertyComparisonPage("minecraft:brick",com.google.gson.JsonParser.parseString("{\"equipment_slot\":\"chest\",\"armor\":8,\"edible\":true,\"nutrition\":4}").getAsJsonObject(),java.util.Map.of("armor","0","nutrition","0")));
             case 0,1,2,3,4,5 -> {
                 var p=new dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorPage("{}");KineticGui.open(p);
                 var categories=Class.forName("dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorPage$EditorCategory").getEnumConstants();

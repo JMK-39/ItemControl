@@ -9,11 +9,13 @@ import java.util.Locale;
 
 /** Optional conversion rules. The generic Curios slot is the explicit any-slot choice. */
 public record ItemCurioSettings(boolean enabled, List<String> slots, boolean overridesSlots, boolean canUnequip, boolean overridesUnequip,
-                                List<AttributeRule> attributes) {
+                                List<AttributeRule> attributes, List<SlotModifier> slotModifiers) {
     public record AttributeRule(String attribute, String operation, double amount, String mode) {}
+    public record SlotModifier(String slot, int amount) {}
     public ItemCurioSettings {
         slots = List.copyOf(new LinkedHashSet<>(slots));
         attributes = List.copyOf(attributes);
+        slotModifiers = List.copyOf(slotModifiers);
     }
 
     public boolean allows(String slot) { return enabled && (slots.contains("curio") || slots.contains(slot)); }
@@ -60,7 +62,19 @@ public record ItemCurioSettings(boolean enabled, List<String> slots, boolean ove
                 attributes.add(new AttributeRule(id, operation, amount.getAsDouble(), mode));
             }
         }
-        return new ItemCurioSettings(bool(json, "enabled", false), slots, json.has("slots"), bool(json, "can_unequip", true), json.has("can_unequip"), attributes);
+        List<SlotModifier> counts = new ArrayList<>();
+        if (json.has("slot_modifiers")) {
+            var rawCounts = json.get("slot_modifiers");
+            if (!rawCounts.isJsonArray() || rawCounts.getAsJsonArray().size() > 64) throw new IllegalArgumentException("slot_modifiers");
+            for (var value : rawCounts.getAsJsonArray()) {
+                if (!value.isJsonObject()) throw new IllegalArgumentException("slot modifier");
+                var row = value.getAsJsonObject();
+                String slot = string(row, "slot", "");
+                if (!slot.matches("[a-z0-9_./-]{1,128}") || !string(row, "operation", "ADDITION").equals("ADDITION")) throw new IllegalArgumentException("slot modifier name/operation");
+                counts.add(new SlotModifier(slot, ItemCapabilitySettings.integer(row.get("amount"), -1024, 1024)));
+            }
+        }
+        return new ItemCurioSettings(bool(json, "enabled", false), slots, json.has("slots"), bool(json, "can_unequip", true), json.has("can_unequip"), attributes, counts);
     }
 
     private static String string(JsonObject json, String key, String fallback) {

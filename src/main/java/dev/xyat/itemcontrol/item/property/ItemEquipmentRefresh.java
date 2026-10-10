@@ -43,6 +43,8 @@ public final class ItemEquipmentRefresh {
     }
 
     public static void refresh(LivingEntity entity, List<ModifierEntry> previous) {
+        List<ModifierEntry> current=collect(entity);
+        ItemCuriosCompat.refreshSlotModifiers(entity,previous,current);
         for (var entry : previous) {
             //? if >=1.21 {
             /*var instance = entity.getAttribute(net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(entry.attribute()));
@@ -52,7 +54,7 @@ public final class ItemEquipmentRefresh {
             if (instance != null) instance.removeModifier(entry.modifier().getId());
             //?}
         }
-        for (var entry : collect(entity)) {
+        for (var entry : current) {
             //? if >=1.21 {
             /*var instance = entity.getAttribute(net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.wrapAsHolder(entry.attribute()));
             if (instance != null && !instance.hasModifier(entry.modifier().id())) instance.addTransientModifier(entry.modifier());

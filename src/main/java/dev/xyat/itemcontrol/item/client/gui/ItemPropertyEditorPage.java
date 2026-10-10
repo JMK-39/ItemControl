@@ -140,7 +140,8 @@ public final class ItemPropertyEditorPage extends KineticPage {
         attributesBox = null;
         curioSlotList = null;
         lastAttributesValue = null;
-        searchBox = ui().textField(GRID_X, 10, SEARCH_W).build();
+        ui.button(GRID_X,10,64).text(ItemRuleLabels.text("cancel")).onClick(this::close).build();
+        searchBox = ui().textField(78, 10, 156).build();
         searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item_property.search"));
         searchBox.limitTextLength(1024);
         searchBox.setTextValue(searchQuery);
@@ -176,7 +177,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         ui().button(176, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item.tooltip")).compact().onClick(this::resetSelectedRule).build();
         ui().button(262, 337, 52).text(KineticI18n.translatable("gui.itemcontrol.item_property.delete")).compact().onClick(this::deleteSelectedRule).build();
         ui().button(478, 337, 70).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.save.tooltip")).onClick(this::save).build();
-        ui().button(12, 337, 72).text(KineticI18n.translatable("gui.itemcontrol.item_property.cancel")).onClick(this::close).build();
+        ui().button(12,337,72).text(ItemRuleLabels.text("tools")).tooltip(ItemRuleLabels.text("tools.tooltip")).onClick(this::openTools).build();
 
         populateFields();
         refreshGrid();
@@ -227,11 +228,9 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addNumericField("armor_toughness", false, -2048, 2048, 3);
                 addNumericField("knockback_resistance", false, -2048, 2048, 4);
                 addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 5);
-                attributesBox = ui().textArea(PANEL_X, 190, ATTRIBUTES_WIDTH, 72)
-                        .placeholder(KineticI18n.translatable("gui.itemcontrol.item_property.attributes.placeholder"))
-                        .tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.attributes.tooltip"))
-                        .build();
-                fieldLabels.put("attributes", new FieldLabel(PANEL_X, 178, ATTRIBUTES_WIDTH - TEXT_GAP));
+                addEquipmentSlot();
+                ui().button(PANEL_X+124,190,180).text(ItemRuleLabels.text("equipment.attributes"))
+                        .tooltip(ItemRuleLabels.text("equipment.attributes.tooltip")).onClick(this::openEquipmentAttributes).build().setEnabled(canEditSelected());
             }
             case TOOL -> {
                 addNumericField("attack_damage", false, -1, Integer.MAX_VALUE, 0);
@@ -246,6 +245,11 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addNumericField("eat_seconds", false, 0.05, 3600, 2);
                 addBooleanButton("always_eat", 3);
                 addBooleanButton("non_consumable", 4);
+                addBooleanButton("edible", 5);
+                ui().button(PANEL_X,190,160).text(ItemRuleLabels.text("food.effects")).tooltip(ItemRuleLabels.text("food.effects.tooltip")).onClick(this::openFoodEffects).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X+196,190,160).text(ItemRuleLabels.text("food.remainder")).tooltip(ItemRuleLabels.text("food.remainder.tooltip")).onClick(this::selectFoodRemainder).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X,230,160).text(ItemRuleLabels.text("food.remainder.inherit")).onClick(()->setFoodRemainder(null)).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X+196,230,160).text(ItemRuleLabels.text("food.remainder.none")).onClick(()->setFoodRemainder("minecraft:air")).build().setEnabled(canEditSelected());
             }
             case GENERAL -> {
                 addNumericField("max_stack_size", true, 1, 99, 0);
@@ -302,12 +306,9 @@ public final class ItemPropertyEditorPage extends KineticPage {
             buildCurioSlotList();
             return;
         }
-        attributesBox = ui().textArea(PANEL_X, 190, ATTRIBUTES_WIDTH, 88)
-                .placeholder(KineticI18n.translatable("gui.itemcontrol.item_property.curio.attributes.placeholder"))
-                .tooltip(KineticI18n.translatable(available ? "gui.itemcontrol.item_property.curio.attributes.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
-                .build();
-        attributesBox.setEnabled(available && canEditSelected());
-        fieldLabels.put("curio_attributes", new FieldLabel(PANEL_X, 178, ATTRIBUTES_WIDTH - TEXT_GAP));
+        ui().button(PANEL_X,190,242).text(ItemRuleLabels.text("curio.slot_counts"))
+                .tooltip(ItemRuleLabels.text(available ? "curio.slot_counts.tooltip" : "curio.requires"))
+                .onClick(this::openCurioSlotCounts).build().setEnabled(available && canEditSelected());
     }
 
     private JsonObject curioObject() {
@@ -414,6 +415,47 @@ public final class ItemPropertyEditorPage extends KineticPage {
             JsonObject changed = curioObject(); changed.add("attributes", values); enableCurioOverride(changed);
             rule.add("curio", changed); drafts.put(selectedId, rule); rebuildEditor();
         }));
+    }
+
+    private void addEquipmentSlot() {
+        fieldLabels.put("equipment_slot",new FieldLabel(PANEL_X,178,118));
+        var options=List.of("inherit","none","head","chest","legs","feet").stream().map(value->new KineticDropdown.Option(value,ItemRuleLabels.text("equipment.slot."+value))).toList();
+        var rule=currentRuleObject();String selected=rule.has("equipment_slot")?rule.get("equipment_slot").getAsString():"inherit";
+        ui().dropdown(PANEL_X,190,118,options).selected(selected).tooltip(ItemRuleLabels.text("equipment.slot.tooltip")).onChange(value->{
+            if(!canEditSelected()||!flushFields())return;var changed=currentRuleObject();if(value.equals("inherit"))changed.remove("equipment_slot");else changed.addProperty("equipment_slot",value);drafts.put(selectedId,changed);rebuildEditor();
+        }).build().setEnabled(canEditSelected());
+    }
+    private void openEquipmentAttributes(){
+        if(!canEditSelected()||!flushFields())return;var rule=currentRuleObject();var rows=rule.has("attributes")&&rule.get("attributes").isJsonArray()?rule.getAsJsonArray("attributes").deepCopy():new com.google.gson.JsonArray();
+        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new EquipmentAttributeEditorPage(stackForId(selectedId),rows,values->{var changed=currentRuleObject();changed.add("attributes",values);drafts.put(selectedId,changed);rebuildEditor();}));
+    }
+    private void openFoodEffects(){
+        if(!canEditSelected()||!flushFields())return;var rule=currentRuleObject();var rows=rule.has("food_effects")&&rule.get("food_effects").isJsonArray()?rule.getAsJsonArray("food_effects").deepCopy():new com.google.gson.JsonArray();
+        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new FoodEffectEditorPage(rows,rule.has("food_effects_mode")?rule.get("food_effects_mode").getAsString():"append",(values,mode)->{var changed=currentRuleObject();changed.add("food_effects",values);changed.addProperty("food_effects_mode",mode);drafts.put(selectedId,changed);rebuildEditor();}));
+    }
+    private void selectFoodRemainder(){
+        if(!canEditSelected()||!flushFields())return;
+        var options=dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors.ItemSelectorOptions.itemsOnly(dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors.ItemSelectorPreset.defaults(),List.of(),stack->true);
+        dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors.openItemSelectorWithOptions(options,selected->setFoodRemainder(selected.value()));
+    }
+    private void setFoodRemainder(String value){if(!canEditSelected()||!flushFields())return;var changed=currentRuleObject();if(value==null)changed.remove("food_remainder");else changed.addProperty("food_remainder",value);drafts.put(selectedId,changed);rebuildEditor();}
+    private void openCurioSlotCounts(){
+        if(!canEditSelected()||!flushFields()||!ItemCuriosCompat.available())return;var curio=curioObject();var rows=curio.has("slot_modifiers")&&curio.get("slot_modifiers").isJsonArray()?curio.getAsJsonArray("slot_modifiers").deepCopy():new com.google.gson.JsonArray();
+        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new CurioSlotModifierEditorPage(rows,values->{var changed=currentRuleObject();var settings=curioObject();settings.add("slot_modifiers",values);enableCurioOverride(settings);changed.add("curio",settings);drafts.put(selectedId,changed);rebuildEditor();}));
+    }
+    private void openTools(){
+        if(!canEditSelected()||!isRegistered(selectedId)||!flushFields())return;var document=new JsonObject();drafts.forEach((id,value)->document.add(id,value.deepCopy()));
+        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new ItemPropertyToolsPage(document,selectedId,changed->{drafts.clear();changed.entrySet().forEach(entry->drafts.put(entry.getKey(),entry.getValue().deepCopy()));rebuildEditor();},this::originalValuesFor));
+    }
+    private Map<String,String> originalValuesFor(String id){
+        String previous=selectedId;selectedId=id;var values=new LinkedHashMap<String,String>();
+        try{for(String key:dev.xyat.itemcontrol.item.config.ItemRuleDrafts.FIELDS){
+            String value;
+            if(List.of("edible","always_eat","non_consumable","fire_resistant","explosion_immune","glowing","no_gravity","persistent").contains(key))value=ItemPropertyConfig.previewOriginal(()->KineticI18n.translatable("gui.itemcontrol.item_property.boolean."+originalBooleanValue(key)).getString());
+            else if(key.equals("equipment_slot")){var slot=ItemPropertyConfig.previewOriginal(()->ItemPropertyReads.armorSlot(stackForId(id)));value=ItemRuleLabels.text("equipment.slot."+(slot==null?"none":slot.getName())).getString();}
+            else value=originalValue(key);
+            if(!value.isBlank())values.put(key,value);
+        }}finally{selectedId=previous;}return values;
     }
 
     private void addNumericField(String key, boolean integer, double minimum, double maximum, int index) {
@@ -566,9 +608,6 @@ public final class ItemPropertyEditorPage extends KineticPage {
 
     private boolean isFieldApplicable(String key) {
         if (selectedId == null || !isRegistered(selectedId)) return false;
-        if (key.equals("armor") || key.equals("armor_toughness") || key.equals("knockback_resistance")) {
-            return ItemPropertyReads.armorSlot(stackForId(selectedId)) != null;
-        }
         return true;
     }
 
@@ -583,6 +622,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         ItemStack stack = stackForId(selectedId);
         boolean value = switch (key) {
             case "always_eat" -> ItemPropertyReads.canAlwaysEat(stack);
+            case "edible" -> ItemPropertyConfig.previewOriginal(()->ItemPropertyReads.isFood(stack));
             case "fire_resistant" -> ItemPropertyReads.fireResistant(stack);
             case "explosion_immune" -> stack.is(Items.NETHER_STAR);
             case "glowing", "no_gravity", "persistent", "non_consumable" -> false;
@@ -620,16 +660,15 @@ public final class ItemPropertyEditorPage extends KineticPage {
             case "max_damage" -> Integer.toString(stack.getMaxDamage());
             case "enchantability" -> Integer.toString(ItemPropertyReads.enchantability(stack));
             case "rarity" -> stack.getRarity().name().toLowerCase(Locale.ROOT);
-            case "block_hardness" -> number(((BlockItem) item).getBlock().defaultBlockState()
-                    .getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
-            case "block_explosion_resistance" -> number(ItemPropertyOverrides.originalBlockExplosionResistance(
-                    ((BlockItem) item).getBlock()));
+            case "block_hardness" -> item instanceof BlockItem block?number(block.getBlock().defaultBlockState().getDestroySpeed(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)):"";
+            case "block_explosion_resistance" -> item instanceof BlockItem block?number(ItemPropertyOverrides.originalBlockExplosionResistance(block.getBlock())):"";
             default -> "";
         };
     }
 
     //? if >=1.21 {
 /*private static double attributeAmount(ItemStack stack, EquipmentSlot slot, net.minecraft.core.Holder<Attribute> attribute) {
+    if(slot==null)return 0;
     final double[] total = { 0 };
     stack.forEachModifier(slot, (type, modifier) -> {
         if (type.equals(attribute) && modifier.operation() == AttributeModifier.Operation.ADD_VALUE) total[0] += modifier.amount();
@@ -638,6 +677,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
 }*/
 //?} else {
 private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attribute attribute) {
+        if(slot==null)return 0;
         return stack.getAttributeModifiers(slot).get(attribute).stream()
                 .filter(modifier -> modifier.getOperation() == AttributeModifier.Operation.ADDITION)
                 .mapToDouble(AttributeModifier::getAmount)
@@ -655,7 +695,7 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
         if (!flushFields()) return;
         curioSlotsExpanded = false;
         category = next;
-        selectedId = null;
+        if(next==EditorCategory.BLOCK && selectedId!=null && !(stackForId(selectedId).getItem() instanceof BlockItem))selectedId=null;
         if (itemGrid != null) itemGrid.setScrollOffset(0);
         rebuildEditor();
     }
@@ -704,7 +744,7 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
                     || usedIds.contains(id)
                     || !isRegistered(id)
                     || !matches(id, query)
-                    || !KineticItemSearch.matchesCategory(stackForId(id), category.itemCategory)) continue;
+                    || !KineticItemSearch.matchesCategory(stackForId(id), searchCategory())) continue;
             rows.add(new GridEntry(id, stackForId(id), false));
             usedIds.add(id);
         }
@@ -720,7 +760,7 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
 
         for (KineticItemSearch.CachedItem cached : allItems) {
             String id = cached.id();
-            if (id.isBlank() || usedIds.contains(id) || !cached.matches(query, category.itemCategory)) continue;
+            if (id.isBlank() || usedIds.contains(id) || !cached.matches(query, searchCategory())) continue;
             rows.add(new GridEntry(id, cached.stack(), false));
             usedIds.add(id);
         }
@@ -750,6 +790,7 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
         return stackForId(id.substring(0, id.indexOf('{')));
 //?}
     }
+    private ItemCategory searchCategory(){return category==EditorCategory.BLOCK?ItemCategory.BLOCK:ItemCategory.GENERAL;}
 
     private boolean hasCurrentPropertiesInput() {
         for (KineticTextField field : fields.values()) {
@@ -915,14 +956,23 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
             refreshGrid();
         }
         // The title's shadow shares the search box's top row, so keep its viewport to the right of the box.
-        int titleWidth = 2 * (width() / 2 - GRID_X - SEARCH_W - TEXT_GAP);
-        graphics.scrollingTextCentered(title(), width() / 2, 3, titleWidth, 0xFFFFFF, true);
+        graphics.scrollingText(title(), PANEL_X, 15, 232, 0xFFFFFF, true);
         graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31,
                 category == EditorCategory.CURIO ? GRID_W - 98 : GRID_W - TEXT_GAP, 0xFFFFFF, false);
         for (Map.Entry<String, FieldLabel> entry : fieldLabels.entrySet()) {
             FieldLabel label = entry.getValue();
             graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.field." + entry.getKey()),
                     label.x(), label.y(), label.maxWidth(), 0xFFDDDDDD, false);
+        }
+        if(category==EditorCategory.FOOD){
+            String id=currentRuleObject().has("food_remainder")?currentRuleObject().get("food_remainder").getAsString():null;
+            ItemStack remainder=id==null||id.equals("minecraft:air")?ItemStack.EMPTY:stackForId(id);
+            boolean hovered=mouseX>=PANEL_X+166&&mouseX<PANEL_X+188&&mouseY>=188&&mouseY<210;
+            KineticTheme.itemSlot(graphics,PANEL_X+166,188,22,hovered);
+            if(!remainder.isEmpty()){
+                graphics.item(remainder,PANEL_X+169,191);
+                if(hovered)showItemTooltip(remainder);
+            }
         }
     }
 

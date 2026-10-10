@@ -14,6 +14,7 @@ public final class ItemPropertyReads {
 
     /** The armor slot of armor items, otherwise null. */
     public static EquipmentSlot armorSlot(ItemStack stack) {
+        if (ItemCapabilityRuntime.overridesEquipment(stack)) return ItemCapabilityRuntime.equipmentSlot(stack);
         //? if >=26.1 {
         /*net.minecraft.world.item.equipment.Equippable equippable = stack.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
         return equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR ? equippable.slot() : null;
@@ -24,7 +25,7 @@ public final class ItemPropertyReads {
 
     public static boolean isFood(ItemStack stack) {
         //? if >=26.1 {
-        /*return stack.has(net.minecraft.core.component.DataComponents.FOOD);
+        /*return ItemCapabilityRuntime.food(stack, stack.get(net.minecraft.core.component.DataComponents.FOOD)) != null;
         *///?} else {
         return stack.getFoodProperties(null) != null;
         //?}
@@ -33,7 +34,7 @@ public final class ItemPropertyReads {
     /** Hunger restored, or null for non-food. */
     public static Integer nutrition(ItemStack stack) {
         //? if >=26.1 {
-        /*net.minecraft.world.food.FoodProperties food = stack.get(net.minecraft.core.component.DataComponents.FOOD);
+        /*net.minecraft.world.food.FoodProperties food = ItemCapabilityRuntime.food(stack, stack.get(net.minecraft.core.component.DataComponents.FOOD));
         return food == null ? null : food.nutrition();
         *///?} else if >=1.21 {
         /*net.minecraft.world.food.FoodProperties food = stack.getFoodProperties(null);
@@ -80,7 +81,11 @@ public final class ItemPropertyReads {
 
     public static int enchantability(ItemStack stack) {
         //? if >=26.1 {
-        /*net.minecraft.world.item.enchantment.Enchantable enchantable = stack.get(net.minecraft.core.component.DataComponents.ENCHANTABLE);
+        /*if (dev.xyat.itemcontrol.item.config.ItemPropertyConfig.isOriginalPreview()) {
+            Integer original = ItemPropertyOverrides.originalEnchantability(stack.getItem());
+            if (original != null) return original;
+        }
+        net.minecraft.world.item.enchantment.Enchantable enchantable = stack.get(net.minecraft.core.component.DataComponents.ENCHANTABLE);
         return enchantable == null ? 0 : enchantable.value();
         *///?} else {
         return stack.getEnchantmentValue();
@@ -136,7 +141,7 @@ public final class ItemPropertyReads {
 
     //? if >=26.1 {
     /*private static net.minecraft.world.food.FoodProperties food(ItemStack stack) {
-        return stack.get(net.minecraft.core.component.DataComponents.FOOD);
+        return ItemCapabilityRuntime.food(stack, stack.get(net.minecraft.core.component.DataComponents.FOOD));
     }
     *///?} else if >=1.21 {
     /*private static net.minecraft.world.food.FoodProperties food(ItemStack stack) {
