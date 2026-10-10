@@ -51,17 +51,15 @@ import java.util.Set;
 /** Server-authoritative per-item vanilla-property editor. */
 public final class ItemPropertyEditorPage extends KineticPage {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    // Four pixels of left-side spare room allow a ninth complete column without moving the divider.
+    // Equal panes; twelve native-size rows fit with padding above the footer.
     private static final int GRID_X = 8;
     private static final int GRID_Y = 44;
-    private static final int GRID_W = 226;
-    private static final int GRID_H = 284;
-    private static final int SEARCH_W = 220;
-    private static final int PANEL_X = 246;
+    private static final int GRID_W = 304;
+    private static final int GRID_H = 290;
+    private static final int PANEL_X = 326;
     private static final int PANEL_RIGHT = 626;
     private static final int FIELD_WIDTH = 92;
-    private static final int FIELD_COLUMN_PITCH = 124;
-    private static final int ATTRIBUTES_WIDTH = 240;
+    private static final int FIELD_COLUMN_PITCH = 100;
     private static final int TEXT_GAP = 4;
     private static final BigDecimal BASE_ATTACK_DAMAGE = BigDecimal.ONE;
     private static final BigDecimal BASE_ATTACK_SPEED = BigDecimal.valueOf(4);
@@ -108,7 +106,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private KineticButton curioSlotButton;
     private KineticToggle curioEnabledToggle;
     private static final int CURIO_SLOT_LIST_Y = 152;
-    private static final int CURIO_SLOT_LIST_WIDTH = 242;
+    private static final int CURIO_SLOT_LIST_WIDTH = 174;
     private static final int CURIO_SLOT_LIST_HEIGHT = 140;
 
     public ItemPropertyEditorPage(String pendingJson) {
@@ -141,7 +139,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         curioSlotList = null;
         lastAttributesValue = null;
         ui.button(GRID_X,10,64).text(ItemRuleLabels.text("back")).onClick(this::close).build();
-        searchBox = ui().textField(78, 10, 156).build();
+        searchBox = ui().textField(78, 10, GRID_X + GRID_W - 78).build();
         searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item_property.search"));
         searchBox.limitTextLength(1024);
         searchBox.setTextValue(searchQuery);
@@ -176,7 +174,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         ui().button(90, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule.tooltip")).compact().onClick(this::addSelectedRule).build();
         ui().button(176, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item.tooltip")).compact().onClick(this::resetSelectedRule).build();
         ui().button(262, 337, 52).text(KineticI18n.translatable("gui.itemcontrol.item_property.delete")).compact().onClick(this::deleteSelectedRule).build();
-        ui().button(478, 337, 70).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.save.tooltip")).onClick(this::save).build();
+        ui().button(PANEL_X + (PANEL_RIGHT - PANEL_X - 70) / 2, 337, 70).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.save.tooltip")).onClick(this::save).build();
         ui().button(12,337,72).text(ItemRuleLabels.text("tools")).tooltip(ItemRuleLabels.text("tools.tooltip")).onClick(this::openTools).build();
 
         populateFields();
@@ -229,7 +227,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addNumericField("knockback_resistance", false, -2048, 2048, 4);
                 addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 5);
                 addEquipmentSlot();
-                ui().button(PANEL_X+124,190,180).text(ItemRuleLabels.text("equipment.attributes"))
+                ui().button(PANEL_X+124,190,176).text(ItemRuleLabels.text("equipment.attributes"))
                         .tooltip(ItemRuleLabels.text("equipment.attributes.tooltip")).onClick(this::openEquipmentAttributes).build().setEnabled(canEditSelected());
             }
             case TOOL -> {
@@ -246,10 +244,10 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addBooleanButton("always_eat", 3);
                 addBooleanButton("non_consumable", 4);
                 addBooleanButton("edible", 5);
-                ui().button(PANEL_X,190,160).text(ItemRuleLabels.text("food.effects")).tooltip(ItemRuleLabels.text("food.effects.tooltip")).onClick(this::openFoodEffects).build().setEnabled(canEditSelected());
-                ui().button(PANEL_X+196,190,160).text(ItemRuleLabels.text("food.remainder")).tooltip(ItemRuleLabels.text("food.remainder.tooltip")).onClick(this::selectFoodRemainder).build().setEnabled(canEditSelected());
-                ui().button(PANEL_X,230,160).text(ItemRuleLabels.text("food.remainder.inherit")).onClick(()->setFoodRemainder(null)).build().setEnabled(canEditSelected());
-                ui().button(PANEL_X+196,230,160).text(ItemRuleLabels.text("food.remainder.none")).onClick(()->setFoodRemainder("minecraft:air")).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X,190,136).text(ItemRuleLabels.text("food.effects")).tooltip(ItemRuleLabels.text("food.effects.tooltip")).onClick(this::openFoodEffects).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X+164,190,136).text(ItemRuleLabels.text("food.remainder")).tooltip(ItemRuleLabels.text("food.remainder.tooltip")).onClick(this::selectFoodRemainder).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X,230,136).text(ItemRuleLabels.text("food.remainder.inherit")).onClick(()->setFoodRemainder(null)).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X+164,230,136).text(ItemRuleLabels.text("food.remainder.none")).onClick(()->setFoodRemainder("minecraft:air")).build().setEnabled(canEditSelected());
             }
             case GENERAL -> {
                 addNumericField("max_stack_size", true, 1, 99, 0);
@@ -297,7 +295,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 .onClick(this::openCurioSlots).build();
         curioSlotButton.setEnabled(available && canEditSelected());
         curioSlotButton.setSelected(curioSlotsExpanded);
-        var editAttributes = ui().button(PANEL_X + 248, 130, 128)
+        var editAttributes = ui().button(PANEL_X + 180, 130, 120)
                 .text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.edit_attributes"))
                 .tooltip(KineticI18n.translatable(available ? "gui.itemcontrol.item_property.curio.attributes.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
                 .onClick(this::openCurioAttributes).build();
@@ -949,14 +947,14 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
     @Override
     protected void renderBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
         KineticTheme.panel(graphics, 0, 0, width(), height());
-        KineticTheme.verticalSeparator(graphics, 240, 10, 318);
+        KineticTheme.verticalSeparator(graphics, 320, 10, 324);
         String attributesValue = attributesBox == null ? "" : attributesBox.textValue();
         if (!attributesValue.equals(lastAttributesValue)) {
             lastAttributesValue = attributesValue;
             refreshGrid();
         }
         // The title's shadow shares the search box's top row, so keep its viewport to the right of the box.
-        graphics.scrollingText(title(), PANEL_X, 15, 232, 0xFFFFFF, true);
+        graphics.scrollingText(title(), PANEL_X, 15, PANEL_RIGHT - 142 - PANEL_X - 6, 0xFFFFFF, true);
         graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31,
                 category == EditorCategory.CURIO ? GRID_W - 98 : GRID_W - TEXT_GAP, 0xFFFFFF, false);
         for (Map.Entry<String, FieldLabel> entry : fieldLabels.entrySet()) {
@@ -967,10 +965,10 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
         if(category==EditorCategory.FOOD){
             String id=currentRuleObject().has("food_remainder")?currentRuleObject().get("food_remainder").getAsString():null;
             ItemStack remainder=id==null||id.equals("minecraft:air")?ItemStack.EMPTY:stackForId(id);
-            boolean hovered=mouseX>=PANEL_X+166&&mouseX<PANEL_X+188&&mouseY>=188&&mouseY<210;
-            KineticTheme.itemSlot(graphics,PANEL_X+166,188,22,hovered);
+            boolean hovered=mouseX>=PANEL_X+140&&mouseX<PANEL_X+162&&mouseY>=188&&mouseY<210;
+            KineticTheme.itemSlot(graphics,PANEL_X+140,188,22,hovered);
             if(!remainder.isEmpty()){
-                graphics.item(remainder,PANEL_X+169,191);
+                graphics.item(remainder,PANEL_X+143,191);
                 if(hovered)showItemTooltip(remainder);
             }
         }

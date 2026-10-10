@@ -8,6 +8,7 @@
 - Added selective batch edits, rule copying, named templates with JSON import/export, and original/draft comparison with application timing.
 - Added equipped Curios slot-count modifiers, including updates on save and removal on unequip. Curios remains optional.
 - Property categories preserve the selected item and support independent abilities instead of filtering out ordinary items. New controls include explanatory tooltips.
+- The property editor now divides its item browser and controls equally, with twelve complete columns and rows at the standard layout and native-size item icons.
 
 ### 简体中文
 
@@ -17,6 +18,7 @@
 - 新增只修改勾选字段的批量编辑、规则复制、命名模板与 JSON 文件导入导出，以及原值／草稿／生效时间对照。
 - 新增佩戴饰品时的 Curios 槽位数量修饰，保存后更新，脱下后移除；Curios 仍为可选依赖。
 - 切换属性分类保留当前物品，普通物品也可编辑各项独立能力；新增控件补充悬浮说明。
+- 物品属性编辑器左右区域改为对半分配；标准布局可完整显示 12 列、12 行原始大小的物品图标。
 
 ---
 

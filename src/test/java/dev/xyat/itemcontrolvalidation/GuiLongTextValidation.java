@@ -132,6 +132,7 @@ public final class GuiLongTextValidation {
                 var categories=Class.forName("dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorPage$EditorCategory").getEnumConstants();
                 if(index>0)invoke(p,"changeCategory",categories[index]);
                 invoke(p,"selectGridIndex",0);
+                verifyPropertyGrid(p);
             }
             case 6,7,8 -> {
                 var p=new dev.xyat.itemcontrol.item.client.gui.ProtectionItemEditorPage(List.of("minecraft:diamond_sword;true;true;false;false"));KineticGui.open(p);
@@ -187,7 +188,7 @@ public final class GuiLongTextValidation {
                 KineticGui.open(p);
                 var categories=Class.forName("dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorPage$EditorCategory").getEnumConstants();
                 invoke(p,"changeCategory",categories[6]); invoke(p,"selectGridIndex",0);
-                if(((dev.xyat.kineticcore.api.client.gui.widget.list.KineticItemGrid)field(p,"itemGrid")).columns()!=9)throw new AssertionError("Property browser fits nine complete columns inside its existing divider");
+                verifyPropertyGrid(p);
                 if(!dev.xyat.itemcontrol.item.compat.ItemCuriosCompat.available()) {
                     var slots=(dev.xyat.kineticcore.api.client.gui.widget.KineticButton)field(p,"curioSlotButton");
                     if(slots.isEnabled())throw new AssertionError("Curios controls must be disabled without the dependency");
@@ -229,6 +230,11 @@ public final class GuiLongTextValidation {
                 }
             }
         }
+    }
+    private static void verifyPropertyGrid(Object page) throws Exception {
+        var grid=(dev.xyat.kineticcore.api.client.gui.widget.list.KineticItemGrid)field(page,"itemGrid");
+        if(grid.columns()!=12 || grid.visibleRows()!=12 || grid.itemAt(10,331)!=132)
+            throw new AssertionError("Property browser must show twelve complete columns and twelve complete rows");
     }
     private static void verifyNativeSlotDraft(KineticPage returnPage) throws Exception {
         var nativeEditor=new dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorPage("{}");
