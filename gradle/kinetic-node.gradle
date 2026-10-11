@@ -240,6 +240,12 @@ def itemRuleDraftsCheck = tasks.register('checkItemRuleDrafts', JavaExec) {
     mainClass = 'dev.xyat.itemcontrolvalidation.ItemRuleDraftsTest'
 }
 tasks.named('check') { dependsOn itemRuleDraftsCheck }
+def childRuleSaveCheck = tasks.register('checkChildRuleSave', JavaExec) {
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.xyat.itemcontrolvalidation.ChildRuleSaveTest'
+}
+tasks.named('check') { dependsOn childRuleSaveCheck }
 tasks.named('check').configure { dependsOn itemCapabilitiesCheck }
 tasks.named('check') { dependsOn curioSettingsCheck }
 

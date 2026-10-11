@@ -10,6 +10,9 @@
   "gui.itemcontrol.item_property.add_rule.tooltip": "选择物品后添加规则；在掉落物保护分类还可在搜索框输入 #命名空间:标签、@模组ID 或 物品ID[数据组件]，再点击添加规则。",
   "gui.itemcontrol.item_property.category.tooltip": "选择属性分类；掉落物保护显示全部物品，并支持物品标签、模组和 数据组件 规则。",
   "key.category.itemcontrol.cleaner": "掉落物清理",
-  "cfg.itemcontrol.item_property.restart_notice": "保存后立即应用物品与饰品改动；附魔能力需重启游戏后生效。",
-  "gui.itemcontrol.item_property.restart_hint": "保存后立即应用；附魔能力需重启后生效。"
+  "cfg.itemcontrol.item_property.restart_notice": "保存后立即应用物品与饰品改动；26.1.2 附魔能力需重启游戏后生效。",
+  "gui.itemcontrol.item_property.restart_hint": "保存后立即应用；26.1.2 附魔能力需重启后生效。",
+  "gui.itemcontrol.item_property.reset_item.tooltip": "清空此物品的覆盖规则，保存后应用重置。26.1.2 的附魔能力需重启。",
+  "gui.itemcontrol.item_property.save.tooltip": "保存并应用规则，包括已持有和装备物品的属性；编辑器保持打开。26.1.2 的附魔能力需重启。",
+  "msg.itemcontrol.item_property.saved_applied": "已保存并应用；26.1.2 附魔能力需重启。"
 }

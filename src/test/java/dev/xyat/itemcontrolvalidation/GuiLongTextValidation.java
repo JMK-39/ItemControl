@@ -32,7 +32,7 @@ public final class GuiLongTextValidation {
     private static dev.xyat.itemcontrol.tabs.TabConfig.Data originalTabEditing;
     private static boolean tabEditingCaptured;
 
-    public static void install() { if(installed)return;installed=true;KineticClientEvents.onTick(KineticClientEvents.TickPhase.END,GuiLongTextValidation::tick); }
+    public static void install() { if(installed)return;installed=true;if(Boolean.getBoolean("itemcontrol.editorSaveValidation")){ItemEditorSaveValidation.install();return;}KineticClientEvents.onTick(KineticClientEvents.TickPhase.END,GuiLongTextValidation::tick); }
     private static void tick() {
         if(finished)return;
         try {
@@ -229,6 +229,10 @@ public final class GuiLongTextValidation {
                     if(rules.size()!=1)throw new AssertionError("Attribute edit must not duplicate aliases");
                 }
             }
+        }
+        if (Boolean.getBoolean("itemcontrol.dropdownValidation") && (index == 28
+                || index == 27 && dev.xyat.itemcontrol.item.compat.ItemCuriosCompat.available())) {
+            ItemAttributeDropdownValidation.verifyAndLeaveOpen();
         }
     }
     private static void verifyPropertyGrid(Object page) throws Exception {

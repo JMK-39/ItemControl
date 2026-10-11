@@ -39,7 +39,7 @@ public final class ItemPropertyToolsPage extends KineticPage {
     @Override protected void build(KineticUi ui){
         ui.button(8,6,68).text(ItemRuleLabels.text("back")).onClick(this::close).build();
         ui.button(420,6,100).text(ItemRuleLabels.text("copy.source")).tooltip(ItemRuleLabels.text("copy.source.tooltip")).onClick(this::chooseSource).build();
-        ui.button(528,6,104).text(ItemRuleLabels.text("compare")).tooltip(ItemRuleLabels.text("compare.tooltip")).onClick(()->KineticGui.open(new ItemPropertyComparisonPage(sourceId,source,originals.apply(sourceId)))).build();
+        ui.button(528,6,104).text(ItemRuleLabels.text("compare")).tooltip(ItemRuleLabels.text("compare.tooltip")).onClick(()->openChild(new ItemPropertyComparisonPage(sourceId,source,originals.apply(sourceId)))).build();
         var field=ui.textField(8,44,184).tooltip(ItemRuleLabels.text("templates.name.tooltip")).build();field.setTextValue(name);field.setPlaceholder(ItemRuleLabels.text("templates.name"));field.onTextChange(value->name=value);
         var options=new ArrayList<KineticDropdown.Option>();options.add(new KineticDropdown.Option("none",ItemRuleLabels.text("templates.choose")));templates.keySet().forEach(value->options.add(new KineticDropdown.Option("template/"+value,Component.literal(value))));
         ui.dropdown(200,44,188,options).selected(selectedTemplate).tooltip(ItemRuleLabels.text("templates.choose.tooltip")).onChange(value->{if(!value.startsWith("template/"))return;var template=templates.get(value.substring(9));if(template==null)return;selectedTemplate=value;name=template.name();source=template.fields().deepCopy();checked.clear();checked.addAll(template.selectedFields());rebuild();}).build();

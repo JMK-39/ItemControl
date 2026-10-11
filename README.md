@@ -8,13 +8,15 @@ Item Control provides visual management for item rules, properties, dropped-item
 - Automatic/manual cleanup with recoverable trash history and protected areas.
 - Creative-tab curation and optional KubeJS/JEI integration.
 
-Supports Minecraft **1.20.1 / Forge 47.4.2+** with **Java 17**, **1.21.1 / NeoForge 21.1+** (validated with 21.1.252) with **Java 21**, and **26.1.2 / NeoForge 26.1.2.0+** (validated with 26.1.2.112) with **Java 25**. Requires **KineticCore 26.10.7+ on Forge 1.20.1 (26.10.5+ on NeoForge)** matching the Minecraft/loader. Install required mods on the server and connecting clients.
+Supports Minecraft **1.20.1 / Forge 47.4.2+** with **Java 17**, **1.21.1 / NeoForge 21.1+** (validated with 21.1.252) with **Java 21**, and **26.1.2 / NeoForge 26.1.2.0+** (validated with 26.1.2.112) with **Java 25**. Requires **KineticCore 26.10.12+** matching the Minecraft/loader. Install required mods on the server and connecting clients.
 
 Optional: Curios, KubeJS and JEI builds matching the Minecraft/loader.
 
 ### Item and accessory properties
 
 Open **Item and Accessory Properties**, select an item, and switch categories to configure independent abilities. Any item can become a melee weapon, wearable equipment, food or a Curios accessory, including equipment that is also edible. Leave a field blank to inherit its original value. Save the main editor to apply the draft.
+
+Save includes the current input and keeps the selected item open. Saving equipment attributes, accessory attributes, food effects or accessory slot counts applies edited input and returns to the parent editor; Save there to apply it to the server. Deleted rules stay deleted, and browsing choices does not add default rules. Attribute lists support ID and localized-name search. Item tags apply on save, including Curios slot tags, and protection-rule previews retain their NBT or components.
 
 - Set attack damage and positive durability to turn an ordinary item into a weapon. Choose an equipment slot to make it wearable; that slot must be empty. For items that are both equipment and food, right-click eats and sneak-right-click equips.
 - Edit registered equipment attributes visually by slot, operation and add/replace/remove mode. Food supports hunger, saturation, eating time, effects with duration/level/chance, and an item selector for the returned container.
@@ -31,7 +33,7 @@ Item Control 提供物品规则、属性、掉落物保护、清理与创造标�
 - 自动与手动清理、历史回收及清理保护区域。
 - 创造标签页管理及可选 KubeJS、JEI 联动。
 
-支持 Minecraft **1.20.1 / Forge 47.4.2+**（**Java 17**）、**1.21.1 / NeoForge 21.1+**（验证使用 21.1.252，**Java 21**），以及 **26.1.2 / NeoForge 26.1.2.0+**（验证使用 26.1.2.112，**Java 25**）；必需与 Minecraft、加载器匹配的 **KineticCore 26.10.7+（Forge 1.20.1；NeoForge 为 26.10.5+）**。服务端与连接的客户端均安装必需模组。
+支持 Minecraft **1.20.1 / Forge 47.4.2+**（**Java 17**）、**1.21.1 / NeoForge 21.1+**（验证使用 21.1.252，**Java 21**），以及 **26.1.2 / NeoForge 26.1.2.0+**（验证使用 26.1.2.112，**Java 25**）；必需与 Minecraft、加载器匹配的 **KineticCore 26.10.12+**。服务端与连接的客户端均安装必需模组。
 
 可选：与 Minecraft 和加载器匹配的 Curios、KubeJS、JEI。
 
@@ -45,6 +47,8 @@ Item Control 提供物品规则、属性、掉落物保护、清理与创造标�
 - 安装 Curios 后可设置兼容槽位、饰品属性和佩戴时的槽位数量加成；脱下饰品后槽位加成移除。未安装 Curios 时，相关控件变灰，悬浮提示说明依赖要求。
 
 保存后更新已持有和装备的物品。Minecraft 26.1.2 的附魔能力需要重启游戏，食物修改在保存后生效。将物品变成装备不会自动生成专用盔甲模型。
+
+保存会读取当前输入并保持选中物品和编辑界面。装备属性、饰品属性、食物效果与饰品槽位数量子页保存时会应用已编辑输入并返回父编辑器，再在父页保存以应用到服务端。已删除规则保持删除，仅浏览选项不会添加默认规则。属性列表可按 ID 和本地化名称搜索。物品标签（包括 Curios 槽位标签）保存后生效，掉落保护规则预览保留原有 NBT 或数据组件。
 
 [GitHub project / 项目仓库](https://github.com/JMK-39/ItemControl) · [CurseForge](https://www.curseforge.com/minecraft/mc-mods/itemcontrol)
 

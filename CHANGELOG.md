@@ -1,3 +1,17 @@
+## 26.10.12 — 2026-10-12
+
+### English
+
+- Property Save reads the current input and keeps the selected item and editor open. Attribute child-page Save applies the current row and returns to the parent; attribute choices support ID and localized-name search.
+- Saved item tags update online clients immediately, including Curios slot admission. Protection previews retain NBT/components. Restart notices are limited to enchantability on Minecraft 26.1.2.
+- All four rule editors save current edits without an extra Apply click, preserve deletions, and leave default rules absent when only browsing choices.
+
+### 简体中文
+
+- 属性保存会读取当前输入，并保持选中物品与编辑界面；属性子页保存会应用当前行并返回父页，属性列表支持 ID 和本地化名称搜索。
+- 物品标签保存后立即同步在线客户端，包括 Curios 槽位准入；掉落保护预览保留 NBT／数据组件。仅 Minecraft 26.1.2 的附魔能力提示需要重启。
+- 四个规则子编辑器均可直接保存当前修改；删除后保存不再恢复规则，仅浏览选项不会新增默认规则。
+
 ## 26.10.11 — 2026-10-11
 
 ### English

@@ -42,7 +42,7 @@ if (project.property('loader') == 'forge') {
     }
     def captureJar = tasks.register('guiCaptureValidationJar', Jar) {
         dependsOn 'testClasses', writeCaptureMetadata
-        from(sourceSets.test.output) { include 'dev/xyat/itemcontrolvalidation/GuiLongTextValidation*.class', 'dev/xyat/itemcontrolvalidation/GuiCaptureForgeEntry.class', 'dev/xyat/itemcontrolvalidation/ItemPropertyRuntimeChecks*.class', 'dev/xyat/itemcontrolvalidation/CurioRuntimeChecks*.class' }
+        from(sourceSets.test.output) { include 'dev/xyat/itemcontrolvalidation/GuiLongTextValidation*.class', 'dev/xyat/itemcontrolvalidation/GuiCaptureForgeEntry.class', 'dev/xyat/itemcontrolvalidation/ItemPropertyRuntimeChecks*.class', 'dev/xyat/itemcontrolvalidation/CurioRuntimeChecks*.class', 'dev/xyat/itemcontrolvalidation/ItemEditorSaveValidation*.class', 'dev/xyat/itemcontrolvalidation/ItemAttributeDropdownValidation*.class', 'dev/xyat/itemcontrolvalidation/ChildRuleSaveUiChecks*.class' }
         from captureMetadata
         archiveFileName = 'itemcontrol-gui-capture.jar'
     }

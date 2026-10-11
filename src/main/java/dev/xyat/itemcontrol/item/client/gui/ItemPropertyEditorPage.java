@@ -408,7 +408,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
         JsonObject curio = curioObject();
         var rows = curio.has("attributes") && curio.get("attributes").isJsonArray()
                 ? curio.getAsJsonArray("attributes").deepCopy() : new com.google.gson.JsonArray();
-        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new CurioAttributeEditorPage(stackForId(selectedId), rows, values -> {
+        openChild(new CurioAttributeEditorPage(stackForId(selectedId), rows, values -> {
             JsonObject rule = currentRuleObject();
             JsonObject changed = curioObject(); changed.add("attributes", values); enableCurioOverride(changed);
             rule.add("curio", changed); drafts.put(selectedId, rule); rebuildEditor();
@@ -425,11 +425,11 @@ public final class ItemPropertyEditorPage extends KineticPage {
     }
     private void openEquipmentAttributes(){
         if(!canEditSelected()||!flushFields())return;var rule=currentRuleObject();var rows=rule.has("attributes")&&rule.get("attributes").isJsonArray()?rule.getAsJsonArray("attributes").deepCopy():new com.google.gson.JsonArray();
-        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new EquipmentAttributeEditorPage(stackForId(selectedId),rows,values->{var changed=currentRuleObject();changed.add("attributes",values);drafts.put(selectedId,changed);rebuildEditor();}));
+        openChild(new EquipmentAttributeEditorPage(stackForId(selectedId),rows,values->{var changed=currentRuleObject();changed.add("attributes",values);drafts.put(selectedId,changed);rebuildEditor();}));
     }
     private void openFoodEffects(){
         if(!canEditSelected()||!flushFields())return;var rule=currentRuleObject();var rows=rule.has("food_effects")&&rule.get("food_effects").isJsonArray()?rule.getAsJsonArray("food_effects").deepCopy():new com.google.gson.JsonArray();
-        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new FoodEffectEditorPage(rows,rule.has("food_effects_mode")?rule.get("food_effects_mode").getAsString():"append",(values,mode)->{var changed=currentRuleObject();changed.add("food_effects",values);changed.addProperty("food_effects_mode",mode);drafts.put(selectedId,changed);rebuildEditor();}));
+        openChild(new FoodEffectEditorPage(rows,rule.has("food_effects_mode")?rule.get("food_effects_mode").getAsString():"append",(values,mode)->{var changed=currentRuleObject();changed.add("food_effects",values);changed.addProperty("food_effects_mode",mode);drafts.put(selectedId,changed);rebuildEditor();}));
     }
     private void selectFoodRemainder(){
         if(!canEditSelected()||!flushFields())return;
@@ -439,11 +439,11 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private void setFoodRemainder(String value){if(!canEditSelected()||!flushFields())return;var changed=currentRuleObject();if(value==null)changed.remove("food_remainder");else changed.addProperty("food_remainder",value);drafts.put(selectedId,changed);rebuildEditor();}
     private void openCurioSlotCounts(){
         if(!canEditSelected()||!flushFields()||!ItemCuriosCompat.available())return;var curio=curioObject();var rows=curio.has("slot_modifiers")&&curio.get("slot_modifiers").isJsonArray()?curio.getAsJsonArray("slot_modifiers").deepCopy():new com.google.gson.JsonArray();
-        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new CurioSlotModifierEditorPage(rows,values->{var changed=currentRuleObject();var settings=curioObject();settings.add("slot_modifiers",values);enableCurioOverride(settings);changed.add("curio",settings);drafts.put(selectedId,changed);rebuildEditor();}));
+        openChild(new CurioSlotModifierEditorPage(rows,values->{var changed=currentRuleObject();var settings=curioObject();settings.add("slot_modifiers",values);enableCurioOverride(settings);changed.add("curio",settings);drafts.put(selectedId,changed);rebuildEditor();}));
     }
     private void openTools(){
         if(!canEditSelected()||!isRegistered(selectedId)||!flushFields())return;var document=new JsonObject();drafts.forEach((id,value)->document.add(id,value.deepCopy()));
-        dev.xyat.kineticcore.api.client.gui.KineticGui.open(new ItemPropertyToolsPage(document,selectedId,changed->{drafts.clear();changed.entrySet().forEach(entry->drafts.put(entry.getKey(),entry.getValue().deepCopy()));rebuildEditor();},this::originalValuesFor));
+        openChild(new ItemPropertyToolsPage(document,selectedId,changed->{drafts.clear();changed.entrySet().forEach(entry->drafts.put(entry.getKey(),entry.getValue().deepCopy()));rebuildEditor();},this::originalValuesFor));
     }
     private Map<String,String> originalValuesFor(String id){
         String previous=selectedId;selectedId=id;var values=new LinkedHashMap<String,String>();
@@ -782,11 +782,8 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
     private ItemStack specialStack(String id) {
         if (id.startsWith("@")) return new ItemStack(Items.COMMAND_BLOCK);
         if (id.startsWith("#")) return new ItemStack(Items.NAME_TAG);
-//? if >=1.21 {
-/*        return stackForId(id.substring(0, id.indexOf('[')));*/
-//?} else {
-        return stackForId(id.substring(0, id.indexOf('{')));
-//?}
+        ItemStack stack = dev.xyat.itemcontrol.item.config.BanItemConfig.parseItemStack(id);
+        return stack.isEmpty() ? new ItemStack(Items.BARRIER) : stack;
     }
     private ItemCategory searchCategory(){return category==EditorCategory.BLOCK?ItemCategory.BLOCK:ItemCategory.GENERAL;}
 
@@ -932,9 +929,11 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
     public void applySaveResult(boolean success, String pendingJson, String messageKey) {
         saving = false;
         if (success) {
-            restoreDraft(pendingJson);
+            // A reply may arrive while a child is editing. Commit only the persisted baseline; keep live drafts.
+            baseline.clear();
+            JsonParser.parseString(pendingJson).getAsJsonObject().entrySet()
+                    .forEach(entry -> baseline.put(entry.getKey(), entry.getValue().deepCopy()));
             refreshGrid();
-            if (itemGrid != null) itemGrid.setScrollOffset(0);
         }
         transientMessage = messageKey == null ? "" : messageKey;
     }

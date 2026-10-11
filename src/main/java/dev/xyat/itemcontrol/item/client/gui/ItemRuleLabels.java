@@ -7,6 +7,9 @@ import net.minecraft.ChatFormatting;
 
 final class ItemRuleLabels {
     private ItemRuleLabels() {}
+    static Component translation(String key) {
+        return KineticI18n.hasTranslation(key) ? KineticI18n.translatable(key) : Component.empty();
+    }
     static Component id(String id, String translation) {
         var label=Component.literal(id).withStyle(ChatFormatting.WHITE);
         if (!KineticClientRuntime.selectedLanguage().startsWith("en_") && KineticI18n.hasTranslation(translation)) label.append(" — ").append(KineticI18n.translatable(translation).withStyle(ChatFormatting.GOLD));

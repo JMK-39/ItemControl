@@ -104,14 +104,15 @@ public final class ItemClientProxy {
     }
 
     public static void applyItemPropertySaveResult(boolean success, String pendingJson, String messageKey) {
-        ItemPropertyEditorPage page = KineticGui.currentPage(ItemPropertyEditorPage.class);
+        ItemPropertyEditorPage page = KineticGui.findPage(ItemPropertyEditorPage.class);
         if (page != null) {
             page.applySaveResult(success, pendingJson, messageKey);
         }
         if (success) {
             KineticOverlays.toast(
                     "itemcontrol_item_property_save",
-                    KineticI18n.translatable("msg.itemcontrol.item_property.saved_restart")
+                    KineticI18n.translatable(messageKey == null || messageKey.isBlank()
+                            ? "msg.itemcontrol.item_property.saved_applied" : messageKey)
             );
         } else if (messageKey != null && !messageKey.isBlank()) {
             KineticOverlays.toast("itemcontrol_item_property_save", KineticI18n.translatable(messageKey));

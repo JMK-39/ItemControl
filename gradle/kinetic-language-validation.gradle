@@ -35,6 +35,31 @@ def verifyLanguages = tasks.register('validateLanguageKeys') {
         }
     }
 }
+def verifyPropertyNotices = tasks.register('checkItemPropertyNotices') {
+    group = 'verification'
+    description = 'Check the effective item-property save/reset notices for this Minecraft version.'
+    inputs.dir mainLanguages
+    inputs.files fileTree(overridesRoot) { include '*/lang/*.json' }
+    doLast {
+        ['en_us', 'zh_cn'].each { locale ->
+            def entries = new JsonSlurper().parse(new File(mainLanguages, "${locale}.json"), 'UTF-8')
+            File overlay = new File(overridesRoot, "${project.name}/lang/${locale}.json")
+            if (overlay.isFile()) entries.putAll(new JsonSlurper().parse(overlay, 'UTF-8'))
+            ['gui.itemcontrol.item_property.save.tooltip', 'gui.itemcontrol.item_property.reset_item.tooltip',
+             'msg.itemcontrol.item_property.saved_applied'].each { key ->
+                String text = entries[key]
+                if (project.property('minecraft_version') != '26.1.2' &&
+                        (text.contains('26.1.2') || text.toLowerCase().contains('restart') || text.contains('重启'))) {
+                    throw new GradleException("${project.name}/${locale}: immediate property notice mentions restart: ${key}: ${text}")
+                }
+                if (project.property('minecraft_version') == '26.1.2' && !text.contains('26.1.2')) {
+                    throw new GradleException("${project.name}/${locale}: component restart notice must identify 26.1.2: ${key}")
+                }
+            }
+        }
+    }
+}
+tasks.named('check').configure { dependsOn verifyPropertyNotices }
 tasks.named('processResources').configure {
     dependsOn verifyLanguages
     inputs.file rootProject.file('gradle/kinetic-language-validation.gradle')

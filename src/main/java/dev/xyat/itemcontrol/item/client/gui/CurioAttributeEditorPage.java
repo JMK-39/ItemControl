@@ -26,6 +26,7 @@ public final class CurioAttributeEditorPage extends KineticPage {
     private final List<ItemCuriosCompat.AttributePreview> originals;
     private String attribute, mode="add", operation="ADDITION", amount="0";
     private String error="";
+    private List<String> formBaseline;
     public CurioAttributeEditorPage(ItemStack stack, JsonArray rules, Consumer<JsonArray> done) {
         super(KineticI18n.translatable("gui.itemcontrol.item_property.curio.edit_attributes"));
         this.rules=rules.deepCopy(); this.done=done;
@@ -38,7 +39,7 @@ public final class CurioAttributeEditorPage extends KineticPage {
         var options=new ArrayList<KineticDropdown.Option>();
         for(String id:ids) {
             var type=ItemPropertyOverrides.attribute(KineticResourceIds.parse(id));
-            options.add(new KineticDropdown.Option(id, KineticI18n.translatable(type.getDescriptionId()).append(" ("+id+")"), Component.literal(id)));
+            options.add(new KineticDropdown.Option(id, ItemRuleLabels.translation(type.getDescriptionId()), Component.literal(id)));
         }
         ui.dropdown(12, 42, 456, options).selected(attribute).onChange(id->{select(id);rebuild();}).build();
         ui.dropdown(12, 90, 140, options(List.of("add","replace","remove"),"mode")).selected(mode).onChange(value->{mode=value;rebuild();}).build();
@@ -49,13 +50,18 @@ public final class CurioAttributeEditorPage extends KineticPage {
         operationBox.setEnabled(!mode.equals("remove"));
         ui.button(12, 246, 110).text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.apply_rule")).onClick(this::applyRule).build();
         ui.button(130, 246, 110).text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.delete_rule")).onClick(()->{deleteRule();rebuild();}).build();
-        ui.button(248, 246, 106).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).onClick(()->{done.accept(rules.deepCopy());close();}).build();
+        ui.button(248, 246, 106).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).onClick(this::save).build();
         ui.button(12, 6, 106).text(KineticI18n.translatable("gui.itemcontrol.item_property.back")).onClick(this::close).build();
     }
     private List<KineticDropdown.Option> options(List<String> values,String kind) {
         return values.stream().map(value->new KineticDropdown.Option(value,KineticI18n.translatable("gui.itemcontrol.item_property.curio."+kind+"."+value.toLowerCase(java.util.Locale.ROOT)))).toList();
     }
     private void select(String id) {
+        loadSelection(id);
+        formBaseline = form();
+    }
+    private List<String> form() { return List.of(attribute, mode, operation, amount); }
+    private void loadSelection(String id) {
         attribute=id; mode="add"; operation="ADDITION"; amount="0";
         for(var raw:rules) if(raw.isJsonObject() && raw.getAsJsonObject().has("attribute") && sameAttribute(raw.getAsJsonObject().get("attribute").getAsString(), id)) {
             var row=raw.getAsJsonObject();
@@ -77,14 +83,20 @@ public final class CurioAttributeEditorPage extends KineticPage {
         for(int i=rules.size()-1;i>=0;i--) if(rules.get(i).isJsonObject() && rules.get(i).getAsJsonObject().has("attribute")
                 && sameAttribute(rules.get(i).getAsJsonObject().get("attribute").getAsString(), attribute)) rules.remove(i);
         error="";
+        formBaseline = form();
     }
-    private void applyRule() {
+    private void save() {
+        if (!form().equals(formBaseline) && !applyRule()) return;
+        done.accept(rules.deepCopy());
+        close();
+    }
+    private boolean applyRule() {
         double number=0;
         if(!mode.equals("remove")) try{number=Double.parseDouble(amount);if(!Double.isFinite(number))throw new NumberFormatException();}
-        catch(NumberFormatException exception){error="gui.itemcontrol.item_property.error.invalid_value";rebuild();return;}
+        catch(NumberFormatException exception){error="gui.itemcontrol.item_property.error.invalid_value";rebuild();return false;}
         deleteRule(); JsonObject row=new JsonObject(); row.addProperty("attribute",attribute);row.addProperty("mode",mode);
         if(!mode.equals("remove")){row.addProperty("operation",operation);row.addProperty("amount",number);}
-        rules.add(row); error="gui.itemcontrol.item_property.curio.rule_ready";rebuild();
+        rules.add(row); error="gui.itemcontrol.item_property.curio.rule_ready";rebuild();return true;
     }
     @Override protected void renderBackground(KineticGraphics g,int x,int y,float partialTick) {
         KineticTheme.panel(g,0,0,width(),height());

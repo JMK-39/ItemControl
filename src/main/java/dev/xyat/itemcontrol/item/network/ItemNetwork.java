@@ -347,8 +347,9 @@ public class ItemNetwork {
                 return;
             }
             if (BanItemConfig.applyJson(jsonData, "server packet from " + player.getGameProfile().getName(), true)) {
-                // Only the editor gets the saved rules; other players receive them when they log in.
-                sendServerConfigToPlayer(player, false);
+                // Tag membership is also used by client-side slot admission and item predicates.
+                if (editorType == EDITOR_ITEM_TAG) syncServerConfigToAllPlayers();
+                else sendServerConfigToPlayer(player, false);
                 sendEditorSaveResult(player, editorType, true, List.of(), "");
             } else {
                 sendServerConfigToPlayer(player, false);
