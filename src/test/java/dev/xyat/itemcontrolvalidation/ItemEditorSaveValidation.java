@@ -226,18 +226,26 @@ public final class ItemEditorSaveValidation {
         throw new AssertionError("actual attribute amount field missing");
     }
     private static void verifyProtectionPreview() throws Exception {
-        //? if >=1.21 {
+        //? if >=26.1 {
+        /*String id = "minecraft:diamond_sword[damage=5,custom_name='validation-preview']";
+        *///?} elif >=1.21 {
         /*String id = "minecraft:diamond_sword[damage=5,custom_name='\"validation-preview\"']";*/
         //?} else {
         String id = "minecraft:diamond_sword{Damage:5,display:{Name:'\"validation-preview\"'}}";
         //?}
         var expected = dev.xyat.itemcontrol.item.config.BanItemConfig.parseItemStack(id);
         require(!expected.isEmpty() && expected.getDamageValue() == 5, "valid metadata-bearing protection fixture");
+        require(expected.getHoverName().getString().equals("validation-preview"), "fixture preserves custom name");
         var preview = editor.getClass().getDeclaredMethod("specialStack", String.class);
         preview.setAccessible(true);
         var actual = (net.minecraft.world.item.ItemStack) preview.invoke(editor, id);
-        require(net.minecraft.world.item.ItemStack.isSameItemSameTags(expected, actual), "protection grid preview preserves NBT/components");
-        LOG.info("ITEM_PROPERTY_NBT_PREVIEW_PASS rule icon and hovered stack retain metadata");
+        //? if >=1.21 {
+        /*require(net.minecraft.world.item.ItemStack.isSameItemSameComponents(expected, actual), "protection grid preview preserves data components");
+        LOG.info("ITEM_PROPERTY_COMPONENT_PREVIEW_PASS rule preview retains damage and custom name components");
+        *///?} else {
+        require(net.minecraft.world.item.ItemStack.isSameItemSameTags(expected, actual), "protection grid preview preserves item NBT");
+        LOG.info("ITEM_PROPERTY_NBT_PREVIEW_PASS rule preview retains damage and custom name NBT");
+        //?}
     }
     @SuppressWarnings("unchecked") private static Map<String, KineticTextField> fields() throws Exception {
         return (Map<String, KineticTextField>) get(editor, "fields");
