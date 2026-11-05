@@ -1,3 +1,101 @@
+## 26.10.26 — 2026-10-26
+- Item properties have a Never Breaks switch next to Max Durability (combat, tool and general categories): the item stops wearing out and hides its durability bar. Elytra-style chestplates, such as the ignitium elytra chestplate, keep gliding when set to never break or to no durability, even if the stack was already worn down.
+- 物品属性在“最大耐久”旁新增“不会损坏”开关（战斗类、工具类、通用类）：物品不再消耗耐久并隐藏耐久条。带鞘翅的胸甲（例如腾炎鞘翅胸甲）设为不会损坏或无耐久后照常滑翔，即使物品之前已经磨损。
+- Item tags can now also be taken off: in the tag editor right-click an original tag to remove it (right-click again to give it back), or use Clear original to take every original tag off the item. Removals apply when the data loads (/reload or rejoining).
+- 物品标签现在也能移除：在标签编辑器里右键原生标签即可移除（再右键恢复），“清除原有”可一次去掉该物品的全部原有标签；移除在数据加载时生效（/reload 或重进世界）。
+- Added and removed item tags are written into the loaded item tags themselves, so every tag check sees them (Curios slots, recipes, enchanting), not only item checks.
+- 添加和移除的物品标签会直接写入载入后的物品标签数据，Curios 栏位、配方、附魔等所有按标签判断的地方都能识别，不再只对物品判断生效。
+- Banned items no longer get into the world through other ways: they are removed from generated loot (chests, mob and block drops, fishing, loot modifiers), dropped item entities of a banned item vanish (including mob equipment that drops on death and items loaded from saves), items given straight into an inventory are used up, and banned items already sitting in a container or a player inventory are removed when the container is opened or the player joins. Before, they were only removed when put into a slot through a menu.
+- 封禁物品不再从其他途径进入世界：生成的战利品（箱子、生物与方块掉落、钓鱼、战利品修改器）会去掉封禁物品；封禁物品的掉落物实体会直接消失（包括生物死亡掉落的装备和存档里已有的掉落物）；直接放进背包的物品（指令、奖励、拾取）会被吞掉；容器和玩家背包里原有的封禁物品会在打开容器或玩家进服时清除。之前只有通过界面放入格子时才会清除。
+- Ban, merge and tag rules cost much less: @mod rules are a prefix check, #tag rules a direct tag lookup instead of going through every tag of the item, and the checks that run on every item comparison (merged items and merged tags) are prepared lookups that return at once when no rule exists.
+- 封禁、合并和标签规则的开销大幅降低：@模组规则改为前缀判断，#标签规则直接查标签，不再逐个遍历物品的所有标签；每次物品比较都会运行的检查（合并物品、合并标签）改为预先建好的查找表，没有规则时立即返回。
+
+## 26.10.24 — 2026-10-24
+- 物品标签页的物品网格批量绘制图标，滚动更流畅。
+- Item property editor: the item grid uses standard slots without padding and the right panel gets the freed space; Batch & Templates, Add Rule, Reset and Delete moved to the top of the panel, label-sized; the category menu and the other buttons are shorter; the edited item uses a standard slot.
+- 物品属性编辑：物品网格改为无内边距标准格，右侧面板获得空出的宽度；批量与模板、添加规则、重置、删除移到面板顶部且按文字长度；分类菜单与其他按钮缩短；正在编辑的物品使用标准物品格。
+- Accessory/equipment attribute and food effect editors share one layout (list at the same ratio, Apply and Delete next to Save, short fields in one row, no status line). Slot counts show as coloured cards; Batch & Templates keeps every button in the header; the comparison is a table (original → draft).
+- 饰品/装备属性与食用效果编辑统一布局（列表比例一致，应用与删除在保存旁，短输入框同排，去掉状态文字）；槽位数量改为彩色卡片；批量与模板所有按钮放在顶栏；原值与草稿对照改为表格。
+- Item tags use standard slots, the tag field and list moved up, and the tag suggestions open above the scrollbars. Trash bin slots match the player inventory below, and stack counts are drawn above the durability bar.
+- 物品标签改用标准物品格，标签输入框与列表上移，标签补全列表不再被滚动条遮挡；垃圾桶格子与下方玩家背包样式一致，数量显示在耐久条上方。
+
+## 26.10.20 — 2026-10-20
+- The item property editor's category menu lists the plain category names (战斗类, 工具类 …) instead of repeating 当前： on every entry. / 物品属性编辑器的分类菜单直接列出分类名（战斗类、工具类……），不再每项都加“当前：”。
+- The item property editor, the equipment and accessory attribute editors, the food effect editor and the accessory slot count editor have Save at the top right. The attribute and food editors use the standard header (Back at the top left, a divider under it), lists that reach the bottom, and Apply / Delete on the bottom row instead of floating halfway down.
+- 物品属性编辑、装备与饰品属性编辑、食物效果编辑、饰品槽位数量编辑的“保存”统一放在右上角；属性与食物效果编辑器改用标准顶栏（左上角返回、下方分隔线），左侧列表延伸到底部，“应用规则/删除规则”移到最底行，不再浮在中间。
+- Trash bin slots look like a vanilla chest's, without the item-slot background. The property editor's Cancel reads Back. / 垃圾桶物品格改为原版箱子样式，不再叠加物品格背景；属性编辑器的“取消”改为“返回”。
+- Chinese text on 1.21.1 and 26.1.2 no longer puts spaces around 数据组件 (for example 编辑数据组件 instead of 编辑 数据组件). / 1.21.1 与 26.1.2 的中文不再在“数据组件”两侧留空格（例如“编辑数据组件”而不是“编辑 数据组件”）。
+- Banned items and item protection rules use the Core item search (categories, @mod and #tag rules, green outlines for listed items). Protection: left-click opens the rule dialog (Back top-left, Delete and Apply top-right, shorter), right-click removes the rule. Bans: left-click toggles, Shift + left-click edits the NBT rule. / 封禁物品与物品保护规则改用核心物品搜索界面（分类、@模组与 #标签规则、已列入的物品绿色描边）。保护规则：左键打开规则弹窗（返回在左上角，删除与应用在右上角，弹窗更矮），右键移除；封禁：左键切换，Shift+左键编辑 NBT 规则。
+- Item properties: Batch & Templates, Add Rule, Reset Item and Delete moved into their own block at the bottom of the property panel, with Save under them on the right; the item grid starts right under the header and shows 13 rows. / 物品属性：批处理与模板、添加规则、重置物品、删除移到属性面板底部单独一块区域，保存在其下方右侧；物品网格紧贴顶栏，显示 13 行。
+- Item tags: normal 18 px item slots in ten columns, a wider tag list, 4 px margins, Save top-right and Add next to Copy Tags. Merges: expanded sources hang off their target on mind-map connector lines. Trash bin: slots sit 2 px apart, and the player inventory below is drawn from the chest texture in one piece, so it looks like a chest inventory under resource packs too. Creative tabs: Add Custom Item and Save in the header, page arrows as tall as the tab icons, a taller item grid and no separate colour blocks. Damage types: a shorter search leaves room for the page title. / 物品标签：物品格恢复 18 像素、每行 10 个，标签列表加宽，间距统一 4 像素，保存在右上角，添加在“复制标签”旁。物品合并：展开后的源物品用思维导图式连线挂在目标物品下。垃圾桶：每格间隔 2 像素，下方玩家背包整块取自箱子贴图，使用材质包时也与箱子背包一致。创造标签页：添加自定义物品和保存移到顶栏，翻页按钮与标签图标同高，物品网格更高，去掉单独色块。伤害类型：搜索框缩短，显示页面标题。
+- The equipped slot count editor uses the standard 640×360 canvas like the other accessory editors: Back and title in the header, slot and amount on one row, the rule list below and Apply, Delete and Save along the bottom. / 佩戴槽位数量编辑页改用与其他饰品编辑页相同的 640×360 标准画布：返回与标题在顶栏，槽位与数量同一行，下方为规则列表，底部为应用、删除与保存。
+- The item protection rule editor places Back in the top-left corner four pixels from the frame, with the title beside it, like the other editors. / 物品保护规则编辑器的返回按钮移至距外框 4 像素的左上角，标题紧随其后，与其他编辑器一致。
+- The trash-button HUD instructions now explain its fixed size and the drag, reset and save controls. / 垃圾桶按钮位置编辑说明现明确尺寸固定，并保留拖动、重置与保存提示。
+- Item rule, merge, tag, protection and creative-tab tooltips keep the full native item details and append their editing hints. Unsaved item-property previews also keep native tooltip images.
+- 物品规则、统一、标签、保护及创造标签页保留完整原生物品提示并附加操作说明；未保存的属性预览也保留原生提示图像。
+- Full-size item, attribute, food, batch and creative-tab editors use the standard four-pixel canvas safe margin. Manual ban, merge and tag hit tests now use the same rounded scroll position as their rendered cards and rows.
+- 640×360 物品、属性、食物、批处理及创造标签编辑页统一使用 4 像素安全边距；禁用、统一和标签列表的点击/提示命中与绘制使用相同的滚动像素位置。
+
+### English
+
+- Editors share one white outer frame, with gray-white dividers between content regions instead of nested panel borders. Item cards, interactive rows, popups and native container textures retain their outlines.
+- Trash-bin quantities render above item icons using native bottom-right decorations, retaining green counts and the existing large-count abbreviations.
+
+### 简体中文
+
+- 编辑器统一使用白色外框，内容区域通过灰白分隔线划分，移除嵌套面板边框；物品卡片、交互行、弹窗及原生容器贴图保持原样。
+- 垃圾桶数量通过原生右下角装饰绘制在物品图标上方，保留绿色数量及原有的大数量缩写。
+
+## 26.10.16 — 2026-10-16
+
+### English
+
+- Remove two fixed explanatory rows from item protection configuration. Widen searches without overlapping adjacent controls and use the full standard canvas for attribute/effect editing. Delete reuses existing selected/hovered rule removals; text editing retains priority.
+- Configured accessories now use real Curios item capabilities and native slot eligibility. Curios itself displays every allowed slot and its attribute group, while original accessory behavior is preserved. Rules update existing stacks immediately.
+- Damage immunity actions share the top toolbar. The entity immunity editor uses the Core entity grid with twelve columns and six full rows at the standard canvas size.
+- Tag rows have individual white outlines and a scrollbar; redundant descriptions, item IDs and nested frames were removed. Merge items use more of the available space, and property controls retain gray labels when disabled.
+- Cleaner white/blacklists open the Core searchable item multiselector directly. The area-tool setting opens the Core item picker directly.
+
+### 简体中文
+
+- 移除物品保护配置的两段固定说明；搜索框加宽并避让相邻控件，属性和效果编辑使用标准大画布。Delete 复用已有选中或悬停规则的删除动作，文本编辑优先。
+- 配置饰品现在实际接入 Curios 物品能力与原生槽位判定，由 Curios 自己显示全部可用槽位及各槽属性组，并保留已有饰品的原始行为。修改立即作用于已有物品堆。
+- 伤害免疫的操作集中到顶部；实体免疫页使用 Core 实体网格，标准画布可容纳十二列、六整行。
+- 标签逐行使用白色描边并可拖动滚动条，删除重复说明、物品 ID 和内部双框；合并页扩大内容空间，属性页未选择物品时仍显示灰色按钮文字。
+- 清理白名单、垃圾桶黑名单直接打开 Core 可搜索物品多选器；区域工具设置直接打开 Core 物品选择器。
+
+## 26.10.15 — 2026-10-15
+
+### English
+
+- Items made wearable show it in their tooltip, worded like Curios accessories: the slot line under the name and, for items that are not accessories on their own, the "When worn" attribute lines. An accessory moved to other slots shows its new slots. Saved changes show at once, without a restart.
+- Hovering an item in the property editor shows its full tooltip with the editor's changes already applied, before saving.
+- The attribute and food effect editors list every attribute or effect on the left (with a search field); entries with a rule come first with a green outline and their value, and clicking one edits it on the right. The attribute dropdown and the New Rule button are gone.
+- The property editor's item grid has one more column, the panel on the right is narrower, and the bottom buttons share one width.
+- Choosing an equipment slot in the equipment attribute editor loads that attribute's rule for the slot.
+
+- Items taken from the trash bin stay taken. Previously, leaving the world soon after taking them could bring the same items back into the trash bin on the next load.
+- A block made edible or wearable still places when used on a block, like vanilla edible block items; it is eaten or equipped when used in the air.
+- Accessory slots: choosing the generic slot clears the specific slots, and choosing a specific slot clears the generic one. Several specific slots can be combined.
+- The property panel shows the item being edited (icon, name and ID) under the title.
+- The accessory page lists the selected slots, attribute rules and equipped slot counts directly; selected slots come first in the slot list.
+- Accessory and equipment attribute editors list every configured rule. Selecting a rule loads it into the form; New Rule, Apply and Delete act on that rule.
+
+### 简体中文
+
+- 设置为可佩戴的物品会在提示中说明，措辞与 Curios 饰品一致：名称下方显示栏位；本身不是饰品的物品还会显示“佩戴时”属性。改到其他栏位的饰品会显示新栏位。保存后立即显示，无需重启。
+- 在属性编辑器中悬停物品，会显示应用了当前编辑内容的完整物品提示，无需先保存。
+- 属性与食用效果编辑页在左侧列出全部属性或效果（带搜索框）；已有规则的条目排在前面，带绿色描边并显示数值，点击即可在右侧编辑。属性下拉框与“新建规则”按钮已移除。
+- 属性编辑器的物品网格多显示一列，右侧面板更窄，底部按钮宽度统一。
+- 在装备属性编辑页切换装备槽位时，会读取该属性在此槽位的规则。
+
+- 从垃圾桶取出的物品会正确保存。此前取出后很快退出存档，重新进入时垃圾桶里会再次出现相同物品，导致刷物品。
+- 设为可食用或可穿戴的方块对着方块使用时仍会放置，与原版可食用方块物品一致；对着空气使用时食用或穿戴。
+- 饰品槽位：选择通用槽位会取消其他具体槽位，选择具体槽位会取消通用槽位；具体槽位可以多选。
+- 属性面板在标题下方显示正在编辑的物品（图标、名称与 ID）。
+- 饰品页直接显示已选佩戴槽位、属性规则和佩戴时的槽位数量；槽位列表中已选槽位排在最前。
+- 饰品与装备属性编辑页列出所有已配置的规则，选中规则即可载入表单编辑，新建、应用与删除都针对该规则。
+
 ## 26.10.12 — 2026-10-12
 
 ### English

@@ -9,7 +9,6 @@ import dev.xyat.kineticcore.api.client.gui.page.KineticContainerPage;
 import dev.xyat.kineticcore.api.client.gui.render.KineticGraphics;
 import dev.xyat.kineticcore.api.client.gui.render.KineticTexture;
 import dev.xyat.kineticcore.api.client.gui.scroll.KineticScrollController;
-import dev.xyat.kineticcore.api.client.gui.theme.KineticTheme;
 import dev.xyat.kineticcore.api.client.gui.ui.KineticUi;
 import dev.xyat.kineticcore.api.client.gui.widget.KineticButton;
 import dev.xyat.kineticcore.api.text.KineticI18n;
@@ -40,7 +39,7 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
 
     public CleanerPage(CleanerMenu cleanerMenu, Component title) {
         super(cleanerMenu, title);
-        setImageSize(176, 222);
+        setImageSize(CleanerMenu.IMAGE_WIDTH, CleanerMenu.IMAGE_HEIGHT);
         setTitleLabelPosition(HIDDEN_LABEL_POS, HIDDEN_LABEL_POS);
         setInventoryLabelPosition(HIDDEN_LABEL_POS, HIDDEN_LABEL_POS);
         this.maxHistory = CleanerConfig.trashBinHistorySize;
@@ -56,8 +55,8 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
         int gap = 2;
         int maxButtonWidth = (imageWidth() - 16 - MIN_HEADER_WIDTH - gap) / 2;
         // Fixed widths in every language; the labels scroll when longer.
-        int previousWidth = Math.min(maxButtonWidth, 44);
-        int nextWidth = Math.min(maxButtonWidth, 44);
+        int previousWidth = Math.min(maxButtonWidth, 40);
+        int nextWidth = Math.min(maxButtonWidth, 40);
         int nextX = leftPos() + imageWidth() - 8 - nextWidth;
         int previousX = nextX - gap - previousWidth;
         headerRightX = previousX - 4;
@@ -83,20 +82,46 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
         return (count / 1000000000) + "g";
     }
 
+    // Right of the trash grid: 8 px left margin + nine 20 px columns - the last gap + 2 px.
+    private static final int SCROLL_X = 8 + 9 * CleanerMenu.TRASH_PITCH - 2 + 2;
+
+    /** The vanilla container frame at any size, cut from the chest texture: 4 px corners and edges, plain fill. */
+    private static void vanillaPanel(KineticGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x + 4, y + 4, x + width - 4, y + height - 4, 0xFFC6C6C6);
+        for (int dx = 4; dx < width - 4; dx += 160) {
+            int w = Math.min(160, width - 4 - dx);
+            graphics.texture(TEXTURE, x + dx, y, 4, 0, w, 4);
+            graphics.texture(TEXTURE, x + dx, y + height - 4, 4, 218, w, 4);
+        }
+        for (int dy = 4; dy < height - 4; dy += 100) {
+            int h = Math.min(100, height - 4 - dy);
+            graphics.texture(TEXTURE, x, y + dy, 0, 4, 4, h);
+            graphics.texture(TEXTURE, x + width - 4, y + dy, 172, 4, 4, h);
+        }
+        graphics.texture(TEXTURE, x, y, 0, 0, 4, 4);
+        graphics.texture(TEXTURE, x + width - 4, y, 172, 0, 4, 4);
+        graphics.texture(TEXTURE, x, y + height - 4, 0, 218, 4, 4);
+        graphics.texture(TEXTURE, x + width - 4, y + height - 4, 172, 218, 4, 4);
+    }
+
     @Override
     protected void renderContainerBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int x = leftPos();
         int y = topPos();
-        graphics.texture(TEXTURE, x, y, 0, 0, 176, 222);
-
+        vanillaPanel(graphics, x, y, imageWidth(), imageHeight());
+        // The player inventory and hotbar keep the chest's spacing, so they are copied from the chest texture in one
+        // piece and look like a chest's inventory under any resource pack.
+        graphics.texture(TEXTURE, x + CleanerMenu.INVENTORY_X - 1, y + CleanerMenu.INVENTORY_Y - 1, 7, 139, 162, 3 * 18 + 4 + 18);
         for (Slot slot : menu().slots) {
-            if (slot.isActive() && slot.container == menu().scrollableContainer) {
-                KineticTheme.itemSlot(graphics, x + slot.x - 1, y + slot.y - 1);
-            }
+            if (slot.container != menu().scrollableContainer) continue;
+            // Trash slots look exactly like the player inventory below: each takes the inventory sprite of the same
+            // column and row parity, so resource packs that draw the inventory as a checkerboard continue it here.
+            int column = (slot.x - 8) / CleanerMenu.TRASH_PITCH, row = (slot.y - 18) / CleanerMenu.TRASH_PITCH;
+            graphics.texture(TEXTURE, x + slot.x - 1, y + slot.y - 1, 7 + column * 18, 139 + (row % 2) * 18, 18, 18);
         }
 
         scroller.update(menu().getTotalRows(), 6);
-        scroller.render(graphics, mouseX, mouseY, x + 171, y + 18, 4, 108, 15);
+        scroller.render(graphics, mouseX, mouseY, x + SCROLL_X, y + 18, 4, CleanerMenu.TRASH_GRID_HEIGHT, 15);
 
         originalCounts.clear();
         for (Slot slot : menu().slots) {
@@ -115,15 +140,20 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
         // 原 renderLabels：坐标相对容器区域 / Former renderLabels: coordinates relative to the container area.
         int left = leftPos();
         int top = topPos();
-        for (Map.Entry<Slot, Integer> entry : originalCounts.entrySet()) {
-            Slot slot = entry.getKey();
-            int realCount = entry.getValue();
-            slot.getItem().setCount(realCount);
-            String customText = formatCount(realCount);
-
-            // Drawn the way vanilla draws stack counts: a count drawn on its own over the slot could end up behind
-            // the item in some modpacks. §a keeps the green colour (0x55FF55).
-            graphics.itemDecorations(slot.getItem(), left + slot.x, top + slot.y, "§a" + customText);
+        graphics.push();
+        try {
+            // The slots already drew the durability bar (at count 1). The count goes on a raised pass above that bar,
+            // at the vanilla position, so the bar never covers it.
+            graphics.raise(2);
+            for (Map.Entry<Slot, Integer> entry : originalCounts.entrySet()) {
+                Slot slot = entry.getKey();
+                int realCount = entry.getValue();
+                slot.getItem().setCount(realCount);
+                String text = formatCount(realCount);
+                graphics.text(text, left + slot.x + 17 - graphics.textWidth(text), top + slot.y + 9, 0xFF55FF55, true);
+            }
+        } finally {
+            graphics.pop();
         }
         originalCounts.clear();
 
@@ -169,7 +199,7 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
     protected boolean onMouseClickCapture(MouseInput input) {
         // 原 containerMouseClicked 在槽位与控件之前运行 / The old containerMouseClicked ran before slots and controls.
         scroller.update(menu().getTotalRows(), 6);
-        if (scroller.beginDrag(input.x(), input.y(), input.button(), leftPos() + 171, topPos() + 18, 4, 108, 15, 2)) {
+        if (scroller.beginDrag(input.x(), input.y(), input.button(), leftPos() + SCROLL_X, topPos() + 18, 4, CleanerMenu.TRASH_GRID_HEIGHT, 15, 2)) {
             this.syncToServer(false);
             return true;
         }
@@ -197,7 +227,7 @@ public class CleanerPage extends KineticContainerPage<CleanerMenu> {
     @Override
     protected boolean onMouseDrag(MouseDragInput input) {
         // 原 containerMouseDragged / Former containerMouseDragged.
-        if (!scroller.drag(input.y(), topPos() + 18, 108, 15)) return false;
+        if (!scroller.drag(input.y(), topPos() + 18, CleanerMenu.TRASH_GRID_HEIGHT, 15)) return false;
         this.syncToServer(false);
         return true;
     }

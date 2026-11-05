@@ -14,7 +14,7 @@ final class CurioRuntimeChecks {
     private static net.minecraft.server.level.ServerPlayer wearer;
     private static top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler equipped;
     private static ItemStack previous;
-    private static double originalArmor;
+    private static double originalArmor,originalHealth;
     private static int ringCount,necklaceCount;
     private static top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler second;
     private static ItemStack secondPrevious;
@@ -38,14 +38,17 @@ final class CurioRuntimeChecks {
             var slots = inventory.getCurios();
             ringCount=slots.get("ring").getStacks().getSlots();necklaceCount=slots.get("necklace").getStacks().getSlots();
             ItemPropertyRuntimeChecks.require(!slots.isEmpty(), "existing Curios slots available");
-            String first = slots.entrySet().stream().filter(row -> row.getValue().getStacks().getSlots() > 0)
+            String first = slots.entrySet().stream().filter(row -> !row.getKey().equals("curio") && row.getValue().getStacks().getSlots() > 0)
                     .map(java.util.Map.Entry::getKey).findFirst().orElseThrow(() -> new AssertionError("nonempty real Curios slot available"));
+            // Construct before enabling the rule: attachment must work for stacks already in inventories.
+            ItemStack stick = new ItemStack(Items.STICK);
             var document = JsonParser.parseString(ItemPropertyConfig.pendingJson()).getAsJsonObject();
             document.add("minecraft:stick", JsonParser.parseString("{\"curio\":{\"enabled\":true,\"slots\":[\""+first+"\",\"validation_secondary\"],\"can_unequip\":false,\"attributes\":[{\"attribute\":\"minecraft:generic.armor\",\"operation\":\"ADDITION\",\"amount\":3}]}}"));
             document.getAsJsonObject("minecraft:stick").getAsJsonObject("curio").add("slot_modifiers",JsonParser.parseString("[{\"slot\":\"ring\",\"amount\":2},{\"slot\":\"necklace\",\"amount\":1}]"));
             ItemPropertyRuntimeChecks.require(ItemPropertyConfig.savePending(document.toString()).success(), "save curio conversion");
             ItemEquipmentRefresh.applyPending(server);
-            ItemStack stick = new ItemStack(Items.STICK);
+            ItemPropertyRuntimeChecks.require(CuriosApi.getCurio(stick).isPresent(), "existing ordinary stack has real Curios capability after enabling");
+            ItemPropertyRuntimeChecks.require(CuriosApi.getItemStackSlots(stick, player).keySet().equals(java.util.Set.of(first)), "native Curios slot query uses configured slots without invented slot types");
             var handler = slots.get(first).getStacks();
             ItemPropertyRuntimeChecks.require(handler.isItemValid(0, stick), "ordinary stick accepted in configured real slot");
             var context = new top.theillusivec4.curios.api.SlotContext(first, player, 0, false, true);
@@ -80,6 +83,8 @@ final class CurioRuntimeChecks {
             wearer=player; equipped=handler; previous=handler.getStackInSlot(0).copy();
             ItemPropertyRuntimeChecks.require(previous.isEmpty(), "fixture uses an empty accessory slot");
             originalArmor=player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+            // Modpacks change the base health; compare with the value measured before the accessory went on.
+            originalHealth=player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
             equipped.setStackInSlot(0, stick);
             org.slf4j.LoggerFactory.getLogger(CurioRuntimeChecks.class).info("ITEM_CURIO_RUNTIME_PASS configured and universal slot admission, removal lock, attributes");
         });
@@ -101,6 +106,7 @@ final class CurioRuntimeChecks {
         ItemPropertyRuntimeChecks.require(ItemPropertyConfig.savePending(document.toString()).success(), "save existing accessory slot replacement");
         ItemEquipmentRefresh.applyPending(server);
         ItemPropertyRuntimeChecks.require(!ring.isItemValid(0, nativeItem) && necklace.isItemValid(0, nativeItem), "replace native ring with necklace");
+        ItemPropertyRuntimeChecks.require(CuriosApi.getItemStackSlots(nativeItem, player).keySet().equals(java.util.Set.of("necklace")), "native slot query replaces ring with necklace");
         ItemPropertyRuntimeChecks.require(dev.xyat.itemcontrol.item.compat.ItemCuriosCompat.originalSlots(nativeItem, player).contains("ring"), "native slot preview ignores overrides");
         document.getAsJsonObject("minecraft:blaze_rod").getAsJsonObject("curio").addProperty("enabled", false);
         ItemPropertyRuntimeChecks.require(ItemPropertyConfig.savePending(document.toString()).success(), "disable existing accessory override");
@@ -121,7 +127,7 @@ final class CurioRuntimeChecks {
         ItemPropertyRuntimeChecks.require(ItemPropertyConfig.savePending(document.toString()).success(), "save "+mode);
         ItemEquipmentRefresh.applyPending(server);
         ItemPropertyRuntimeChecks.require(Math.abs(wearer.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR)-originalArmor-expectedAfter)<0.0001, "equipped accessory live "+mode);
-        ItemPropertyRuntimeChecks.require(wearer.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)>=22, "unrelated original attribute preserved");
+        ItemPropertyRuntimeChecks.require(Math.abs(wearer.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)-originalHealth-2)<0.0001, "unrelated original attribute preserved actual="+wearer.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)+" before="+originalHealth);
         org.slf4j.LoggerFactory.getLogger(CurioRuntimeChecks.class).info("ITEM_CURIO_EDIT_PASS {}", mode);
     }
     static void equipSecond(){if(wearer==null)return;second=CuriosApi.getCuriosInventory(wearer).orElseThrow(()->new IllegalStateException("Missing Curios inventory")).getCurios().get("ring").getStacks();secondPrevious=second.getStackInSlot(1).copy();ItemPropertyRuntimeChecks.require(secondPrevious.isEmpty(),"second test slot is empty");second.setStackInSlot(1,new ItemStack(Items.STICK));}

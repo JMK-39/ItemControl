@@ -109,7 +109,12 @@ public class ItemManagementMixins {
             if (item == null || ItemBanControl.shouldSkip()) return;
             ItemStack self = (ItemStack) (Object) this;
             String target = BanItemConfig.getReplacement(self);
-            if (target == null || target.isBlank() || BanItemConfig.VOID_ID.equals(target)) return;
+            if (target == null || target.isBlank()) return;
+            if (BanItemConfig.VOID_ID.equals(target)) {
+                // A banned item created on the server is air from the start (One Enough Item's approach).
+                if (ItemBanControl.isServerThread()) item = Items.AIR.builtInRegistryHolder();
+                return;
+            }
             Item replacement = KineticRegistries.items().get(dev.xyat.kineticcore.api.resource.KineticResourceIds.tryParse(BanItemConfig.getBaseIdentifier(target)));
             if (replacement == null || replacement == Items.AIR || replacement == item.value()) return;
             item = replacement.builtInRegistryHolder();
@@ -120,13 +125,8 @@ public class ItemManagementMixins {
             ItemStack self = (ItemStack) (Object) this;
             if (self.typeHolder().value() == rawType) return true;
             if (self.isEmpty() || !(rawType instanceof Item pItem) || pItem == Items.AIR) return false;
-            ResourceLocation inId = KineticRegistries.items().id(pItem);
-            String replacementStr = inId == null ? null : BanItemConfig.getReplacement(inId.toString());
-            if (replacementStr == null || BanItemConfig.VOID_ID.equals(replacementStr)) return false;
-            int bracket = replacementStr.indexOf('[');
-            String targetPureId = bracket == -1 ? replacementStr : replacementStr.substring(0, bracket);
-            ResourceLocation thisId = KineticRegistries.items().id(self.getItem());
-            return thisId != null && targetPureId.equals(thisId.toString());
+            Item target = BanItemConfig.mergeTargetOf(pItem);
+            return target != null && self.getItem() == target;
         }
 
         public boolean is(TagKey<Item> tagKey) {
@@ -181,7 +181,12 @@ public class ItemManagementMixins {
             if (item == null || ItemBanControl.shouldSkip()) return;
             ItemStack self = (ItemStack) (Object) this;
             String target = BanItemConfig.getReplacement(self);
-            if (target == null || target.isBlank() || BanItemConfig.VOID_ID.equals(target)) return;
+            if (target == null || target.isBlank()) return;
+            if (BanItemConfig.VOID_ID.equals(target)) {
+                // A banned item created on the server is air from the start (One Enough Item's approach).
+                if (ItemBanControl.isServerThread()) item = Items.AIR;
+                return;
+            }
             Item replacement = KineticRegistries.items().get(dev.xyat.kineticcore.api.resource.KineticResourceIds.tryParse(BanItemConfig.getBaseIdentifier(target)));
             if (replacement == null || replacement == Items.AIR || replacement == item) return;
             item = replacement;
@@ -211,7 +216,16 @@ public class ItemManagementMixins {
 
             ItemStack self = (ItemStack) (Object) this;
             String replacement = BanItemConfig.getReplacement(self);
-            if (replacement == null || replacement.isBlank() || BanItemConfig.VOID_ID.equals(replacement)) return;
+            if (replacement == null || replacement.isBlank()) return;
+            if (BanItemConfig.VOID_ID.equals(replacement)) {
+                // A banned item created on the server is air from the start (One Enough Item's approach). The check also
+                // runs after setTag, so NBT-specific ban rules apply once the tag is there.
+                if (ItemBanControl.isServerThread()) {
+                    item = Items.AIR;
+                    delegate = ForgeRegistries.ITEMS.getDelegateOrThrow(Items.AIR);
+                }
+                return;
+            }
 
             String targetId = BanItemConfig.getBaseIdentifier(replacement);
             if (targetId.isEmpty()) return;
@@ -235,42 +249,22 @@ public class ItemManagementMixins {
         //? if >=1.21 && <26.1 {
 /*@Inject(method = "is(Lnet/minecraft/world/item/Item;)Z", at = @At("HEAD"), cancellable = true)
 private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
+            // A stack of a merge target also counts as its merged sources; one map lookup, no registry or string work.
+            if (pItem == null || pItem == Items.AIR) return;
+            Item target = BanItemConfig.mergeTargetOf(pItem);
+            if (target == null) return;
             ItemStack self = (ItemStack) (Object) this;
-            if (self.isEmpty() || pItem == null || pItem == Items.AIR) return;
-            if (self.getItem() != pItem) {
-                ResourceLocation inId = KineticRegistries.items().id(pItem);
-                if (inId != null) {
-                    String replacementStr = BanItemConfig.getReplacement(inId.toString());
-                    if (replacementStr != null && !BanItemConfig.VOID_ID.equals(replacementStr)) {
-                        int bracket = replacementStr.indexOf('[');
-                        String targetPureId = bracket == -1 ? replacementStr : replacementStr.substring(0, bracket);
-                        ResourceLocation thisId = KineticRegistries.items().id(self.getItem());
-                        if (thisId != null && targetPureId.equals(thisId.toString())) {
-                            cir.setReturnValue(true);
-                        }
-                    }
-                }
-            }
+            if (!self.isEmpty() && self.getItem() == target) cir.setReturnValue(true);
         }*/
 //?} else if <1.21 {
 @Inject(method = "is(Lnet/minecraft/world/item/Item;)Z", at = @At("HEAD"), cancellable = true)
 private void itemcontrol_item$isItem(Item pItem, CallbackInfoReturnable<Boolean> cir) {
+            // A stack of a merge target also counts as its merged sources; one map lookup, no registry or string work.
+            if (pItem == null || pItem == Items.AIR) return;
+            Item target = BanItemConfig.mergeTargetOf(pItem);
+            if (target == null) return;
             ItemStack self = (ItemStack) (Object) this;
-            if (self.isEmpty() || pItem == null || pItem == Items.AIR) return;
-            if (self.getItem() != pItem) {
-                ResourceLocation inId = ForgeRegistries.ITEMS.getKey(pItem);
-                if (inId != null) {
-                    String replacementStr = BanItemConfig.getReplacement(inId.toString());
-                    if (replacementStr != null && !BanItemConfig.VOID_ID.equals(replacementStr)) {
-                        int bracket = replacementStr.indexOf('{');
-                        String targetPureId = bracket == -1 ? replacementStr : replacementStr.substring(0, bracket);
-                        ResourceLocation thisId = ForgeRegistries.ITEMS.getKey(self.getItem());
-                        if (thisId != null && targetPureId.equals(thisId.toString())) {
-                            cir.setReturnValue(true);
-                        }
-                    }
-                }
-            }
+            if (!self.isEmpty() && self.getItem() == target) cir.setReturnValue(true);
         }
 //?}
 

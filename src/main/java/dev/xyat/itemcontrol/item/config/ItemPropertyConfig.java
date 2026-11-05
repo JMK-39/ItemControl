@@ -66,7 +66,31 @@ public final class ItemPropertyConfig {
 
     /** Current process rules; saving pending edits never mutates this map. */
     public static ItemPropertyRule active(ResourceLocation itemId) {
-        return itemId == null || PREVIEW_ORIGINAL.get() ? null : ACTIVE.get().items().get(itemId);
+        if (itemId == null || PREVIEW_ORIGINAL.get()) return null;
+        var draft = PREVIEW_DRAFT.get();
+        if (draft != null && draft.itemId().equals(itemId)) return draft.rule();
+        return ACTIVE.get().items().get(itemId);
+    }
+
+    private record DraftPreview(ResourceLocation itemId, ItemPropertyRule rule) {}
+    private static final ThreadLocal<DraftPreview> PREVIEW_DRAFT = new ThreadLocal<>();
+
+    /**
+     * Reads an item's values as if its unsaved editor draft were already active ({@code null} = no rule), for the
+     * editor's tooltip preview. A draft that does not parse falls back to the active rule.
+     */
+    public static <T> T previewDraft(ResourceLocation itemId, com.google.gson.JsonElement draft, Supplier<T> read) {
+        if (itemId == null) return read.get();
+        List<String> errors = new ArrayList<>();
+        ItemPropertyRule rule = draft == null ? null : parseRule(draft, errors);
+        if (!errors.isEmpty()) return read.get();
+        DraftPreview previous = PREVIEW_DRAFT.get();
+        PREVIEW_DRAFT.set(new DraftPreview(itemId, rule));
+        try {
+            return read.get();
+        } finally {
+            PREVIEW_DRAFT.set(previous);
+        }
     }
 
     /** Reads an item's original values while temporarily excluding ItemControl's active overrides. */

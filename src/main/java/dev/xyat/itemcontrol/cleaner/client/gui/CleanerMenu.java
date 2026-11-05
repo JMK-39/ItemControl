@@ -17,6 +17,14 @@ import net.minecraft.world.item.ItemStack;
 import javax.annotation.Nonnull;
 
 public class CleanerMenu extends AbstractContainerMenu {
+    // Trash slots sit 2 px apart (20 px pitch) so neighbouring items are easy to tell apart; the player inventory below
+    // keeps the vanilla 18 px pitch and is centered under the wider trash grid.
+    public static final int TRASH_PITCH = 20;
+    public static final int IMAGE_WIDTH = 196;
+    public static final int TRASH_GRID_HEIGHT = 6 * TRASH_PITCH - 2;
+    public static final int INVENTORY_X = (IMAGE_WIDTH - 162) / 2;
+    public static final int INVENTORY_Y = 18 + TRASH_GRID_HEIGHT + 18;
+    public static final int IMAGE_HEIGHT = INVENTORY_Y + 3 * 18 + 4 + 18 + 7;
     public final ScrollableContainer scrollableContainer;
     private final Player player;
 
@@ -32,17 +40,17 @@ public class CleanerMenu extends AbstractContainerMenu {
         // 1. 垃圾桶区域：使用我们自定义的超级 TrashSlot
         for (int i = 0; i < 6; ++i) {
             for (int j = 0; j < 9; ++j) {
-                this.addSlot(new TrashSlot(this.scrollableContainer, j + i * 9, 8 + j * 18, 18 + i * 18));
+                this.addSlot(new TrashSlot(this.scrollableContainer, j + i * 9, 8 + j * TRASH_PITCH, 18 + i * TRASH_PITCH));
             }
         }
         // 2. 玩家背包区域：使用原版普通 Slot
         for (int l = 0; l < 3; ++l) {
             for (int j1 = 0; j1 < 9; ++j1) {
-                this.addSlot(new Slot(inv, j1 + l * 9 + 9, 8 + j1 * 18, 140 + l * 18));
+                this.addSlot(new Slot(inv, j1 + l * 9 + 9, INVENTORY_X + j1 * 18, INVENTORY_Y + l * 18));
             }
         }
         for (int i1 = 0; i1 < 9; ++i1) {
-            this.addSlot(new Slot(inv, i1, 8 + i1 * 18, 198));
+            this.addSlot(new Slot(inv, i1, INVENTORY_X + i1 * 18, INVENTORY_Y + 3 * 18 + 4));
         }
     }
 
@@ -104,6 +112,13 @@ public class CleanerMenu extends AbstractContainerMenu {
             else slot.setChanged();
         }
         return itemstack;
+    }
+
+    @Override
+    public void removed(@Nonnull Player p) {
+        super.removed(p);
+        // Clicks may change a stored stack without reporting it; save the trash records with the world either way.
+        if (p.level() instanceof ServerLevel sl) CleanerSavedData.get(sl).setDirty();
     }
 
     @Override public boolean stillValid(@Nonnull Player p) { return true; }

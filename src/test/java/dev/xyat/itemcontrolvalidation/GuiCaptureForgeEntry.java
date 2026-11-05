@@ -5,8 +5,16 @@ package dev.xyat.itemcontrolvalidation;
 @net.minecraftforge.fml.common.Mod("itemcontrol_validation")
 public final class GuiCaptureForgeEntry {
     public GuiCaptureForgeEntry() {
+        if (Boolean.getBoolean("itemcontrol.curioValidation")) { CurioNativeValidation.install(); return; }
+        if (Boolean.getBoolean("itemcontrol.layoutValidation")) {
+            dev.xyat.kineticcore.api.runtime.KineticPlatform.runOnClient(() -> ItemLayoutValidation::install);
+            return;
+        }
         if (Boolean.getBoolean("itemcontrol.propertyValidation")) ItemPropertyRuntimeChecks.install();
-        if (Boolean.getBoolean("itemcontrol.guiValidation")) {
+        // The playtest drives the editor itself, so it replaces the GUI capture when both are switched on.
+        if (Boolean.getBoolean("itemcontrol.playtest")) {
+            dev.xyat.kineticcore.api.runtime.KineticPlatform.runOnClient(() -> ItemPlaytestValidation::install);
+        } else if (Boolean.getBoolean("itemcontrol.guiValidation")) {
             dev.xyat.kineticcore.api.runtime.KineticPlatform.runOnClient(() -> GuiLongTextValidation::install);
         }
     }

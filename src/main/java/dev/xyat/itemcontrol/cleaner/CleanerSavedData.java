@@ -43,11 +43,18 @@ public class CleanerSavedData extends net.minecraft.world.level.saveddata.SavedD
 
     public void addRecord(BigTrashContainer container) {
         if (!CleanerConfig.enableTrashBin) return;
+        track(container);
         history.addFirst(container);
         while (history.size() > CleanerConfig.trashBinHistorySize) {
             history.removeLast();
         }
         this.setDirty();
+    }
+
+    // Taking items changes a stored record in place. Without this the world can keep an earlier save of the record, so
+    // the same items could be taken again after reloading.
+    private void track(BigTrashContainer container) {
+        container.onChange = this::setDirty;
     }
 
     public BigTrashContainer getRecord(int index) {
@@ -100,6 +107,7 @@ ItemStack stack = ItemStack.of(itemTag);
                             container.setItem(slot, stack);
                         }
                     }
+                    data.track(container);
                     data.history.add(container);
                 }
             }
@@ -152,8 +160,16 @@ ItemStack stack = ItemStack.of(itemTag);
 
     // 自定义无视堆叠上限的容器 (支持 2,147,483,647)
     public static class BigTrashContainer extends SimpleContainer {
+        private Runnable onChange;
+
         public BigTrashContainer(int size) {
             super(size);
+        }
+
+        @Override
+        public void setChanged() {
+            super.setChanged();
+            if (onChange != null) onChange.run();
         }
 
         @Override

@@ -141,6 +141,23 @@ public final class ItemPropertyMixins {
         }
     }
 
+    // Elytra-style chestplates (the vanilla elytra, Cataclysm's ignitium chestplate) glide only while the damage is
+    // below max - 1. A no-durability rule keeps them flying even when an old stack still carries damage. 26.1 checks
+    // gliding through isDamageableItem, so this Mixin is left out of its config there (unavailable_mixins).
+//? if >=26.1 {
+/*    @Mixin(Item.class)
+    public abstract static class ElytraFlight {
+    }*/
+//?} else {
+    @Mixin(net.minecraft.world.item.ElytraItem.class)
+    public abstract static class ElytraFlight {
+        @Inject(method = "isFlyEnabled(Lnet/minecraft/world/item/ItemStack;)Z", at = @At("HEAD"), cancellable = true)
+        private static void itemcontrol$unbreakableFlight(ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
+            if (ItemPropertyOverrides.hasNoDurability(stack)) cir.setReturnValue(true);
+        }
+    }
+//?}
+
     @Mixin(BlockBehaviour.BlockStateBase.class)
     public abstract static class BlockStateProperties {
         @Inject(method = "getDestroySpeed(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)F", at = @At("RETURN"), cancellable = true)

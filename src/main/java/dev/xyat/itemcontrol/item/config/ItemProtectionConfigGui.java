@@ -24,7 +24,6 @@ public class ItemProtectionConfigGui {
                 .applyTiming(KTConfigPage.ApplyTiming.MIXED)
                 .applyNotice(KineticI18n.translatable("cfg.itemcontrol.item.protection.apply_notice"))
                 .divider()
-                .description(KineticI18n.translatable("cfg.itemcontrol.item.protection.description"))
                 .booleanValue(
                         "enable_item_protection",
                         KineticI18n.translatable("cfg.itemcontrol.item.prot.enable"),
@@ -70,7 +69,6 @@ public class ItemProtectionConfigGui {
                         KineticI18n.translatable("cfg.itemcontrol.item.prot.global.direct.entity.immunity.list.tip")
                 )
                 .divider()
-                .description(KineticI18n.translatable("cfg.itemcontrol.item.editors.description"))
                 .action(
                         "open_banitem_editor",
                         KineticI18n.translatable("cfg.itemcontrol.item.editor.banitem"),

@@ -23,29 +23,48 @@ public final class FoodEffectEditorPage extends KineticPage {
     private String selected="minecraft:speed",seconds="10",level="1",probability="100",mode,error="";
     private List<String> formBaseline;
     public FoodEffectEditorPage(JsonArray rules,String mode,BiConsumer<JsonArray,String> done) {
-        super(ItemRuleLabels.text("food.effects")); this.rules=rules.deepCopy();this.mode=mode;this.done=done;useCanvas(520,320,6);
+        super(ItemRuleLabels.text("food.effects")); this.rules=rules.deepCopy();this.mode=mode;this.done=done;useCanvas(640, 360, 4);
         if(!rules.isEmpty())select(0);
         formBaseline = form();
     }
+    // Every effect is listed on the left, the food's own effects first (green); clicking one edits it on the right.
+    // Apply and Delete sit next to Save in the header; the three numbers share one row, the mode is below them.
+    private static final int LIST_X=4,LIST_Y=48,LIST_W=298,LIST_H=308,FORM_X=312,FORM_W=324;
+    private static final int ACTION_W=56,DELETE_X=636-40-4-ACTION_W,APPLY_X=DELETE_X-4-ACTION_W,NUMBER_W=80,ROW1_Y=63,ROW2_Y=101;
+    private String query="";
+    private int listScroll=-1;
+    private RegistryRuleList list;
     @Override protected void build(KineticUi ui) {
-        ui.button(12,6,90).text(ItemRuleLabels.text("back")).onClick(this::close).build();
-        var options=new ArrayList<KineticDropdown.Option>();
-        for(var id:KineticRegistries.mobEffects().ids().stream().sorted(java.util.Comparator.comparing(Object::toString)).toList()) {
-            var effect=KineticRegistries.mobEffects().get(id);
-            options.add(new KineticDropdown.Option(id.toString(),ItemRuleLabels.translation(effect.getDescriptionId()),Component.literal(id.toString())));
-        }
-        ui.dropdown(12,50,496,options).selected(selected).tooltip(ItemRuleLabels.text("food.effect.tooltip")).onChange(value->{selected=value;selectExisting();rebuild();}).build();
-        var duration=ui.textField(12,98,104).tooltip(ItemRuleLabels.text("food.duration.tooltip")).build();duration.setTextValue(seconds);duration.onTextChange(value->seconds=value);
-        var amplifier=ui.textField(126,98,94).tooltip(ItemRuleLabels.text("food.level.tooltip")).build();amplifier.setTextValue(level);amplifier.onTextChange(value->level=value);
-        var chance=ui.textField(230,98,94).tooltip(ItemRuleLabels.text("food.probability.tooltip")).build();chance.setTextValue(probability);chance.onTextChange(value->probability=value);
-        ui.dropdown(334,98,174,List.of(new KineticDropdown.Option("append",ItemRuleLabels.text("food.mode.append")),new KineticDropdown.Option("replace",ItemRuleLabels.text("food.mode.replace")))).selected(mode).tooltip(ItemRuleLabels.text("food.mode.tooltip")).onChange(value->mode=value).build();
-        List<SelectionItem> rows=new ArrayList<>();
-        for(var raw:rules){var row=raw.getAsJsonObject();String id=row.get("effect").getAsString();var type=KineticRegistries.mobEffects().get(KineticResourceIds.parse(id));
-            rows.add(new SelectionItem(type==null?Component.literal(id):ItemRuleLabels.id(id,type.getDescriptionId()),Component.literal("  "+(row.get("amplifier").getAsInt()+1)+" / "+row.get("duration").getAsInt()/20.0+"s / "+row.get("probability").getAsDouble()*100+"%"),ItemRuleLabels.text("food.effect_row.tooltip"),true,false));}
-        ui.selectionList(12,150,496,104,rows).textRows().onSelect(index->{select(index);rebuild();}).build();
-        ui.button(12,278,124).text(ItemRuleLabels.text("curio.apply_rule")).tooltip(ItemRuleLabels.text("food.add.tooltip")).onClick(this::applyRule).build();
-        ui.button(144,278,124).text(ItemRuleLabels.text("curio.delete_rule")).onClick(()->{remove();rebuild();}).build();
-        ui.button(374,278,134).text(ItemRuleLabels.text("save")).tooltip(ItemRuleLabels.text("draft.apply.tooltip")).onClick(this::save).build();
+        bindDeleteAction(() -> hasRule(selected), () -> { remove(); rebuild(); });
+        ui.button(4,4,40).text(ItemRuleLabels.text("back")).onClick(this::close).build();
+        ui.textField(LIST_X,28,LIST_W).value(query).placeholder(ItemRuleLabels.text("effect_search")).onChange(text->{query=text;listScroll=0;refreshList();}).build();
+        list=ui.add(new RegistryRuleList(LIST_X,LIST_Y,LIST_W,LIST_H,true,this::hasRule,this::summary));
+        list.setOnSelect(index->{listScroll=list.scrollOffset();selected=list.items().get(index);selectExisting();rebuild();});
+        refreshList();
+        var duration=ui.textField(FORM_X,ROW1_Y,NUMBER_W).tooltip(ItemRuleLabels.text("food.duration.tooltip")).build();duration.setTextValue(seconds);duration.onTextChange(value->seconds=value);
+        var amplifier=ui.textField(FORM_X+NUMBER_W+4,ROW1_Y,NUMBER_W).tooltip(ItemRuleLabels.text("food.level.tooltip")).build();amplifier.setTextValue(level);amplifier.onTextChange(value->level=value);
+        var chance=ui.textField(FORM_X+2*(NUMBER_W+4),ROW1_Y,NUMBER_W).tooltip(ItemRuleLabels.text("food.probability.tooltip")).build();chance.setTextValue(probability);chance.onTextChange(value->probability=value);
+        ui.dropdown(FORM_X,ROW2_Y,112,List.of(new KineticDropdown.Option("append",ItemRuleLabels.text("food.mode.append")),new KineticDropdown.Option("replace",ItemRuleLabels.text("food.mode.replace")))).selected(mode).tooltip(ItemRuleLabels.text("food.mode.tooltip")).onChange(value->mode=value).build();
+        ui.button(APPLY_X,4,ACTION_W).text(ItemRuleLabels.text("curio.apply_rule")).tooltip(ItemRuleLabels.text("food.add.tooltip")).onClick(this::applyRule).build();
+        ui.button(DELETE_X,4,ACTION_W).text(ItemRuleLabels.text("curio.delete_rule")).onClick(()->{remove();rebuild();}).build().setEnabled(hasRule(selected));
+        ui.button(636-40,4,40).text(ItemRuleLabels.text("save")).tooltip(ItemRuleLabels.text("draft.apply.tooltip")).onClick(this::save).build();
+    }
+    /** The food's effects first, in rule order, then every other effect; filtered by the search. */
+    private void refreshList(){
+        var ids=new ArrayList<String>();
+        for(var raw:rules){String id=raw.getAsJsonObject().get("effect").getAsString();if(!ids.contains(id))ids.add(id);}
+        KineticRegistries.mobEffects().ids().stream().map(Object::toString).sorted().filter(id->!ids.contains(id)).forEach(ids::add);
+        var visible=ids.stream().filter(id->dev.xyat.kineticcore.api.client.search.KineticSearch.match(id+" "+RegistryRuleList.name(true,id).getString(),query)).toList();
+        list.setItems(visible);
+        int current=visible.indexOf(selected);
+        list.setSelectedIndex(current);
+        if(listScroll>=0)list.setScrollOffset(listScroll);else if(current>=0)list.scrollTo(current);
+    }
+    private boolean hasRule(String id){for(var raw:rules)if(raw.getAsJsonObject().get("effect").getAsString().equals(id))return true;return false;}
+    private Component summary(String id){
+        for(var raw:rules){var row=raw.getAsJsonObject();if(!row.get("effect").getAsString().equals(id))continue;
+            return Component.literal((row.get("amplifier").getAsInt()+1)+" / "+row.get("duration").getAsInt()/20.0+"s / "+Math.round(row.get("probability").getAsDouble()*100)+"%");}
+        return Component.empty();
     }
     private List<String> form(){return List.of(selected,seconds,level,probability);}
     private void selectExisting(){seconds="10";level="1";probability="100";for(int i=0;i<rules.size();i++)if(rules.get(i).getAsJsonObject().get("effect").getAsString().equals(selected)){select(i);return;}formBaseline=form();}
@@ -61,8 +80,14 @@ public final class FoodEffectEditorPage extends KineticPage {
             remove();rules.add(row);error="";
         }catch(RuntimeException ex){error="error.invalid_value";rebuild();return false;}rebuild();return true;
     }
-    @Override protected void renderBackground(KineticGraphics g,int x,int y,float partial){KineticTheme.panel(g,0,0,width(),height());g.scrollingText(title(),112,12,396,0xFFFFFFFF,true);
-        String[] labels={"food.duration","food.level","food.probability","food.mode"};int[] xs={12,126,230,334};int[] widths={104,94,94,174};for(int i=0;i<labels.length;i++)g.scrollingText(ItemRuleLabels.text(labels[i]),xs[i],84,widths[i],0xFFFFFFFF,false);
-        if(!error.isEmpty())g.scrollingText(ItemRuleLabels.text(error),12,260,496,0xFFFFAA00,false);
+    @Override protected void renderBackground(KineticGraphics g,int x,int y,float partial){KineticTheme.panel(g,0,0,width(),height());KineticTheme.separator(g,4,24,632);KineticTheme.verticalSeparator(g,FORM_X-5,28,328);g.scrollingText(title(),52,8,APPLY_X-4-52,0xFFFFFFFF,true);
+        // The effect being edited; another one is picked in the list on the left.
+        KineticTheme.surface(g,FORM_X,30,FORM_W,16,KineticTheme.Surface.PANEL_ALT);
+        var effect=KineticRegistries.mobEffects().get(KineticResourceIds.tryParse(selected));
+        if(effect!=null)g.effectIcon(effect,FORM_X+2,30,16);
+        g.scrollingText(RegistryRuleList.name(true,selected).copy().withStyle(net.minecraft.ChatFormatting.GOLD).append(Component.literal("  "+selected).withStyle(net.minecraft.ChatFormatting.GRAY)),FORM_X+21,34,FORM_W-25,0xFFFFFFFF,false);
+        String[] labels={"food.duration","food.level","food.probability","food.mode"};int[] xs={FORM_X,FORM_X+NUMBER_W+4,FORM_X+2*(NUMBER_W+4),FORM_X};int[] ys={ROW1_Y-11,ROW1_Y-11,ROW1_Y-11,ROW2_Y-11};int[] widths={NUMBER_W,NUMBER_W,NUMBER_W,112};
+        for(int i=0;i<labels.length;i++)g.scrollingText(ItemRuleLabels.text(labels[i]),xs[i],ys[i],widths[i],0xFFFFFFFF,false);
+        if(!error.isEmpty())g.scrollingText(ItemRuleLabels.text(error),FORM_X,ROW2_Y+24,FORM_W,0xFFFF7777,false);
     }
 }

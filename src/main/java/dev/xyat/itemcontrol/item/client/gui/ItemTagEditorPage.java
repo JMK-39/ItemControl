@@ -28,14 +28,16 @@ import java.util.Set;
 import java.util.TreeSet;
 
 public class ItemTagEditorPage extends KineticPage {
-    private static final int SLOT_SIZE = 22;
-    private static final int SLOT_PITCH = SLOT_SIZE + 2;
+    private Runnable hoveredDelete;
+    // Standard item slots (the same size in every add-on); the item list shows ten columns, the tag list takes the rest.
+    private static final int SLOT_SIZE = dev.xyat.kineticcore.api.client.gui.theme.KineticSizes.ITEM_SLOT;
+    private static final int SLOT_PITCH = dev.xyat.kineticcore.api.client.gui.theme.KineticSizes.ITEM_PITCH;
+    private static final int ITEM_COLUMNS = 10;
     // Keep text clear of panel edges and the tag list's inset scrollbar.
     private static final int TEXT_GAP = 4;
-    // Keeps the tag list scroll bar 2 px clear of the list box's right line.
-    private static final int TAG_SCROLLBAR_INSET = 7;
-    // The selected-item line and the tag list each sit in their own outlined box, 3 px apart.
-    private static final int INFO_BOX_H = 16;
+    // The tag list scroll bar is 4 px wide and 2 px clear of the list's right edge.
+    private static final int TAG_SCROLLBAR_INSET = 6;
+    private static final int TAG_ROW_PITCH = 18;
     private static String rememberedItemSearch = "";
     private static String rememberedTagSearch = "";
     private static String rememberedSelectedItem = "";
@@ -51,6 +53,7 @@ public class ItemTagEditorPage extends KineticPage {
     private KineticButton addTagButton;
     private KineticButton copyButton;
     private KineticButton saveButton;
+    private KineticButton clearNativeButton;
     private KineticButton backButton;
 
     private List<KineticItemSearch.CachedItem> filteredItems = new ArrayList<>();
@@ -68,7 +71,6 @@ public class ItemTagEditorPage extends KineticPage {
     private int rightY;
     private int rightW;
     private int rightH;
-    private int guideY;
     private int tagListY;
     private int tagListH;
 
@@ -93,19 +95,20 @@ public class ItemTagEditorPage extends KineticPage {
 
     @Override
     protected void build(KineticUi ui) {
-        int pad = isCompactLayout() ? 6 : 10;
-        int gap = 8;
-        int topY = 6;
+        bindDeleteAction(() -> hoveredDelete != null, () -> { var action = hoveredDelete; hoveredDelete = null; if (action != null) action.run(); });
+        // Panel surfaces sit 3 px outside their content and 4 px inside the frame; the header row is 4 px from the top.
+        int pad = 4;
+        int topY = 4;
         int toolbarH = 20;
-        int usableW = Math.max(220, width() - pad * 2 - gap);
-        leftW = Math.max(150, (int) (usableW * 0.56f));
-        rightW = Math.max(120, usableW - leftW);
-        leftX = pad;
-        rightX = leftX + leftW + gap;
+        leftX = pad + 3;
+        // Ten columns, 2 px to the 4 px scroll bar, 2 px to the panel edge.
+        leftW = ITEM_COLUMNS * SLOT_PITCH - 2 + 2 + 4 + 2;
+        rightX = leftX + leftW + 3 + 4 + 3;
+        rightW = width() - pad - 3 - rightX;
 
         int buttonGap = 4;
-        int smallButtonW = Math.max(42, (rightW - buttonGap * 3) / 4);
-        itemSearch = ui().textField(leftX + smallButtonW + buttonGap, topY, leftW - smallButtonW - buttonGap).build();
+        int smallButtonW = 64;
+        itemSearch = ui().textField(48, topY, leftX + leftW + 3 - 48).build();
         itemSearch.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item.item_tag.item_search_hint"));
         itemSearch.setTextValue(rememberedItemSearch);
         itemSearch.setDefaultText(rememberedItemSearch);
@@ -114,24 +117,27 @@ public class ItemTagEditorPage extends KineticPage {
             refreshItems();
         });
 
-        copyButton = ui().button(rightX, topY, smallButtonW).text(copyButtonText()).onClick(() -> {
+        copyButton = ui().button(rightX - 3, topY, smallButtonW).text(copyButtonText()).onClick(() -> {
             if (selectedItemId.isEmpty()) return;
             copyMode = !copyMode;
             copyButton.setText(copyButtonText());
         }).build();
 
-        saveButton = ui().button(rightX + smallButtonW + buttonGap, topY, smallButtonW).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.save")).onClick(this::saveConfig).build();
+        saveButton = ui().button(width() - pad - 40, topY, 40).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.save")).onClick(this::saveConfig).build();
 
-        backButton = ui().button(leftX, topY, smallButtonW).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.back")).onClick(this::close).build();
+        backButton = ui().button(pad, topY, 40).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.back")).onClick(this::close).build();
 
-        addTagButton = ui().button(rightX + (smallButtonW + buttonGap) * 3, topY, smallButtonW).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.add")).onClick(this::addTagFromInput).build();
+        addTagButton = ui().button(rightX - 3 + smallButtonW + buttonGap, topY, 40).text(KineticI18n.translatable("gui.itemcontrol.item.item_tag.add")).onClick(this::addTagFromInput).build();
+        // Takes every original tag off the selected item (or gives them back), like clearing its tags in a datapack.
+        clearNativeButton = ui().button(rightX - 3 + smallButtonW + buttonGap + 40 + buttonGap, topY, 64).text(clearNativeText())
+                .onClick(this::toggleClearNative).build();
 
-        guideY = topY + toolbarH + 5;
-        leftY = guideY + KineticText.lineHeight() + 7;
-        leftH = Math.max(80, height() - leftY - pad);
-        leftCols = Math.max(1, (leftW - 8 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH);
+        leftY = topY + toolbarH + 4 + 3;
+        leftH = Math.max(80, height() - leftY - pad - 3);
+        leftCols = ITEM_COLUMNS;
 
-        tagInput = ui().textField(rightX, leftY, rightW).build();
+        // The tag field sits right under the header and the tag list right under the field.
+        tagInput = ui().textField(rightX, 28, rightW).build();
         tagInput.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item.item_tag.tag_input_hint"));
         tagInput.setTextValue(rememberedTagSearch);
         tagInput.setDefaultText(rememberedTagSearch);
@@ -140,10 +146,10 @@ public class ItemTagEditorPage extends KineticPage {
             refreshTagSuggestions();
         });
 
-        rightY = leftY + toolbarH + 6;
-        rightH = Math.max(60, height() - rightY - pad);
-        tagListY = rightY + INFO_BOX_H + 3 + 2;
-        tagListH = Math.max(36, rightH - INFO_BOX_H - 3 - 4);
+        rightY = tagInput.controlY() + tagInput.controlHeight() + 2 + 3;
+        rightH = Math.max(60, height() - rightY - pad - 3);
+        tagListY = rightY;
+        tagListH = rightH;
 
         refreshItems();
         refreshTagEntries();
@@ -158,6 +164,10 @@ public class ItemTagEditorPage extends KineticPage {
     private void refreshButtons() {
         boolean hasSelection = !selectedItemId.isEmpty();
         if (copyButton != null) copyButton.setEnabled(hasSelection);
+        if (clearNativeButton != null) {
+            clearNativeButton.setEnabled(hasSelection);
+            clearNativeButton.setText(clearNativeText());
+        }
         if (addTagButton != null) addTagButton.setEnabled(hasSelection && normalizeTag(tagInput == null ? "" : tagInput.textValue()) != null);
     }
 
@@ -172,7 +182,7 @@ public class ItemTagEditorPage extends KineticPage {
     private boolean isEditedItem(KineticItemSearch.CachedItem item) {
         if (item == null || item.id() == null || item.id().isBlank()) return false;
         String id = BanItemConfig.getBaseIdentifier(item.id());
-        return !id.isEmpty() && !BanItemConfig.getConfiguredAddedTagIds(id).isEmpty();
+        return !id.isEmpty() && (!BanItemConfig.getConfiguredAddedTagIds(id).isEmpty() || !BanItemConfig.getConfiguredRemovedTagIds(id).isEmpty());
     }
 
     private void refreshTagSuggestions() {
@@ -200,10 +210,19 @@ public class ItemTagEditorPage extends KineticPage {
         mergedTags.removeAll(manualTags);
         mergedTags.removeAll(nativeTags);
 
-        for (String tag : nativeTags) displayedTags.add(new TagEntry(tag, TagSource.NATIVE));
+        // Removed tags show as their own rows (they stay in the loaded tags until the data reloads).
+        Set<String> removedTags = new TreeSet<>(BanItemConfig.getConfiguredRemovedTagIds(selectedItemId));
+        boolean allRemoved = removedTags.contains(BanItemConfig.ALL_TAGS);
+        if (allRemoved) displayedTags.add(new TagEntry(BanItemConfig.ALL_TAGS, TagSource.REMOVED));
+        for (String tag : nativeTags) {
+            if (!allRemoved && !removedTags.contains(tag)) displayedTags.add(new TagEntry(tag, TagSource.NATIVE));
+        }
+        for (String tag : removedTags) {
+            if (!tag.equals(BanItemConfig.ALL_TAGS)) displayedTags.add(new TagEntry(tag, TagSource.REMOVED));
+        }
         for (String tag : mergedTags) displayedTags.add(new TagEntry(tag, TagSource.MERGED));
         for (String tag : manualTags) displayedTags.add(new TagEntry(tag, TagSource.MANUAL));
-        tagScroll.update(displayedTags.size() * 14, tagListH);
+        tagScroll.update(displayedTags.size() * TAG_ROW_PITCH, tagListH);
     }
 
     private void selectItem(KineticItemSearch.CachedItem item) {
@@ -265,6 +284,33 @@ public class ItemTagEditorPage extends KineticPage {
         onRulesChanged();
     }
 
+    private Component clearNativeText() {
+        boolean all = !selectedItemId.isEmpty() && BanItemConfig.getConfiguredRemovedTagIds(selectedItemId).contains(BanItemConfig.ALL_TAGS);
+        return KineticI18n.translatable(all ? "gui.itemcontrol.item.item_tag.restore_native" : "gui.itemcontrol.item.item_tag.clear_native");
+    }
+
+    private void toggleClearNative() {
+        if (selectedItemId.isEmpty()) return;
+        List<String> removed = new ArrayList<>(BanItemConfig.data.removedItemTags.getOrDefault(selectedItemId, Collections.emptyList()));
+        if (removed.contains(BanItemConfig.ALL_TAGS)) removed.clear();
+        else removed = new ArrayList<>(List.of(BanItemConfig.ALL_TAGS));
+        setRemoved(removed);
+    }
+
+    /** Takes one original tag off the selected item, or gives a removed one back. */
+    private void toggleRemovedTag(String tag) {
+        if (selectedItemId.isEmpty() || tag == null) return;
+        List<String> removed = new ArrayList<>(BanItemConfig.data.removedItemTags.getOrDefault(selectedItemId, Collections.emptyList()));
+        if (!removed.remove(tag)) removed.add(tag);
+        setRemoved(removed);
+    }
+
+    private void setRemoved(List<String> removed) {
+        if (removed.isEmpty()) BanItemConfig.data.removedItemTags.remove(selectedItemId);
+        else BanItemConfig.data.removedItemTags.put(selectedItemId, new ArrayList<>(new LinkedHashSet<>(removed)));
+        onRulesChanged();
+    }
+
     private void onRulesChanged() {
         BanItemConfig.rebuildCache();
         ItemSearchCache.markRulesChanged();
@@ -300,18 +346,20 @@ public class ItemTagEditorPage extends KineticPage {
 
     @Override
     protected void renderBackground(KineticGraphics g, int smx, int smy, float pt) {
-        KineticTheme.canvasBackground(g, width(), height());
-        KineticTheme.panelAlt(g, leftX - 3, leftY - 3, leftW + 6, leftH + 6);
-        KineticTheme.panelAlt(g, rightX - 3, rightY - 3, rightW + 6, rightH + 6);
-        KineticTheme.panel(g, rightX, rightY, rightW, INFO_BOX_H);
-        KineticTheme.panel(g, rightX, tagListY - 2, rightW, tagListH + 4);
+        hoveredDelete = null;
+        KineticTheme.panel(g, 0, 0, width(), height());
+        KineticTheme.surface(g, leftX - 3, leftY - 3, leftW + 6, leftH + 6, KineticTheme.Surface.PANEL_ALT);
+        KineticTheme.surface(g, rightX - 3, rightY - 3, rightW + 6, rightH + 6, KineticTheme.Surface.PANEL_ALT);
+        KineticTheme.verticalSeparator(g, (leftX + leftW + rightX) / 2, leftY - 3, height() - leftY - 1);
+        KineticTheme.separator(g, 4, 24, width() - 8);
     }
 
     @Override
     protected void renderForeground(KineticGraphics g, int smx, int smy, float pt) {
-        g.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.item_tag.guide"), leftX, guideY, leftW - TEXT_GAP, 0xFFFFFF, false);
 
         g.scissor(leftX, leftY, leftX + leftW, leftY + leftH);
+        // All icons of the grid are drawn together (one batch instead of one draw call each).
+        g.batchItems(() -> {
         for (int i = 0; i < filteredItems.size(); i++) {
             KineticItemSearch.CachedItem ci = filteredItems.get(i);
             int col = i % leftCols;
@@ -335,25 +383,30 @@ public class ItemTagEditorPage extends KineticPage {
                 KineticTheme.indicatorOutline(g, x, y, SLOT_SIZE, SLOT_SIZE, KineticTheme.Indicator.SUCCESS);
             }
         }
+        });
         g.endScissor();
-
-        Component selectedText = selectedItemId.isEmpty()
-                ? KineticI18n.translatable("gui.itemcontrol.item.item_tag.no_selection")
-                : copyMode
-                ? KineticI18n.translatable("gui.itemcontrol.item.item_tag.copy_mode_hint", selectedItemId)
-                : KineticI18n.translatable("gui.itemcontrol.item.item_tag.selected", selectedItemId);
-        g.scrollingText(selectedText, rightX + 4, rightY + (INFO_BOX_H - 8) / 2, rightW - 4 - TEXT_GAP, 0xFFFFFF, false);
 
         g.scissor(rightX, tagListY, rightX + rightW, tagListY + tagListH);
         int y = tagListY - (int) Math.round(tagScroll.smoothOffset());
         for (TagEntry entry : displayedTags) {
-            if (y + 13 > tagListY && y < tagListY + tagListH) {
+            if (y + TAG_ROW_PITCH - 2 > tagListY && y < tagListY + tagListH) {
+                boolean rowHovered = smx >= rightX && smx < rightX + rightW && smy >= Math.max(y, tagListY) && smy < Math.min(y + TAG_ROW_PITCH, tagListY + tagListH);
+                if (rowHovered && entry.source == TagSource.MANUAL) hoveredDelete = () -> removeManualTag(entry.tag);
+                if (rowHovered && (entry.source == TagSource.NATIVE || entry.source == TagSource.REMOVED)) hoveredDelete = () -> toggleRemovedTag(entry.tag);
+                g.outline(rightX, y, rightW - TAG_SCROLLBAR_INSET - 3, TAG_ROW_PITCH - 2, entry.source == TagSource.REMOVED ? 0xFFFF5555 : 0xFFFFFFFF);
                 Component prefix = KineticI18n.translatable(entry.source.key);
-                g.scrollingText(prefix.copy().append(" #" + entry.tag), rightX + 3, y + 2, rightW - 3 - TAG_SCROLLBAR_INSET - TEXT_GAP, 0xFFFFFF, false);
+                Component name = entry.tag.equals(BanItemConfig.ALL_TAGS)
+                        ? KineticI18n.translatable("gui.itemcontrol.item.item_tag.all_native")
+                        : Component.literal(" #" + entry.tag);
+                g.scrollingText(prefix.copy().append(name), rightX + 3, y + 4, rightW - 6 - TAG_SCROLLBAR_INSET - TEXT_GAP, 0xFFFFFF, false);
             }
-            y += 14;
+            y += TAG_ROW_PITCH;
         }
         g.endScissor();
+
+        // Scrollbars first: the suggestion dropdown opens over the tag list and must cover its scrollbar.
+        itemScroll.render(g, smx, smy, leftX + leftW - 6, leftY, 4, leftH, 20);
+        tagScroll.render(g, smx, smy, rightX + rightW - TAG_SCROLLBAR_INSET, tagListY, 4, tagListH, 20);
 
         int suggestionY = tagInput == null ? 0 : tagInput.controlY() + tagInput.controlHeight() + 1;
         if (!tagSuggestions.isEmpty() && tagInput != null && isFocused(tagInput)) {
@@ -364,21 +417,22 @@ public class ItemTagEditorPage extends KineticPage {
             int first = Math.max(0, (int) Math.floor(visual / 12D));
             int last = Math.min(tagSuggestions.size(), first + maxRows + 1);
             // The dropdown covers the text below it, so it gets an opaque backing and its own outline, 2 px clear of its rows.
+            g.push();
+            g.raise(1);
             g.fill(rightX, suggestionY - 1, rightX + rightW, suggestionY + boxH + 2, 0xFF161616);
             KineticTheme.panelAlt(g, rightX, suggestionY - 1, rightW, boxH + 3);
             g.scissor(rightX, suggestionY, rightX + rightW, suggestionY + boxH);
             for (int i = first; i < last; i++) {
                 String suggestion = tagSuggestions.get(i);
-                int sy = suggestionY + (int) Math.round(i * 12D - visual);
+                int sy = suggestionY + i * 12 - (int) Math.round(visual);
                 boolean hovered = smx >= rightX && smx < rightX + rightW && smy >= sy && smy < sy + 12;
                 if (hovered) KineticTheme.stateSurface(g, rightX, sy, rightW, 12, KineticTheme.Surface.PANEL_ALT, false, true, false);
                 g.scrollingText(Component.literal(suggestion), rightX + 3, sy + 2, rightW - 3 - TEXT_GAP, 0xFFFFFF, false);
             }
             g.endScissor();
+            g.pop();
         }
 
-        itemScroll.render(g, smx, smy, leftX + leftW - 6, leftY, 4, leftH, 20);
-        tagScroll.render(g, smx, smy, rightX + rightW - TAG_SCROLLBAR_INSET, tagListY, 4, tagListH, 20);
     }
 
     @Override
@@ -409,7 +463,7 @@ public class ItemTagEditorPage extends KineticPage {
         }
 
         if (smx >= rightX && smx < rightX + rightW && smy >= tagListY && smy < tagListY + tagListH) {
-            int idx = (int) ((smy - tagListY + tagScroll.smoothOffset()) / 14);
+            int idx = (int) ((smy - tagListY + Math.round(tagScroll.smoothOffset())) / TAG_ROW_PITCH);
             if (idx >= 0 && idx < displayedTags.size()) {
                 TagEntry entry = displayedTags.get(idx);
                 List<Component> tooltip = new ArrayList<>();
@@ -418,11 +472,13 @@ public class ItemTagEditorPage extends KineticPage {
                     case NATIVE -> "gui.itemcontrol.item.item_tag.tooltip.source.native";
                     case MERGED -> "gui.itemcontrol.item.item_tag.tooltip.source.merged";
                     case MANUAL -> "gui.itemcontrol.item.item_tag.tooltip.source.manual";
+                    case REMOVED -> "gui.itemcontrol.item.item_tag.tooltip.source.removed";
                 }));
                 tooltip.add(KineticI18n.translatable(switch (entry.source) {
                     case NATIVE -> "gui.itemcontrol.item.item_tag.tooltip.action.native";
                     case MERGED -> "gui.itemcontrol.item.item_tag.tooltip.action.merged";
                     case MANUAL -> "gui.itemcontrol.item.item_tag.tooltip.action.manual";
+                    case REMOVED -> "gui.itemcontrol.item.item_tag.tooltip.action.removed";
                 }));
                 showTooltip(tooltip);
                 return;
@@ -431,7 +487,7 @@ public class ItemTagEditorPage extends KineticPage {
 
         if (smx >= leftX && smx < leftX + leftW && smy >= leftY && smy < leftY + leftH) {
             int localX = smx - leftX;
-            int localY = (int) Math.floor(smy - leftY + itemScroll.smoothOffset());
+            int localY = (int) Math.floor(smy - leftY + Math.round(itemScroll.smoothOffset()));
             int col = localX / SLOT_PITCH;
             int row = localY / SLOT_PITCH;
             int idx = row * leftCols + col;
@@ -444,7 +500,8 @@ public class ItemTagEditorPage extends KineticPage {
                 if (isEditedItem(ci)) {
                     tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.item_tag.tooltip.edited"));
                 }
-                showTooltip(tooltip);
+                if (ci.stack().isEmpty()) showTooltip(tooltip);
+                else showItemTooltip(ci.stack(), tooltip.subList(1, tooltip.size()));
             }
         }
     }
@@ -473,7 +530,7 @@ public class ItemTagEditorPage extends KineticPage {
         if (tagInput != null && isFocused(tagInput) && !tagSuggestions.isEmpty()) {
             int suggestionY = tagInput.controlY() + tagInput.controlHeight() + 1;
             if (smx >= rightX && smx < rightX + rightW && smy >= suggestionY) {
-                int row = (int) Math.floor((smy - suggestionY + suggestionScroll.smoothOffset()) / 12D);
+                int row = (int) Math.floor((smy - suggestionY + Math.round(suggestionScroll.smoothOffset())) / 12D);
                 int idx = row;
                 if (smy < suggestionY + Math.min(8, tagSuggestions.size()) * 12 && idx >= 0 && idx < tagSuggestions.size()) {
                     String tag = normalizeTag(tagSuggestions.get(idx));
@@ -486,7 +543,7 @@ public class ItemTagEditorPage extends KineticPage {
 
         if (smx >= leftX && smx < leftX + leftW && smy >= leftY && smy < leftY + leftH) {
             int localX = (int) (smx - leftX);
-            int localY = (int) (smy - leftY + itemScroll.smoothOffset());
+            int localY = (int) (smy - leftY + Math.round(itemScroll.smoothOffset()));
             int col = localX / SLOT_PITCH;
             int row = localY / SLOT_PITCH;
             int idx = row * leftCols + col;
@@ -497,9 +554,13 @@ public class ItemTagEditorPage extends KineticPage {
         }
 
         if (smx >= rightX && smx < rightX + rightW && smy >= tagListY && smy < tagListY + tagListH) {
-            int idx = (int) ((smy - tagListY + tagScroll.smoothOffset()) / 14);
+            int idx = (int) ((smy - tagListY + Math.round(tagScroll.smoothOffset())) / TAG_ROW_PITCH);
             if (idx >= 0 && idx < displayedTags.size()) {
                 TagEntry entry = displayedTags.get(idx);
+                if (input.isRight() && (entry.source == TagSource.NATIVE || entry.source == TagSource.REMOVED)) {
+                    toggleRemovedTag(entry.tag);
+                    return true;
+                }
                 if (input.isRight() && entry.source == TagSource.MANUAL) {
                     removeManualTag(entry.tag);
                     return true;
@@ -541,7 +602,7 @@ public class ItemTagEditorPage extends KineticPage {
             return itemScroll.scroll(delta, SLOT_PITCH);
         }
         if (smx >= rightX && smx < rightX + rightW && smy >= tagListY && smy < tagListY + tagListH) {
-            return tagScroll.scroll(delta, 14D);
+            return tagScroll.scroll(delta, TAG_ROW_PITCH);
         }
         return false;
     }
@@ -549,7 +610,8 @@ public class ItemTagEditorPage extends KineticPage {
     private enum TagSource {
         NATIVE("gui.itemcontrol.item.item_tag.source.native"),
         MERGED("gui.itemcontrol.item.item_tag.source.merged"),
-        MANUAL("gui.itemcontrol.item.item_tag.source.manual");
+        MANUAL("gui.itemcontrol.item.item_tag.source.manual"),
+        REMOVED("gui.itemcontrol.item.item_tag.source.removed");
 
         private final String key;
 

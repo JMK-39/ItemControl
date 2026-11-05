@@ -1,7 +1,6 @@
 package dev.xyat.itemcontrol.item.client;
 
 import com.mojang.logging.LogUtils;
-import dev.xyat.itemcontrol.item.client.gui.BannedItemPage;
 import dev.xyat.itemcontrol.item.client.gui.DamageTypeEditorPage;
 import dev.xyat.itemcontrol.item.client.gui.DirectEntityImmunityEditorPage;
 import dev.xyat.itemcontrol.item.client.gui.ItemSearchCache;
@@ -9,7 +8,6 @@ import dev.xyat.itemcontrol.item.client.gui.ItemCacheHudRenderer;
 import dev.xyat.itemcontrol.item.client.gui.ItemTagEditorPage;
 import dev.xyat.itemcontrol.item.client.gui.ItemPropertyEditorPage;
 import dev.xyat.itemcontrol.item.client.gui.MergeItemPage;
-import dev.xyat.itemcontrol.item.client.gui.ProtectionItemEditorPage;
 import dev.xyat.itemcontrol.item.config.BanItemConfig;
 import dev.xyat.itemcontrol.item.network.ItemNetwork;
 import dev.xyat.kineticcore.api.client.event.KineticClientEvents;
@@ -41,7 +39,8 @@ public final class ItemClientProxy {
     }
 
     public static void openBannedGui() {
-        ItemSearchCache.prepareCache(() -> KineticGui.openChild(new BannedItemPage()));
+        // The ban list and protection rules use the Core item list editor (search, categories, @mod and #tag rules).
+        ItemSearchCache.prepareCache(dev.xyat.itemcontrol.item.client.gui.BanRules::open);
     }
 
     public static void openMergeGui() {
@@ -53,9 +52,7 @@ public final class ItemClientProxy {
     }
 
     public static void openProtectionEditor(java.util.List<String> rules) {
-        ItemSearchCache.prepareCache(() ->
-                KineticGui.openChild(new ProtectionItemEditorPage(rules))
-        );
+        ItemSearchCache.prepareCache(() -> dev.xyat.itemcontrol.item.client.gui.ProtectionRules.open(rules));
     }
 
     public static void openItemPropertyEditor(String pendingJson, String activeJson) {
@@ -73,14 +70,10 @@ public final class ItemClientProxy {
 
     public static void applyEditorSaveResult(int editorType, boolean success, java.util.List<String> entries, String messageKey) {
         KineticPage current = KineticGui.currentPage();
-        if (editorType == ItemNetwork.EDITOR_BAN_ITEM && current instanceof BannedItemPage page) {
-            page.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_MERGE_ITEM && current instanceof MergeItemPage page) {
+        if (editorType == ItemNetwork.EDITOR_MERGE_ITEM && current instanceof MergeItemPage page) {
             page.applySaveResult(success);
         } else if (editorType == ItemNetwork.EDITOR_ITEM_TAG && current instanceof ItemTagEditorPage page) {
             page.applySaveResult(success);
-        } else if (editorType == ItemNetwork.EDITOR_PROTECTION_ITEM && current instanceof ProtectionItemEditorPage page) {
-            page.applySaveResult(success, entries);
         } else if (editorType == ItemNetwork.EDITOR_DAMAGE_IMMUNITY && current instanceof DamageTypeEditorPage page) {
             page.applySaveResult(success, entries);
         } else if (editorType == ItemNetwork.EDITOR_DIRECT_ENTITY_IMMUNITY && current instanceof DirectEntityImmunityEditorPage page) {

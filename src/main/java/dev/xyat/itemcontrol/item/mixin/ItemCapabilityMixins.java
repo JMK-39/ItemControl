@@ -49,7 +49,11 @@ public final class ItemCapabilityMixins {
         }
         @Inject(method="useOn", at=@At("HEAD"), cancellable=true)
         private void itemcontrol$useOn(UseOnContext context, CallbackInfoReturnable<InteractionResult> cir) {
-            if (ItemCapabilityRuntime.customUse((ItemStack)(Object)this)) cir.setReturnValue(InteractionResult.PASS);
+            ItemStack stack = (ItemStack)(Object)this;
+            // Like vanilla edible block items, a block made edible or wearable still places when aimed at a block;
+            // eating and equipping happen when it is used in the air.
+            if (stack.getItem() instanceof net.minecraft.world.item.BlockItem) return;
+            if (ItemCapabilityRuntime.customUse(stack)) cir.setReturnValue(InteractionResult.PASS);
         }
         @Inject(method="finishUsingItem", at=@At("HEAD"), cancellable=true)
         private void itemcontrol$finish(Level level, LivingEntity entity, CallbackInfoReturnable<ItemStack> cir) {

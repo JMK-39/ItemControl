@@ -29,21 +29,26 @@ import java.util.Locale;
 import java.util.Set;
 
 public final class DamageTypeEditorPage extends KineticPage {
-    private static final int PANEL_X = 14;
-    private static final int PANEL_Y = 24;
-    private static final int PANEL_W = 612;
-    private static final int PANEL_H = 296;
-    private static final int SEARCH_X = 26;
-    private static final int SEARCH_Y = 48;
-    private static final int SEARCH_W = 438;
-    private static final int LIST_X = 26;
-    private static final int LIST_Y = 82;
-    private static final int LIST_W = 578;
-    private static final int LIST_H = 220;
+    private Runnable hoveredDelete;
+    private static final int PANEL_X = 0;
+    private static final int PANEL_Y = 0;
+    private static final int PANEL_W = 640;
+    private static final int PANEL_H = 360;
+    private static final int SEARCH_X = 48;
+    private static final int SEARCH_Y = 4;
+    // Search, then the title, then Add and Save at the right edge.
+    private static final int SEARCH_W = 300;
+    private static final int ADD_X = 552;
+    private static final int SAVE_X = 596;
+    private static final int TITLE_X = SEARCH_X + SEARCH_W + 4;
+    private static final int LIST_X = 4;
+    private static final int LIST_Y = 28;
+    private static final int LIST_W = 622;
+    private static final int LIST_H = 328;
     private static final int ROW_H = 20;
     private static final int ROW_PITCH = 21;
-    private static final int VISIBLE_ROWS = 10;
-    private static final int SCROLL_X = 610;
+    private static final int VISIBLE_ROWS = 15;
+    private static final int SCROLL_X = 632;
 
     private final List<String> entries = new ArrayList<>();
     private final KineticScrollController listScroll = new KineticScrollController();
@@ -64,7 +69,7 @@ public final class DamageTypeEditorPage extends KineticPage {
             }
             entries.addAll(unique);
         }
-        useCanvas(640, 360, 6);
+        useCanvas(640, 360, 4);
         configureDraft(() -> List.copyOf(entries), this::restoreEntries);
     }
 
@@ -76,17 +81,18 @@ public final class DamageTypeEditorPage extends KineticPage {
 
     @Override
     protected void build(KineticUi ui) {
+        bindDeleteAction(() -> hoveredDelete != null, () -> { var action = hoveredDelete; hoveredDelete = null; if (action != null) action.run(); });
         listScroll.update(entries.size(), VISIBLE_ROWS);
 
         searchBox = ui().autoComplete(SEARCH_X, SEARCH_Y, SEARCH_W, DamageTypeEditorPage::damageSuggestions).placeholder(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.search.hint")).build();
         searchBox.onTextChange(value -> refreshAddButton());
         searchBox.setSelectionResponder(value -> refreshAddButton());
 
-        addButton = ui().button(474, SEARCH_Y, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.add")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.add")).onClick(this::addCurrent).build();
+        addButton = ui().button(ADD_X, SEARCH_Y, 40).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.add")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.add")).onClick(this::addCurrent).build();
 
-        saveButton = ui().button(424, 328, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.save")).onClick(this::save).build();
+        saveButton = ui().button(SAVE_X, SEARCH_Y, 40).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.save")).onClick(this::save).build();
 
-        ui().button(26, 2, 90).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.back")).onClick(this::close).build();
+        ui().button(4, SEARCH_Y, 40).text(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.back")).tooltip(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.tooltip.back")).onClick(this::close).build();
 
         refreshAddButton();
     }
@@ -139,17 +145,16 @@ public final class DamageTypeEditorPage extends KineticPage {
     protected void renderBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
         KineticTheme.canvasBackground(graphics, width(), height());
         KineticTheme.panel(graphics, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
-        KineticTheme.panelAlt(graphics, LIST_X - 5, LIST_Y - 5, LIST_W + 10, LIST_H + 10);
     }
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.scrollingText(title(), 124, 9, PANEL_X + PANEL_W - 128, KineticTheme.current().text(), true);
+        graphics.scrollingText(title(), TITLE_X, 8, ADD_X - 4 - TITLE_X, KineticTheme.current().text(), true);
         renderEntries(graphics, mouseX, mouseY);
-        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item.damage_type_editor.hint"), LIST_X, 307, LIST_W - 4, KineticTheme.current().text(), false);
     }
 
     private void renderEntries(KineticGraphics graphics, int mouseX, int mouseY) {
+        hoveredDelete = null;
         listScroll.update(entries.size(), VISIBLE_ROWS);
         int start = listScroll.smoothIndexOffset();
         int shift = listScroll.visualShift(ROW_PITCH);
@@ -164,6 +169,7 @@ public final class DamageTypeEditorPage extends KineticPage {
                 int y = LIST_Y + row * ROW_PITCH - shift;
                 boolean hovered = contains(mouseX, mouseY, x, y, LIST_W, ROW_H);
                 String value = entries.get(index);
+                if (hovered && rowIndexAt(mouseX, mouseY) >= 0) hoveredDelete = () -> { entries.remove(value); listScroll.update(entries.size(), VISIBLE_ROWS); };
                 boolean valid = isValidDamageEntry(value);
                 // A list of damage type IDs: plain striped rows, outlined only when hovered (blue) or invalid (red).
                 KineticTheme.Palette palette = KineticTheme.current();

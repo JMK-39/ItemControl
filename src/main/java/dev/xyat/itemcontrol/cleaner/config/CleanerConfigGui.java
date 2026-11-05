@@ -6,7 +6,7 @@ import dev.xyat.kineticcore.api.config.client.KTConfigPage;
 import dev.xyat.kineticcore.api.config.client.KTConfigScope;
 import dev.xyat.kineticcore.api.config.client.KTServerConfigClient;
 import dev.xyat.kineticcore.api.client.gui.KineticGui;
-import dev.xyat.itemcontrol.cleaner.client.gui.CleanerItemRuleEditorPage;
+import dev.xyat.kineticcore.api.client.gui.selector.KineticSelectors;
 import dev.xyat.itemcontrol.cleaner.client.gui.TrashBinButtonEditorPage;
 
 import java.util.ArrayList;
@@ -197,14 +197,15 @@ public class CleanerConfigGui {
                 "item_whitelist",
                 CleanerConfig.itemWhitelist
         );
-        KineticGui.openChild(new CleanerItemRuleEditorPage(
-                CleanerItemRuleEditorPage.Mode.CLEANER_WHITELIST,
+        KineticSelectors.openItemListEditor(
+                KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.whitelist.title"),
                 values,
+                KineticSelectors.ItemListMode.ITEMS_TAGS_MODS,
                 updated -> KTServerConfigClient.savePartial(
                         PAGE_ID,
                         Map.of("item_whitelist", new ArrayList<>(updated))
                 )
-        ));
+        );
     }
 
     private static void openTrashBinBlacklistEditor() {
@@ -213,30 +214,23 @@ public class CleanerConfigGui {
                 "trash_bin_blacklist",
                 CleanerConfig.trashBinBlacklist
         );
-        KineticGui.openChild(new CleanerItemRuleEditorPage(
-                CleanerItemRuleEditorPage.Mode.TRASH_BLACKLIST,
+        KineticSelectors.openItemListEditor(
+                KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.blacklist.title"),
                 values,
+                KineticSelectors.ItemListMode.ITEMS_TAGS_MODS,
                 updated -> KTServerConfigClient.savePartial(
                         PAGE_ID,
                         Map.of("trash_bin_blacklist", new ArrayList<>(updated))
                 )
-        ));
+        );
     }
 
     private static void openProtectedAreaToolEditor() {
-        String current = KTServerConfigClient.getString(
-                PAGE_ID,
-                "protected_area_tool_item",
-                CleanerConfig.protectedAreaToolItem
-        );
-        KineticGui.openChild(new CleanerItemRuleEditorPage(
-                CleanerItemRuleEditorPage.Mode.AREA_TOOL,
-                List.of(current),
-                updated -> !updated.isEmpty() && KTServerConfigClient.savePartial(
-                        PAGE_ID,
-                        Map.of("protected_area_tool_item", updated.get(0))
-                )
-        ));
+        KineticSelectors.openItemSelectorWithOptions(KineticSelectors.ItemSelectorOptions.itemsOnly(
+                KineticSelectors.ItemSelectorPreset.defaults(), List.of(), stack -> true), selection -> {
+            var id = dev.xyat.kineticcore.api.registry.KineticRegistries.items().id(selection.stack().getItem());
+            if (id != null) KTServerConfigClient.savePartial(PAGE_ID, Map.of("protected_area_tool_item", id.toString()));
+        });
     }
 
     private static void openTrashBinButtonEditor() {

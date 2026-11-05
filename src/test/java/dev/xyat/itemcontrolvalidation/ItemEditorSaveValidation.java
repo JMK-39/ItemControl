@@ -221,7 +221,7 @@ public final class ItemEditorSaveValidation {
     }
     private static KineticTextField amountInput() {
         for (var control : Minecraft.getInstance().screen.children()) {
-            if (control instanceof KineticTextField field && field.controlX() == 160 && field.controlY() == 90) return field;
+            if (control instanceof KineticTextField field && field.controlX() == 396 && field.controlY() == 100) return field;
         }
         throw new AssertionError("actual attribute amount field missing");
     }

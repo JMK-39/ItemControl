@@ -10,6 +10,7 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import dev.xyat.itemcontrol.item.util.ItemBanControl;
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.resource.KineticResourceIds;
@@ -44,6 +45,47 @@ public class BanItemConfig {
     public static volatile Map<String, List<ItemRule>> nbtBanned = new HashMap<>();
     public static volatile List<ItemRule> macroBanned = new ArrayList<>();
 
+    private static TagKey<Item> ruleTag(String id) {
+        try {
+            return ItemTags.create(KineticResourceIds.parse(id));
+        } catch (Exception invalid) {
+            return null;
+        }
+    }
+
+    // Pre-resolved lookups for the hottest paths (ItemStack.is and construction run thousands of times a tick):
+    // merged tags per item ID as TagKeys, and pure-ID merge sources mapped to their target item.
+    private static volatile Map<String, Set<TagKey<Item>>> mergedTagKeys = Collections.emptyMap();
+    private static volatile Map<Item, Item> mergeSourceToTarget;
+
+    /** The item a pure-ID merge rule turns {@code source} into, or null. */
+    public static Item mergeTargetOf(Item source) {
+        Map<Item, Item> map = mergeSourceToTarget;
+        if (map == null) {
+            Map<Item, Item> built = new java.util.IdentityHashMap<>();
+            pureIdReplacements.forEach((sourceId, target) -> {
+                if (VOID_ID.equals(target)) return;
+                ResourceLocation fromId = KineticResourceIds.tryParse(sourceId), toId = KineticResourceIds.tryParse(getBaseIdentifier(target));
+                if (fromId == null || toId == null) return;
+                Item from = KineticRegistries.items().get(fromId);
+                Item to = KineticRegistries.items().get(toId);
+                if (from != null && to != null && from != Items.AIR && to != Items.AIR && from != to) built.put(from, to);
+            });
+            map = mergeSourceToTarget = Collections.unmodifiableMap(built);
+        }
+        return map.isEmpty() ? null : map.get(source);
+    }
+
+    /** Whether the stack is banned and bans are active right now (the world-entry hooks use this). */
+    public static boolean isVoided(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && hasBanRules() && !ItemBanControl.shouldSkip() && isBanned(stack);
+    }
+
+    /** Whether any ban rule exists; lets the per-item hooks return at once in packs that ban nothing. */
+    public static boolean hasBanRules() {
+        return !pureIdBanned.isEmpty() || !nbtBanned.isEmpty() || !macroBanned.isEmpty();
+    }
+
     public static String getItemIdFromCache(Item item) {
         return ITEM_ID_CACHE.computeIfAbsent(item, k -> {
             ResourceLocation rl = KineticRegistries.items().id(k);
@@ -55,6 +97,8 @@ public class BanItemConfig {
         public List<String> bannedItems = new ArrayList<>();
         public Map<String, List<String>> mergedItems = new LinkedHashMap<>();
         public Map<String, List<String>> addedItemTags = new LinkedHashMap<>();
+        /** Tags taken off an item when the tags load; the entry "*" takes off every tag it had. */
+        public Map<String, List<String>> removedItemTags = new LinkedHashMap<>();
 
         @Override
         public boolean equals(Object obj) {
@@ -62,12 +106,13 @@ public class BanItemConfig {
             if (!(obj instanceof Data other)) return false;
             return Objects.equals(bannedItems, other.bannedItems)
                     && Objects.equals(mergedItems, other.mergedItems)
-                    && Objects.equals(addedItemTags, other.addedItemTags);
+                    && Objects.equals(addedItemTags, other.addedItemTags)
+                    && Objects.equals(removedItemTags, other.removedItemTags);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(bannedItems, mergedItems, addedItemTags);
+            return Objects.hash(bannedItems, mergedItems, addedItemTags, removedItemTags);
         }
     }
 
@@ -88,6 +133,7 @@ public class BanItemConfig {
                 : new ArrayList<>(source.bannedItems);
         copy.mergedItems = copyListMap(source.mergedItems);
         copy.addedItemTags = copyListMap(source.addedItemTags);
+        copy.removedItemTags = copyListMap(source.removedItemTags);
         return copy;
     }
 
@@ -106,6 +152,10 @@ public class BanItemConfig {
         public final String baseId;
         public final String components;
         public final boolean hasNbt;
+        // "namespace:" for an @mod rule, else null.
+        public final String modPrefix;
+        // The tag of a #tag rule, else null.
+        public final TagKey<Item> tag;
 
         public ItemRule(String str) {
             String clean = normalizeRuleIdentifier(str);
@@ -120,19 +170,18 @@ public class BanItemConfig {
                 this.components = clean;
                 this.hasNbt = true;
             }
+            this.modPrefix = clean.startsWith("@") ? clean.substring(1) + ":" : null;
+            this.tag = clean.startsWith("#") ? ruleTag(clean.substring(1)) : null;
         }
 
         public boolean matchesWithId(ItemStack stack, String itemId) {
             if (stack == null || itemId == null || itemId.isEmpty() || this.originalString.isEmpty()) return false;
-            if (this.originalString.startsWith("@")) {
-                int colonIdx = itemId.indexOf(':');
-                String namespace = colonIdx == -1 ? itemId : itemId.substring(0, colonIdx);
-                return namespace.equals(this.originalString.substring(1));
-            }
+            if (this.modPrefix != null) return itemId.startsWith(this.modPrefix);
             if (this.originalString.startsWith("#")) {
-                String targetTag = this.originalString.substring(1);
+                if (this.tag == null) return false;
                 try {
-                    return stack.getTags().anyMatch(t -> t.location().toString().toLowerCase(Locale.ROOT).equals(targetTag));
+                    // The stack's own tags plus the tags added by merge rules (the ItemStack mixin adds those).
+                    return stack.is(this.tag);
                 } catch (Throwable e) {
                     logLimitedWarn("匹配物品标签规则时出错，规则=" + this.originalString + ", 物品=" + itemId, e);
                     return false;
@@ -167,6 +216,10 @@ public class BanItemConfig {
         public final String baseId;
         public final CompoundTag nbt;
         public final boolean hasNbt;
+        // "namespace:" for an @mod rule, else null.
+        public final String modPrefix;
+        // The tag of a #tag rule, else null.
+        public final TagKey<Item> tag;
 
         public ItemRule(String str) {
             String clean = normalizeRuleIdentifier(str);
@@ -181,19 +234,18 @@ public class BanItemConfig {
                 this.nbt = safeParseTagForRule(clean, clean.substring(bracket));
                 this.hasNbt = true;
             }
+            this.modPrefix = clean.startsWith("@") ? clean.substring(1) + ":" : null;
+            this.tag = clean.startsWith("#") ? ruleTag(clean.substring(1)) : null;
         }
 
         public boolean matchesWithId(ItemStack stack, String itemId) {
             if (stack == null || itemId == null || itemId.isEmpty() || this.originalString.isEmpty()) return false;
-            if (this.originalString.startsWith("@")) {
-                int colonIdx = itemId.indexOf(':');
-                String namespace = colonIdx == -1 ? itemId : itemId.substring(0, colonIdx);
-                return namespace.equals(this.originalString.substring(1));
-            }
+            if (this.modPrefix != null) return itemId.startsWith(this.modPrefix);
             if (this.originalString.startsWith("#")) {
-                String targetTag = this.originalString.substring(1);
+                if (this.tag == null) return false;
                 try {
-                    return stack.getTags().anyMatch(t -> t.location().toString().toLowerCase(Locale.ROOT).equals(targetTag));
+                    // The stack's own tags plus the tags added by merge rules (the ItemStack mixin adds those).
+                    return stack.is(this.tag);
                 } catch (Throwable e) {
                     logLimitedWarn("匹配物品标签规则时出错，规则=" + this.originalString + ", 物品=" + itemId, e);
                     return false;
@@ -232,7 +284,7 @@ public class BanItemConfig {
     }
 
     public static boolean isBanned(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return false;
+        if (stack == null || !hasBanRules() || stack.isEmpty()) return false;
         String itemId = getItemIdFromCache(stack.getItem());
         if (itemId.isEmpty()) return false;
 
@@ -299,22 +351,17 @@ public class BanItemConfig {
     }
 
     public static Set<TagKey<Item>> getMergedTagKeys(ItemStack stack) {
-        Set<String> ids = getMergedTagIds(stack);
-        if (ids.isEmpty()) return Collections.emptySet();
-        Set<TagKey<Item>> result = new HashSet<>();
-        for (String id : ids) {
-            try {
-                result.add(ItemTags.create(KineticResourceIds.parse(id)));
-            } catch (Exception ignored) {}
-        }
-        if (result.isEmpty()) return Collections.emptySet();
-        return Collections.unmodifiableSet(result);
+        Map<String, Set<TagKey<Item>>> keys = mergedTagKeys;
+        if (keys.isEmpty() || stack == null || stack.isEmpty()) return Collections.emptySet();
+        Set<TagKey<Item>> result = keys.get(getItemIdFromCache(stack.getItem()));
+        return result == null ? Collections.emptySet() : result;
     }
 
     public static boolean hasMergedTag(ItemStack stack, TagKey<Item> tagKey) {
-        if (tagKey == null) return false;
-        String tagId = tagKey.location().toString().toLowerCase(Locale.ROOT);
-        return getMergedTagIds(stack).contains(tagId);
+        Map<String, Set<TagKey<Item>>> keys = mergedTagKeys;
+        if (keys.isEmpty() || tagKey == null || stack == null || stack.isEmpty()) return false;
+        Set<TagKey<Item>> result = keys.get(getItemIdFromCache(stack.getItem()));
+        return result != null && result.contains(tagKey);
     }
 
     private static String normalizeMergedTagId(String tagId) {
@@ -333,10 +380,50 @@ public class BanItemConfig {
         if (data.bannedItems == null) data.bannedItems = new ArrayList<>();
         if (data.mergedItems == null) data.mergedItems = new LinkedHashMap<>();
         if (data.addedItemTags == null) data.addedItemTags = new LinkedHashMap<>();
+        if (data.removedItemTags == null) data.removedItemTags = new LinkedHashMap<>();
 
         data.bannedItems = normalizeRuleList(data.bannedItems, "bannedItems");
         data.mergedItems = normalizeRuleMap(data.mergedItems);
         data.addedItemTags = normalizeAddedItemTags(data.addedItemTags);
+        data.removedItemTags = normalizeRemovedItemTags(data.removedItemTags);
+    }
+
+    /** Like the added tags, but keeps "*" (every tag) as its own entry. */
+    private static Map<String, List<String>> normalizeRemovedItemTags(Map<String, List<String>> source) {
+        LinkedHashMap<String, List<String>> result = new LinkedHashMap<>();
+        if (source == null || source.isEmpty()) return result;
+        for (Map.Entry<String, List<String>> entry : source.entrySet()) {
+            String itemId = getBaseIdentifier(entry.getKey());
+            if (itemId.isEmpty()) continue;
+            try {
+                itemId = KineticResourceIds.parse(itemId).toString();
+            } catch (Exception ignored) {
+                continue;
+            }
+            TreeSet<String> tags = new TreeSet<>();
+            if (entry.getValue() != null) {
+                for (String rawTag : entry.getValue()) {
+                    if (ALL_TAGS.equals(rawTag == null ? "" : rawTag.trim())) {
+                        tags.add(ALL_TAGS);
+                        continue;
+                    }
+                    String cleanTag = normalizeMergedTagId(rawTag);
+                    if (!cleanTag.isEmpty()) tags.add(cleanTag);
+                }
+            }
+            if (!tags.isEmpty()) result.put(itemId, new ArrayList<>(tags));
+        }
+        return result;
+    }
+
+    /** The entry of {@link Data#removedItemTags} that takes off every tag an item had. */
+    public static final String ALL_TAGS = "*";
+
+    public static Set<String> getConfiguredRemovedTagIds(String itemId) {
+        if (data == null || data.removedItemTags == null || itemId == null) return Collections.emptySet();
+        List<String> tags = data.removedItemTags.get(getBaseIdentifier(itemId));
+        if (tags == null || tags.isEmpty()) return Collections.emptySet();
+        return Collections.unmodifiableSet(new TreeSet<>(tags));
     }
 
     private static Map<String, List<String>> normalizeAddedItemTags(Map<String, List<String>> source) {
@@ -759,6 +846,16 @@ private static String normalizeRuleIdentifier(String identifier) {
         newTargetMergedTags.forEach((key, value) ->
                 frozenTargetTags.put(key, Collections.unmodifiableSet(new TreeSet<>(value))));
         targetMergedTags = Collections.unmodifiableMap(frozenTargetTags);
+        Map<String, Set<TagKey<Item>>> newMergedTagKeys = new HashMap<>();
+        frozenTargetTags.forEach((itemId, tagIds) -> {
+            Set<TagKey<Item>> tags = new HashSet<>();
+            for (String tagId : tagIds) {
+                TagKey<Item> tag = ruleTag(tagId);
+                if (tag != null) tags.add(tag);
+            }
+            if (!tags.isEmpty()) newMergedTagKeys.put(itemId, Collections.unmodifiableSet(tags));
+        });
+        mergedTagKeys = Collections.unmodifiableMap(newMergedTagKeys);
 
         Map<String, String> newPureIdReplacements = new HashMap<>();
         Map<String, List<Map.Entry<ItemRule, String>>> newNbtReplacements = new HashMap<>();
@@ -781,6 +878,7 @@ private static String normalizeRuleIdentifier(String identifier) {
                 frozenNbtReplacements.put(key, Collections.unmodifiableList(new ArrayList<>(value))));
         nbtReplacements = Collections.unmodifiableMap(frozenNbtReplacements);
         macroReplacements = Collections.unmodifiableList(new ArrayList<>(newMacroReplacements));
+        mergeSourceToTarget = null;
 
         Set<String> newPureIdBanned = new HashSet<>();
         Map<String, List<ItemRule>> newNbtBanned = new HashMap<>();
@@ -810,13 +908,15 @@ private static String normalizeRuleIdentifier(String identifier) {
         nbtReplacements = Collections.emptyMap();
         macroReplacements = Collections.emptyList();
         targetMergedTags = Collections.emptyMap();
+        mergedTagKeys = Collections.emptyMap();
+        mergeSourceToTarget = null;
         pureIdBanned = Collections.emptySet();
         nbtBanned = Collections.emptyMap();
         macroBanned = Collections.emptyList();
     }
 
     public static String getReplacement(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return null;
+        if (stack == null || ruleReplacementMap.isEmpty() || stack.isEmpty()) return null;
         String itemId = getItemIdFromCache(stack.getItem());
         if (itemId.isEmpty()) return null;
 

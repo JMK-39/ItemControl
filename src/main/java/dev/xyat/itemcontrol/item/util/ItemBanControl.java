@@ -32,6 +32,14 @@ public class ItemBanControl {
         }
     }
 
+    // The server thread (dedicated or integrated). Banned items become air when they are created there, the way
+    // One Enough Item does it; the client keeps them, so the ban editors, JEI and recipe viewers can still show them.
+    private static volatile Thread serverThread;
+
+    public static void setServerThread(Thread thread) { serverThread = thread; }
+
+    public static boolean isServerThread() { return Thread.currentThread() == serverThread; }
+
     public static void beginBuildingTab() { BUILDING_TAB.set(true); }
     public static void endBuildingTab() { BUILDING_TAB.set(false); }
 }

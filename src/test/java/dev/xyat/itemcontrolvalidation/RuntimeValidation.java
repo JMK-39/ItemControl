@@ -22,8 +22,13 @@ public final class RuntimeValidation {
     private BanItemConfig.ItemRule preheatedBan;
     private boolean preheatedTab;
     public RuntimeValidation() {
+        if (Boolean.getBoolean("itemcontrol.curioValidation")) { CurioNativeValidation.install(); return; }
+        if (Boolean.getBoolean("itemcontrol.layoutValidation")) {
+            dev.xyat.kineticcore.api.runtime.KineticPlatform.runOnClient(() -> ItemLayoutValidation::install);
+            return;
+        }
         if (Boolean.getBoolean("itemcontrol.propertyValidation")) ItemPropertyRuntimeChecks.install();
-        if (Boolean.getBoolean("itemcontrol.guiValidation")) {
+        if (Boolean.getBoolean("itemcontrol.guiValidation") || Boolean.getBoolean("itemcontrol.playtest")) {
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(this::started);
             return;
         }
@@ -54,7 +59,13 @@ public final class RuntimeValidation {
     }
 
     private void started(net.neoforged.neoforge.event.server.ServerStartedEvent event) {
-        if (Boolean.getBoolean("itemcontrol.guiValidation")) { GuiLongTextValidation.install(); return; }
+        if (Boolean.getBoolean("itemcontrol.playtest")) { ItemPlaytestValidation.install(); return; }
+        if (Boolean.getBoolean("itemcontrol.guiValidation")) {
+            // The trash check needs no screen, so the GUI run covers it as well.
+            run("trash", () -> validateTrash(event));
+            GuiLongTextValidation.install();
+            return;
+        }
         try {
             String json = TabConfig.GSON.toJson(new TabConfig.TabItem());
             require(json.contains("\"components\"") && json.contains("\"matchComponents\"")
@@ -158,6 +169,8 @@ public final class RuntimeValidation {
                 var received = ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer);
                 require(received.getCount() == 1000123 && ItemStack.isSameItemSameComponents(restored, received), "trash component network round trip");
             } finally { buffer.release(); }
+            loaded.setDirty(false);
+            require(!loaded.getRecord(0).removeItem(0, 64).isEmpty() && loaded.isDirty(), "taking from a loaded trash record is saved, so reloading cannot restore it");
 
         } finally { dev.xyat.itemcontrol.cleaner.config.CleanerConfig.enableTrashBin = enabled; }
     }

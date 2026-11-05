@@ -58,10 +58,15 @@ public class TabUnifiedPage extends KineticPage {
         ResourceLocation id;
     }
 
-    private static final int MAIN_X = 12;
-    private static final int MAIN_W = 468;
-    private static final int RIGHT_X = 500;
+    // Header row: Back, title, Add Custom Item and Save. Below it the tab row and item grid on the left (4 px from the
+    // frame) and the hidden items on the right, on the plain page background.
+    private static final int MAIN_X = 4;
     private static final int RIGHT_W = 126;
+    private static final int RIGHT_X = 640 - 4 - RIGHT_W;
+    private static final int MAIN_W = RIGHT_X - 12 - MAIN_X;
+    private static final int ADD_W = 96;
+    private static final int SAVE_X = 640 - 4 - 40;
+    private static final int ADD_X = SAVE_X - 4 - ADD_W;
 
     private static final int ARROW_W = 20;
     // The arrows sit inside the tab strip frame, as far from its side lines as from its top and bottom.
@@ -81,10 +86,10 @@ public class TabUnifiedPage extends KineticPage {
     private static final int MAIN_ITEM_COLS = (MAIN_W + SLOT_GAP) / SLOT_PITCH;
     private static final int RIGHT_ITEM_COLS = (RIGHT_W + SLOT_GAP) / SLOT_PITCH;
 
-    private static final int TAB_Y = 32;
-    private static final int TAB_SCROLL_Y = 61;
-    private static final int ITEM_Y = 72;
-    private static final int ITEM_H = 234;
+    private static final int TAB_Y = 31;
+    private static final int TAB_SCROLL_Y = TAB_Y + 29;
+    private static final int ITEM_Y = TAB_Y + 40;
+    private static final int ITEM_H = 360 - 4 - 3 - ITEM_Y;
     private static final int ITEM_VISIBLE_ROWS = (ITEM_H + SLOT_GAP) / SLOT_PITCH;
 
     private final List<TabInfo> allGameTabs =
@@ -123,7 +128,7 @@ public class TabUnifiedPage extends KineticPage {
                 "gui.itemcontrol.tabs.tabs.unified.title"
         ));
 
-        useCanvas(640, 360, 6);
+        useCanvas(640, 360, 4);
 
         TabClientEvents.clearNotification();
 
@@ -377,23 +382,19 @@ public class TabUnifiedPage extends KineticPage {
 
     @Override
     protected void build(KineticUi ui) {
-        int bottomY =
-                height() - 22;
-
-        ui.button(MAIN_X + ARROW_INSET, TAB_Y + ARROW_INSET, ARROW_W)
-                .text(Component.literal("<"))
+        bindDeleteAction(() -> !contentDrag.isActive() && (hoveredItemTooltip != null || hoveredTabTooltip != null), this::deleteHovered);
+        // The page arrows are as tall as the tab icons (card buttons, 26 px; their < and > are drawn with the tabs).
+        ui.button(MAIN_X + ARROW_INSET - 4, TAB_Y - 1, ARROW_W).card()
                 .onClick(() -> mainTabScroll.setOffset(mainTabScroll.offset() - 1))
                 .build();
-        ui.button(MAIN_X + MAIN_W - ARROW_W - ARROW_INSET, TAB_Y + ARROW_INSET, ARROW_W)
-                .text(Component.literal(">"))
+        ui.button(MAIN_X + MAIN_W - ARROW_W - ARROW_INSET + 4, TAB_Y - 1, ARROW_W).card()
                 .onClick(() -> mainTabScroll.setOffset(mainTabScroll.offset() + 1))
                 .build();
 
-        ui.button(MAIN_X, bottomY, 160).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.unified.btn_add_item")).onClick(this::openItemSelector).build();
+        ui.button(MAIN_X, 4, 40).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.back")).onClick(this::returnToParent).build();
+        ui.button(ADD_X, 4, ADD_W).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.unified.btn_add_item")).onClick(this::openItemSelector).build();
 
-        ui.button(MAIN_X, 2, 80).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.back")).onClick(this::returnToParent).build();
-
-        ui.button(RIGHT_X, bottomY, RIGHT_W).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.save_apply")).onClick(() -> {
+        ui.button(SAVE_X, 4, 40).text(KineticI18n.translatable("gui.itemcontrol.tabs.tabs.btn.save_apply")).onClick(() -> {
                     String json = TabConfig.GSON.toJson(TabConfig.currentEditing);
                     TabNetwork.saveTabs(json);
                     commitDraft();
@@ -515,15 +516,20 @@ public class TabUnifiedPage extends KineticPage {
 
         KineticTheme.panel(graphics, 0, 0, width(), height());
 
-        KineticTheme.surface(graphics, 0, height() - 30, width(), 30, KineticTheme.Surface.PANEL_ALT);
+        KineticTheme.separator(graphics, 4, 24, width() - 8);
+        KineticTheme.verticalSeparator(graphics, (MAIN_X + MAIN_W + RIGHT_X) / 2, 28, height() - 32);
+        int arrowY = TAB_Y - 1 + (26 - 8) / 2;
+        graphics.text(Component.literal("<"), MAIN_X + ARROW_INSET - 4 + ARROW_W / 2 - 2, arrowY, 0xFFFFFFFF, true);
+        graphics.text(Component.literal(">"), MAIN_X + MAIN_W - ARROW_W - ARROW_INSET + 4 + ARROW_W / 2 - 2, arrowY, 0xFFFFFFFF, true);
+        KineticTheme.separator(graphics, MAIN_X, ITEM_Y - 6, MAIN_W);
 
         graphics.scrollingText(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.left_title.colored"
-                ), MAIN_X + 86, 8, MAIN_W - 90, 0xFFFFFF, true);
+                ), 52, 8, ADD_X - 4 - 52, 0xFFFFFF, true);
 
         graphics.scrollingText(KineticI18n.translatable(
                         "gui.itemcontrol.tabs.tabs.unified.right_title.colored"
-                ), RIGHT_X, 8, RIGHT_W - 4, 0xFFFFFF, true);
+                ), RIGHT_X, TAB_Y + 8, RIGHT_W, 0xFFFFFF, true);
 
         renderMainPane(
                 graphics,
@@ -543,7 +549,7 @@ public class TabUnifiedPage extends KineticPage {
             int mouseX,
             int mouseY
     ) {
-        KineticTheme.panel(graphics, MAIN_X, TAB_Y - 3, MAIN_W, TAB_SIZE + 6);
+        KineticTheme.surface(graphics, MAIN_X, TAB_Y - 3, MAIN_W, TAB_SIZE + 6, KineticTheme.Surface.PANEL);
 
         int firstTab = mainTabScroll.smoothIndexOffset();
         int tabShift = mainTabScroll.visualShift(TAB_PITCH);
@@ -627,7 +633,7 @@ public class TabUnifiedPage extends KineticPage {
                 20
         );
 
-        KineticTheme.panel(graphics, MAIN_X - 3, ITEM_Y - 3, MAIN_W + 6, ITEM_H + 6);
+        KineticTheme.surface(graphics, MAIN_X - 3, ITEM_Y - 3, MAIN_W + 6, ITEM_H + 6, KineticTheme.Surface.PANEL);
 
         KineticTheme.surface(graphics, MAIN_X, ITEM_Y, MAIN_W, ITEM_H, KineticTheme.Surface.PANEL_ALT);
 
@@ -659,9 +665,6 @@ public class TabUnifiedPage extends KineticPage {
             int mouseX,
             int mouseY
     ) {
-        KineticTheme.panel(graphics, RIGHT_X - 3, ITEM_Y - 3, RIGHT_W + 6, ITEM_H + 6);
-
-        KineticTheme.surface(graphics, RIGHT_X, ITEM_Y, RIGHT_W, ITEM_H, KineticTheme.Surface.PANEL_ALT);
 
         renderItemGrid(
                 graphics,
@@ -921,8 +924,8 @@ public class TabUnifiedPage extends KineticPage {
             }
         }
 
-        renderRawTooltip(
-                tooltip);
+        if (item.stack.isEmpty()) renderRawTooltip(tooltip);
+        else showItemTooltip(item.stack, tooltip.subList(1, tooltip.size()));
     }
 
     private void renderRawTooltip(
@@ -1041,6 +1044,16 @@ public class TabUnifiedPage extends KineticPage {
     protected boolean onCloseRequested() {
         returnToParent();
         return true;
+    }
+
+    private void deleteHovered() {
+        if (hoveredItemTooltip != null) {
+            if (hoveredItemHiddenPane) unhideItem(hoveredItemTooltip); else hideItem(hoveredItemTooltip);
+        } else if (hoveredTabTooltip != null) {
+            String id = hoveredTabTooltip.id.toString();
+            if (!TabConfig.currentEditing.hiddenTabs.remove(id)) TabConfig.currentEditing.hiddenTabs.add(id);
+        }
+        hoveredItemTooltip = null; hoveredTabTooltip = null; refreshData();
     }
 
     @Override

@@ -24,7 +24,7 @@ public final class ChildRuleSaveUiChecks {
                 if (action != 0) field(kind).setTextValue("7");
                 if (action == 2) {
                     press("curio.apply_rule");
-                    press("curio.delete_rule");
+                    deleteKey();
                 }
                 if (action == 3) field(kind).setTextValue("invalid");
                 press("save");
@@ -54,8 +54,8 @@ public final class ChildRuleSaveUiChecks {
         };
     }
     private static KineticTextField field(int kind) {
-        int x = kind == 2 ? 12 : kind == 3 ? 326 : 160;
-        int y = kind == 2 ? 98 : kind == 3 ? 58 : 90;
+        int x = kind == 2 ? 312 : kind == 3 ? 326 : 396;
+        int y = kind == 2 ? 74 : kind == 3 ? 58 : 100;
         for (var control : Minecraft.getInstance().screen.children())
             if (control instanceof KineticTextField field && field.controlX() == x && field.controlY() == y) return field;
         throw new AssertionError("actual child input missing " + kind);
@@ -73,6 +73,13 @@ public final class ChildRuleSaveUiChecks {
             }
         }
         throw new AssertionError("actual child button missing " + key);
+    }
+    private static void deleteKey() {
+        //? if >=26.1 {
+        /*Minecraft.getInstance().screen.keyPressed(new net.minecraft.client.input.KeyEvent(261, 0, 0));*/
+        //?} else {
+        Minecraft.getInstance().screen.keyPressed(261, 0, 0);
+        //?}
     }
     private static void require(boolean valid, String message) { if (!valid) throw new AssertionError(message); }
 }

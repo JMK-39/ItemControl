@@ -14,6 +14,7 @@ public final class WorldLoadEventHandler {
         if (registered) return;
         registered = true;
         KineticWorldEvents.onLevelLoad(KineticEventPriority.NORMAL, level -> {
+            if (level instanceof net.minecraft.server.level.ServerLevel) ItemBanControl.setServerThread(Thread.currentThread());
             if (!ItemBanControl.isReplacementEnabled()) {
                 ItemBanControl.setReplacementEnabled(true);
             }

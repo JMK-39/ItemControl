@@ -52,15 +52,22 @@ import java.util.Set;
 public final class ItemPropertyEditorPage extends KineticPage {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     // Equal panes; twelve native-size rows fit with padding above the footer.
-    private static final int GRID_X = 8;
-    private static final int GRID_Y = 44;
-    private static final int GRID_W = 304;
-    private static final int GRID_H = 290;
-    private static final int PANEL_X = 326;
-    private static final int PANEL_RIGHT = 626;
-    private static final int FIELD_WIDTH = 92;
-    private static final int FIELD_COLUMN_PITCH = 100;
+    private static final int GRID_X = 4;
+    // The grid starts right under the header row and keeps thirteen complete rows.
+    private static final int GRID_Y = 28;
+    // 13 standard slots without inner padding plus the scrollbar; the panel on the right starts after the separator.
+    private static final int GRID_W = 13 * 24 - 2 + 6;
+    private static final int GRID_H = 328;
+    private static final int PANEL_X = GRID_X + GRID_W + 8;
+    private static final int PANEL_RIGHT = 636;
+    private static final int FIELD_WIDTH = 84;
+    private static final int FIELD_COLUMN_PITCH = 92;
     private static final int TEXT_GAP = 4;
+    /** Combat category: equipment slot row, one grid row below the durability switch. */
+    private static final int EQUIPMENT_Y = 238;
+    /** Food row: two buttons with the remainder item slot centred between them, 4 px from each. */
+    private static final int FOOD_BUTTON_W = 96;
+    private static final int REMAINDER_SLOT_X = PANEL_X + FOOD_BUTTON_W + 4;
     private static final BigDecimal BASE_ATTACK_DAMAGE = BigDecimal.ONE;
     private static final BigDecimal BASE_ATTACK_SPEED = BigDecimal.valueOf(4);
 
@@ -105,13 +112,20 @@ public final class ItemPropertyEditorPage extends KineticPage {
     private KineticToggleList curioSlotList;
     private KineticButton curioSlotButton;
     private KineticToggle curioEnabledToggle;
-    private static final int CURIO_SLOT_LIST_Y = 152;
-    private static final int CURIO_SLOT_LIST_WIDTH = 174;
+    private static final int CURIO_SLOT_LIST_Y = 164;
+    private static final int CURIO_SLOT_LIST_WIDTH = 162;
+    // The rule actions sit at the top of the property panel (Batch & Templates, Add Rule, Reset Item, Delete),
+    // each only as wide as its label needs; Save sits top right like on every editor.
+    private static final int ACTION_ROW_Y = 28;
+    private static final int TOOLS_W = 64, ACTION_W = 56;
+    private static final int CATEGORY_W = 72;
+    // The item being edited, under the actions, in a standard slot.
+    private static final int ITEM_Y = 48;
     private static final int CURIO_SLOT_LIST_HEIGHT = 140;
 
     public ItemPropertyEditorPage(String pendingJson) {
         super(KineticI18n.translatable("gui.itemcontrol.item_property.title"));
-        useCanvas(640, 360, 6);
+        useCanvas(640, 360, 4);
         restoreDraft(pendingJson);
         allItems.addAll(ItemSearchCache.getAllItems());
     }
@@ -130,16 +144,37 @@ public final class ItemPropertyEditorPage extends KineticPage {
         drafts.forEach((id, value) -> baseline.put(id, value.deepCopy()));
     }
 
+    /**
+     * One view per category, then the sub-editors of the selected item (batch and templates, equipment attributes,
+     * food effects and the curio editors), for screenshot tools. They open on drafts; nothing is saved.
+     */
+    @Override
+    public List<ReviewView> reviewViews() {
+        List<ReviewView> views = new ArrayList<>();
+        for (EditorCategory value : EditorCategory.values()) {
+            views.add(new ReviewView(value.name().toLowerCase(Locale.ROOT), () -> changeCategory(value)));
+        }
+        views.add(new ReviewView("batch-templates", this::openTools));
+        views.add(new ReviewView("equipment-attributes", () -> { changeCategory(EditorCategory.COMBAT); openEquipmentAttributes(); }));
+        views.add(new ReviewView("food-effects", () -> { changeCategory(EditorCategory.FOOD); openFoodEffects(); }));
+        views.add(new ReviewView("curio-slots", () -> { changeCategory(EditorCategory.CURIO); openCurioSlots(); }));
+        views.add(new ReviewView("curio-attributes", () -> { changeCategory(EditorCategory.CURIO); openCurioAttributes(); }));
+        views.add(new ReviewView("curio-slot-counts", () -> { changeCategory(EditorCategory.CURIO); openCurioSlotCounts(); }));
+        return views;
+    }
+
     @Override
     protected void build(KineticUi ui) {
+        bindDeleteAction(() -> selectedId != null && drafts.containsKey(selectedId), this::deleteSelectedRule);
         fields.clear();
         fieldSpecs.clear();
         fieldLabels.clear();
         attributesBox = null;
         curioSlotList = null;
         lastAttributesValue = null;
-        ui.button(GRID_X,10,64).text(ItemRuleLabels.text("back")).onClick(this::close).build();
-        searchBox = ui().textField(78, 10, GRID_X + GRID_W - 78).build();
+        ui.button(GRID_X,4,40).text(ItemRuleLabels.text("back")).onClick(this::close).build();
+        // In the accessory category the Existing Accessories shortcut shares the search row, clear of the item grid.
+        searchBox = ui().textField(GRID_X + 44, 4, GRID_W - 44 - (category == EditorCategory.CURIO ? 98 : 0)).build();
         searchBox.setPlaceholder(KineticI18n.translatable("gui.itemcontrol.item_property.search"));
         searchBox.limitTextLength(1024);
         searchBox.setTextValue(searchQuery);
@@ -149,7 +184,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
             refreshGrid();
         });
 
-        ui.dropdown(PANEL_RIGHT - 142, 12, 142, categoryOptions())
+        ui.dropdown(PANEL_RIGHT - 44 - CATEGORY_W, 4, CATEGORY_W, categoryOptions())
                 .selected(categoryDropdownValue(category))
                 .tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.category.tooltip"))
                 .validator(ignored -> true)
@@ -158,24 +193,24 @@ public final class ItemPropertyEditorPage extends KineticPage {
 
         buildCategoryFields();
         if (category == EditorCategory.CURIO) {
-            var existing = ui.button(GRID_X + GRID_W - 94, 27, 94).compact()
+            var existing = ui.button(GRID_X + GRID_W - 94, 4, 94).compact()
                     .text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.existing"))
                     .tooltip(KineticI18n.translatable(ItemCuriosCompat.available()
                             ? "gui.itemcontrol.item_property.curio.existing.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
                     .onClick(this::searchExistingAccessories).build();
             existing.setEnabled(ItemCuriosCompat.available());
         }
-        itemGrid = ui.itemGrid(GRID_X, GRID_Y, GRID_W, GRID_H, ItemGridDensity.COMPACT, buildGridItems())
+        itemGrid = ui.itemGrid(GRID_X, GRID_Y, GRID_W, GRID_H, ItemGridDensity.COMPACT_FLUSH, buildGridItems())
                 .scrollOffset(gridScrollOffset)
                 .onClick(this::selectGridIndex)
                 .build();
         gridScrollOffset = 0;
 
-        ui().button(90, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule.tooltip")).compact().onClick(this::addSelectedRule).build();
-        ui().button(176, 337, 80).text(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item.tooltip")).compact().onClick(this::resetSelectedRule).build();
-        ui().button(262, 337, 52).text(KineticI18n.translatable("gui.itemcontrol.item_property.delete")).compact().onClick(this::deleteSelectedRule).build();
-        ui().button(PANEL_X + (PANEL_RIGHT - PANEL_X - 70) / 2, 337, 70).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.save.tooltip")).onClick(this::save).build();
-        ui().button(12,337,72).text(ItemRuleLabels.text("tools")).tooltip(ItemRuleLabels.text("tools.tooltip")).onClick(this::openTools).build();
+        ui().button(PANEL_X + TOOLS_W + 4, ACTION_ROW_Y, ACTION_W).text(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.add_rule.tooltip")).compact().onClick(this::addSelectedRule).build();
+        ui().button(PANEL_X + TOOLS_W + 4 + (ACTION_W + 4), ACTION_ROW_Y, ACTION_W).text(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.reset_item.tooltip")).compact().onClick(this::resetSelectedRule).build();
+        ui().button(PANEL_X + TOOLS_W + 4 + (ACTION_W + 4) * 2, ACTION_ROW_Y, ACTION_W).text(KineticI18n.translatable("gui.itemcontrol.item_property.delete")).compact().onClick(this::deleteSelectedRule).build();
+        ui().button(PANEL_RIGHT - 40, 4, 40).text(KineticI18n.translatable("gui.itemcontrol.item_property.save")).tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.save.tooltip")).onClick(this::save).build();
+        ui().button(PANEL_X, ACTION_ROW_Y, TOOLS_W).text(ItemRuleLabels.text("tools")).tooltip(ItemRuleLabels.text("tools.tooltip")).onClick(this::openTools).build();
 
         populateFields();
         refreshGrid();
@@ -226,8 +261,9 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addNumericField("armor_toughness", false, -2048, 2048, 3);
                 addNumericField("knockback_resistance", false, -2048, 2048, 4);
                 addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 5);
+                addUnbreakableButton(8);
                 addEquipmentSlot();
-                ui().button(PANEL_X+124,190,176).text(ItemRuleLabels.text("equipment.attributes"))
+                ui().button(PANEL_X+124,EQUIPMENT_Y,96).text(ItemRuleLabels.text("equipment.attributes"))
                         .tooltip(ItemRuleLabels.text("equipment.attributes.tooltip")).onClick(this::openEquipmentAttributes).build().setEnabled(canEditSelected());
             }
             case TOOL -> {
@@ -236,6 +272,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addNumericField("mining_speed", false, 0, 1_000_000, 2);
                 addNumericField("mining_level", true, 0, 255, 3);
                 addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 4);
+                addUnbreakableButton(5);
             }
             case FOOD -> {
                 addNumericField("nutrition", true, 0, 1024, 0);
@@ -244,16 +281,18 @@ public final class ItemPropertyEditorPage extends KineticPage {
                 addBooleanButton("always_eat", 3);
                 addBooleanButton("non_consumable", 4);
                 addBooleanButton("edible", 5);
-                ui().button(PANEL_X,190,136).text(ItemRuleLabels.text("food.effects")).tooltip(ItemRuleLabels.text("food.effects.tooltip")).onClick(this::openFoodEffects).build().setEnabled(canEditSelected());
-                ui().button(PANEL_X+164,190,136).text(ItemRuleLabels.text("food.remainder")).tooltip(ItemRuleLabels.text("food.remainder.tooltip")).onClick(this::selectFoodRemainder).build().setEnabled(canEditSelected());
-                ui().button(PANEL_X,230,136).text(ItemRuleLabels.text("food.remainder.inherit")).onClick(()->setFoodRemainder(null)).build().setEnabled(canEditSelected());
-                ui().button(PANEL_X+164,230,136).text(ItemRuleLabels.text("food.remainder.none")).onClick(()->setFoodRemainder("minecraft:air")).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X,202,FOOD_BUTTON_W).text(ItemRuleLabels.text("food.effects")).tooltip(ItemRuleLabels.text("food.effects.tooltip")).onClick(this::openFoodEffects).build().setEnabled(canEditSelected());
+                ui().button(REMAINDER_SLOT_X+26,202,FOOD_BUTTON_W).text(ItemRuleLabels.text("food.remainder")).tooltip(ItemRuleLabels.text("food.remainder.tooltip")).onClick(this::selectFoodRemainder).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X,226,FOOD_BUTTON_W).text(ItemRuleLabels.text("food.remainder.inherit")).onClick(()->setFoodRemainder(null)).build().setEnabled(canEditSelected());
+                ui().button(PANEL_X+FOOD_BUTTON_W+4,226,FOOD_BUTTON_W).text(ItemRuleLabels.text("food.remainder.none")).onClick(()->setFoodRemainder("minecraft:air")).build().setEnabled(canEditSelected());
             }
             case GENERAL -> {
                 addNumericField("max_stack_size", true, 1, 99, 0);
                 addNumericField("max_damage", true, -1, Integer.MAX_VALUE, 1);
                 addNumericField("enchantability", true, 0, 100_000, 2);
-                addRarityDropdown();
+                addRarityDropdown(3);
+                // The rarity dropdown is wider than one column, so the next control skips a column.
+                addUnbreakableButton(5);
             }
             case BLOCK -> {
                 addNumericField("block_hardness", false, -1, 1_000_000, 0);
@@ -275,27 +314,27 @@ public final class ItemPropertyEditorPage extends KineticPage {
         boolean available = ItemCuriosCompat.available();
         Component tooltip = KineticI18n.translatable(available
                 ? "gui.itemcontrol.item_property.curio.enabled.tooltip" : "gui.itemcontrol.item_property.curio.requires");
-        curioEnabledToggle = ui().toggle(PANEL_X, 82, 118)
+        curioEnabledToggle = ui().toggle(PANEL_X, 94, 118)
                 .value(curio.has("enabled") && curio.get("enabled").getAsBoolean())
                 .labels(KineticI18n.translatable("gui.itemcontrol.item_property.boolean.true"), KineticI18n.translatable("gui.itemcontrol.item_property.boolean.false"))
                 .tooltip(tooltip).onChange(value -> changeCurioBoolean("enabled", value)).build();
         curioEnabledToggle.setEnabled(available && canEditSelected());
-        fieldLabels.put("curio_enabled", new FieldLabel(PANEL_X, 71, 118));
-        var removal = ui().toggle(PANEL_X + 124, 82, 118)
+        fieldLabels.put("curio_enabled", new FieldLabel(PANEL_X, 83, 118));
+        var removal = ui().toggle(PANEL_X + 124, 94, 118)
                 .value(!curio.has("can_unequip") || curio.get("can_unequip").getAsBoolean())
                 .labels(KineticI18n.translatable("gui.itemcontrol.item_property.boolean.true"), KineticI18n.translatable("gui.itemcontrol.item_property.boolean.false"))
                 .tooltip(KineticI18n.translatable(available ? "gui.itemcontrol.item_property.curio.unequip.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
                 .onChange(value -> changeCurioBoolean("can_unequip", value)).build();
         removal.setEnabled(available && canEditSelected());
-        fieldLabels.put("curio_unequip", new FieldLabel(PANEL_X + 124, 71, 118));
+        fieldLabels.put("curio_unequip", new FieldLabel(PANEL_X + 124, 83, 118));
         var slots = displayedCurioSlots(curio);
-        curioSlotButton = ui().button(PANEL_X, 130, CURIO_SLOT_LIST_WIDTH)
+        curioSlotButton = ui().button(PANEL_X, 142, CURIO_SLOT_LIST_WIDTH)
                 .text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.slots", slots.size()))
                 .tooltip(available ? Component.literal(slots.toString()) : KineticI18n.translatable("gui.itemcontrol.item_property.curio.requires"))
                 .onClick(this::openCurioSlots).build();
         curioSlotButton.setEnabled(available && canEditSelected());
         curioSlotButton.setSelected(curioSlotsExpanded);
-        var editAttributes = ui().button(PANEL_X + 180, 130, 120)
+        var editAttributes = ui().button(PANEL_X + CURIO_SLOT_LIST_WIDTH + 4, 142, 96)
                 .text(KineticI18n.translatable("gui.itemcontrol.item_property.curio.edit_attributes"))
                 .tooltip(KineticI18n.translatable(available ? "gui.itemcontrol.item_property.curio.attributes.tooltip" : "gui.itemcontrol.item_property.curio.requires"))
                 .onClick(this::openCurioAttributes).build();
@@ -304,7 +343,7 @@ public final class ItemPropertyEditorPage extends KineticPage {
             buildCurioSlotList();
             return;
         }
-        ui().button(PANEL_X,190,242).text(ItemRuleLabels.text("curio.slot_counts"))
+        ui().button(PANEL_X,202,CURIO_SLOT_LIST_WIDTH).text(ItemRuleLabels.text("curio.slot_counts"))
                 .tooltip(ItemRuleLabels.text(available ? "curio.slot_counts.tooltip" : "curio.requires"))
                 .onClick(this::openCurioSlotCounts).build().setEnabled(available && canEditSelected());
     }
@@ -354,7 +393,8 @@ public final class ItemPropertyEditorPage extends KineticPage {
         var selected = new java.util.LinkedHashSet<String>();
         JsonObject curio = curioObject();
         displayedCurioSlots(curio).forEach(raw -> selected.add(raw.getAsString()));
-        var candidates = new java.util.LinkedHashSet<String>(); candidates.add("curio");
+        // Selected slots first, so what is on is visible without scrolling; the rest keep their order.
+        var candidates = new java.util.LinkedHashSet<String>(selected); candidates.add("curio");
         candidates.addAll(ItemCuriosCompat.slots(net.minecraft.client.Minecraft.getInstance().player)); candidates.addAll(selected);
         List<String> ids = List.copyOf(candidates);
         List<ToggleItem> rows = new ArrayList<>();
@@ -377,16 +417,22 @@ public final class ItemPropertyEditorPage extends KineticPage {
         changed.addProperty("enabled", true);
         var selected = new java.util.LinkedHashSet<String>();
         displayedCurioSlots(changed).forEach(raw -> selected.add(raw.getAsString()));
+        // The generic slot and specific slots exclude each other: choosing the generic slot clears every specific slot,
+        // choosing a specific slot clears the generic one. Specific slots can be combined.
+        boolean exclusive = checked && (id.equals("curio") ? selected.stream().anyMatch(slot -> !slot.equals("curio")) : selected.contains("curio"));
+        if (checked && id.equals("curio")) selected.clear();
+        else if (checked) selected.remove("curio");
         if (checked) selected.add(id); else selected.remove(id);
         var slots = new com.google.gson.JsonArray(); selected.forEach(slots::add); changed.add("slots", slots);
         JsonObject rule = currentRuleObject(); rule.add("curio", changed); drafts.put(selectedId, rule);
+        if (exclusive) { rebuildEditor(); return; }
         curioEnabledToggle.setValue(true);
         curioSlotButton.setText(KineticI18n.translatable("gui.itemcontrol.item_property.curio.slots", slots.size()));
         refreshGrid();
     }
 
     @Override protected boolean onMouseClickCapture(MouseInput input) {
-        if (curioSlotsExpanded && !input.inside(PANEL_X, 130, CURIO_SLOT_LIST_WIDTH, CURIO_SLOT_LIST_Y + CURIO_SLOT_LIST_HEIGHT - 130)) {
+        if (curioSlotsExpanded && !input.inside(PANEL_X, 142, CURIO_SLOT_LIST_WIDTH, CURIO_SLOT_LIST_Y + CURIO_SLOT_LIST_HEIGHT - 142)) {
             curioSlotsExpanded = false;
             rebuildEditor();
         }
@@ -416,10 +462,10 @@ public final class ItemPropertyEditorPage extends KineticPage {
     }
 
     private void addEquipmentSlot() {
-        fieldLabels.put("equipment_slot",new FieldLabel(PANEL_X,178,118));
+        fieldLabels.put("equipment_slot",new FieldLabel(PANEL_X,EQUIPMENT_Y-11,118));
         var options=List.of("inherit","none","head","chest","legs","feet").stream().map(value->new KineticDropdown.Option(value,ItemRuleLabels.text("equipment.slot."+value))).toList();
         var rule=currentRuleObject();String selected=rule.has("equipment_slot")?rule.get("equipment_slot").getAsString():"inherit";
-        ui().dropdown(PANEL_X,190,118,options).selected(selected).tooltip(ItemRuleLabels.text("equipment.slot.tooltip")).onChange(value->{
+        ui().dropdown(PANEL_X,EQUIPMENT_Y,118,options).selected(selected).tooltip(ItemRuleLabels.text("equipment.slot.tooltip")).onChange(value->{
             if(!canEditSelected()||!flushFields())return;var changed=currentRuleObject();if(value.equals("inherit"))changed.remove("equipment_slot");else changed.addProperty("equipment_slot",value);drafts.put(selectedId,changed);rebuildEditor();
         }).build().setEnabled(canEditSelected());
     }
@@ -471,8 +517,8 @@ public final class ItemPropertyEditorPage extends KineticPage {
         fields.put(key, field);
     }
 
-    private void addRarityDropdown() {
-        int[] bounds = fieldBounds(3);
+    private void addRarityDropdown(int index) {
+        int[] bounds = fieldBounds(index);
         fieldLabels.put("rarity", fieldLabel(bounds));
         JsonElement saved = currentRuleObject().get("rarity");
         String selected = saved == null ? "inherit" : saved.getAsString().toLowerCase(Locale.ROOT);
@@ -536,7 +582,9 @@ public final class ItemPropertyEditorPage extends KineticPage {
         String state = overridden ? current.get(key).getAsBoolean() ? "true" : "false" : originalBooleanValue(key);
         Component label;
         if (!canEditSelected()) {
-            label = Component.empty();
+            label = KineticI18n.translatable("gui.itemcontrol.item_property.boolean.original",
+                    KineticI18n.translatable("gui.itemcontrol.item_property.boolean.false"))
+                    .withStyle(style -> style.withColor(KineticTheme.current().mutedText()));
         } else if (overridden) {
             label = KineticI18n.translatable("gui.itemcontrol.item_property.boolean." + state)
                     .withStyle(style -> style.withColor(KineticTheme.indicatorColor(KineticTheme.Indicator.SUCCESS)));
@@ -549,10 +597,47 @@ public final class ItemPropertyEditorPage extends KineticPage {
         button.setEnabled(canEditSelected());
     }
 
+    /**
+     * "Never breaks" switch next to the durability field: on writes max_damage -1 (the item stops wearing out, its
+     * durability bar hides and elytra chestplates keep gliding), off goes back to the item's own durability.
+     */
+    private void addUnbreakableButton(int index) {
+        int[] bounds = fieldBounds(index);
+        fieldLabels.put("unbreakable", fieldLabel(bounds));
+        JsonElement saved = currentRuleObject().get("max_damage");
+        boolean on = saved != null && saved.isJsonPrimitive() && saved.getAsDouble() == -1.0D;
+        String original = "false";
+        if (selectedId != null && isRegistered(selectedId)) {
+            ItemStack stack = stackForId(selectedId);
+            original = Boolean.TRUE.equals(ItemPropertyConfig.previewOriginal(() -> !stack.isDamageableItem())) ? "true" : "false";
+        }
+        Component label;
+        if (canEditSelected() && on) {
+            label = KineticI18n.translatable("gui.itemcontrol.item_property.boolean.true")
+                    .withStyle(style -> style.withColor(KineticTheme.indicatorColor(KineticTheme.Indicator.SUCCESS)));
+        } else {
+            label = KineticI18n.translatable("gui.itemcontrol.item_property.boolean.original",
+                            KineticI18n.translatable("gui.itemcontrol.item_property.boolean." + (canEditSelected() ? original : "false")))
+                    .withStyle(style -> style.withColor(KineticTheme.current().mutedText()));
+        }
+        ui().button(bounds[0], bounds[1], FIELD_WIDTH).text(label)
+                .tooltip(KineticI18n.translatable("gui.itemcontrol.item_property.field.unbreakable.tooltip"))
+                .onClick(() -> toggleUnbreakable(on)).build().setEnabled(canEditSelected());
+    }
+
+    private void toggleUnbreakable(boolean wasOn) {
+        if (selectedId == null || !flushFields()) return;
+        JsonObject rule = currentRuleObject();
+        if (wasOn) rule.remove("max_damage");
+        else rule.addProperty("max_damage", -1);
+        drafts.put(selectedId, rule);
+        rebuildEditor();
+    }
+
     private int[] fieldBounds(int index) {
         int column = index % 3;
         int row = index / 3;
-        return new int[]{PANEL_X + column * FIELD_COLUMN_PITCH, 82 + row * 48};
+        return new int[]{PANEL_X + column * FIELD_COLUMN_PITCH, 94 + row * 48};
     }
 
     private FieldLabel fieldLabel(int[] bounds) {
@@ -946,41 +1031,94 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
     @Override
     protected void renderBackground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
         KineticTheme.panel(graphics, 0, 0, width(), height());
-        KineticTheme.verticalSeparator(graphics, 320, 10, 324);
+        KineticTheme.separator(graphics, 4, 24, width() - 8);
+        KineticTheme.verticalSeparator(graphics, PANEL_X - 4, 28, 328);
         String attributesValue = attributesBox == null ? "" : attributesBox.textValue();
         if (!attributesValue.equals(lastAttributesValue)) {
             lastAttributesValue = attributesValue;
             refreshGrid();
         }
         // The title's shadow shares the search box's top row, so keep its viewport to the right of the box.
-        graphics.scrollingText(title(), PANEL_X, 15, PANEL_RIGHT - 142 - PANEL_X - 6, 0xFFFFFF, true);
-        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.items"), GRID_X, 31,
-                category == EditorCategory.CURIO ? GRID_W - 98 : GRID_W - TEXT_GAP, 0xFFFFFF, false);
+        graphics.scrollingText(title(), PANEL_X, 8, PANEL_RIGHT - 44 - CATEGORY_W - 4 - PANEL_X, 0xFFFFFF, true);
         for (Map.Entry<String, FieldLabel> entry : fieldLabels.entrySet()) {
             FieldLabel label = entry.getValue();
             graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.field." + entry.getKey()),
                     label.x(), label.y(), label.maxWidth(), 0xFFDDDDDD, false);
         }
+        renderSelectedItem(graphics, mouseX, mouseY);
+        if (category == EditorCategory.CURIO && !curioSlotsExpanded && canEditSelected() && ItemCuriosCompat.available()) renderCurioSummary(graphics);
         if(category==EditorCategory.FOOD){
             String id=currentRuleObject().has("food_remainder")?currentRuleObject().get("food_remainder").getAsString():null;
             ItemStack remainder=id==null||id.equals("minecraft:air")?ItemStack.EMPTY:stackForId(id);
-            boolean hovered=mouseX>=PANEL_X+140&&mouseX<PANEL_X+162&&mouseY>=188&&mouseY<210;
-            KineticTheme.itemSlot(graphics,PANEL_X+140,188,22,hovered);
+            int slotX=REMAINDER_SLOT_X;
+            boolean hovered=mouseX>=slotX&&mouseX<slotX+22&&mouseY>=199&&mouseY<221;
+            KineticTheme.itemSlot(graphics,slotX,199,22,hovered);
             if(!remainder.isEmpty()){
-                graphics.item(remainder,PANEL_X+143,191);
+                graphics.item(remainder,slotX+3,202);
                 if(hovered)showItemTooltip(remainder);
             }
         }
+    }
+
+    // The item being edited, under the title: icon, name and ID, or a hint when nothing is selected yet.
+    private void renderSelectedItem(KineticGraphics graphics, int mouseX, int mouseY) {
+        int slot = dev.xyat.kineticcore.api.client.gui.theme.KineticSizes.ITEM_SLOT;
+        int textX = PANEL_X + slot + 4, width = PANEL_RIGHT - textX - TEXT_GAP;
+        if (selectedId == null) {
+            return;
+        }
+        ItemStack stack = isRegistered(selectedId) ? stackForId(selectedId) : ItemStack.EMPTY;
+        boolean hovered = mouseX >= PANEL_X && mouseX < PANEL_X + slot && mouseY >= ITEM_Y && mouseY < ITEM_Y + slot;
+        KineticTheme.itemSlot(graphics, PANEL_X, ITEM_Y, slot, hovered);
+        if (!stack.isEmpty()) {
+            KineticTheme.item(graphics, stack, PANEL_X, ITEM_Y, slot, 1.0F, false);
+            if (hovered) showPreviewTooltip(selectedId, stack);
+        }
+        graphics.scrollingText(stack.isEmpty() ? Component.literal(selectedId) : stack.getHoverName(), textX, ITEM_Y + 1, width, 0xFFFFFFFF, false);
+        graphics.scrollingText(Component.literal(selectedId), textX, ITEM_Y + 12, width, KineticTheme.current().mutedText(), false);
+    }
+
+    // What the accessory rule currently holds, so the slots, attribute rules and slot counts are visible without
+    // opening each editor.
+    private void renderCurioSummary(KineticGraphics graphics) {
+        JsonObject curio = curioObject();
+        int width = PANEL_RIGHT - PANEL_X - TEXT_GAP;
+        var slots = new ArrayList<String>();
+        displayedCurioSlots(curio).forEach(raw -> slots.add(curioSlotName(raw.getAsString())));
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.curio.summary.slots", String.join(", ", slots)), PANEL_X, 164, width, 0xFFDDDDDD, false);
+        var attributes = new ArrayList<String>();
+        if (curio.has("attributes") && curio.get("attributes").isJsonArray()) for (var raw : curio.getAsJsonArray("attributes")) {
+            var row = raw.getAsJsonObject();
+            var type = ItemPropertyOverrides.attribute(ResourceLocation.tryParse(row.get("attribute").getAsString()));
+            String name = type == null ? row.get("attribute").getAsString() : ItemRuleLabels.translation(type.getDescriptionId()).getString();
+            String mode = row.has("mode") ? row.get("mode").getAsString() : "add";
+            attributes.add(mode.equals("remove") ? name + " " + KineticI18n.translatable("gui.itemcontrol.item_property.curio.mode.remove").getString()
+                    : name + " " + KineticI18n.translatable("gui.itemcontrol.item_property.curio.mode." + mode).getString() + " " + row.get("amount").getAsString());
+        }
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.curio.summary.attributes",
+                attributes.isEmpty() ? KineticI18n.translatable("gui.itemcontrol.item_property.curio.summary.none").getString() : String.join("; ", attributes)), PANEL_X, 178, width, 0xFFDDDDDD, false);
+        var counts = new ArrayList<String>();
+        if (curio.has("slot_modifiers") && curio.get("slot_modifiers").isJsonArray()) for (var raw : curio.getAsJsonArray("slot_modifiers")) {
+            var row = raw.getAsJsonObject();
+            int amount = row.get("amount").getAsInt();
+            counts.add(curioSlotName(row.get("slot").getAsString()) + " " + (amount > 0 ? "+" : "") + amount);
+        }
+        graphics.scrollingText(KineticI18n.translatable("gui.itemcontrol.item_property.curio.summary.counts",
+                counts.isEmpty() ? KineticI18n.translatable("gui.itemcontrol.item_property.curio.summary.none").getString() : String.join(", ", counts)), PANEL_X, 224, width, 0xFFDDDDDD, false);
+    }
+
+    private static String curioSlotName(String id) {
+        if (id.equals("curio")) return KineticI18n.translatable("gui.itemcontrol.item_property.curio.any_slot").getString();
+        String key = List.of("back", "belt", "body", "bracelet", "charm", "feet", "hands", "head", "necklace", "ring").contains(id)
+                ? "gui.itemcontrol.item_property.curio.slot." + id : "curios.identifier." + id;
+        return KineticI18n.hasTranslation(key) ? KineticI18n.translatable(key).getString() : id;
     }
 
     @Override
     protected void renderForeground(KineticGraphics graphics, int mouseX, int mouseY, float partialTick) {
         showHoveredVanillaTooltip(mouseX, mouseY);
         if (transientMessage != null && !transientMessage.isBlank()) {
-            graphics.scrollingText(KineticI18n.translatable(transientMessage), PANEL_X, 302, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFFFF7777, false);
-        } else {
-            graphics.scrollingText(KineticI18n.translatable(category == EditorCategory.CURIO && !ItemCuriosCompat.available()
-                    ? "gui.itemcontrol.item_property.curio.requires" : "gui.itemcontrol.item_property.restart_hint"), PANEL_X, 302, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFF9BB8FF, false);
+            graphics.scrollingText(KineticI18n.translatable(transientMessage), PANEL_X, 340, PANEL_RIGHT - PANEL_X - TEXT_GAP, 0xFFFF7777, false);
         }
     }
 
@@ -995,7 +1133,22 @@ private static double attributeAmount(ItemStack stack, EquipmentSlot slot, Attri
             }
         }
         ItemStack hoveredStack = itemGrid.hoveredStack();
-        if (hoveredStack != null && !hoveredStack.isEmpty()) showItemTooltip(hoveredStack);
+        if (hoveredStack == null || hoveredStack.isEmpty()) return;
+        if (index >= 0 && index < visibleIds.size()) showPreviewTooltip(visibleIds.get(index), hoveredStack);
+        else showItemTooltip(hoveredStack);
+    }
+
+    /**
+     * The item's complete tooltip as players see it, with this editor's changes for it already applied: attributes,
+     * accessory modifiers, food and the rest show before they are saved.
+     */
+    private void showPreviewTooltip(String id, ItemStack stack) {
+        JsonElement draft = drafts.get(id);
+        if (draft == null) { showItemTooltip(stack); return; }
+        ItemPropertyConfig.previewDraft(ResourceLocation.tryParse(id), draft, () -> {
+            showItemTooltip(stack);
+            return null;
+        });
     }
 
     private record GridEntry(String id, ItemStack stack, boolean invalid) {

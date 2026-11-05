@@ -26,6 +26,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.*;
 
 public class MergeItemPage extends KineticPage {
+    private Runnable hoveredDelete;
     private KineticTextField searchBox;
     private KineticTextField leftSearchBox;
     private KineticButton addBtn, saveBtn, closeBtn, tagFilterBtn;
@@ -52,7 +53,8 @@ public class MergeItemPage extends KineticPage {
     private static final int TARGET_ROW_H = 28;
     private static final int SOURCE_ROW_H = 28;
     private static final int ROW_INSET = 3;
-    private static final int SOURCE_INDENT = 12;
+    // Sources sit right of the tree trunk, which runs down from the target icon's centre (x 14).
+    private static final int SOURCE_INDENT = 28;
     // Space between rows of the rule list, so neighbouring row frames never touch.
     private static final int ROW_GAP = 2;
     private static String rememberedLeftSearch = "";
@@ -61,9 +63,6 @@ public class MergeItemPage extends KineticPage {
     private int rightX, rightY, rightW, rightH;
     private int gridCols;
     private int gridAreaH;
-    private int rightInfoY;
-    // Right end of the count text; on narrow windows the buttons share its row.
-    private int rightInfoRight;
 
     public MergeItemPage() {
         super(KineticI18n.translatable("gui.itemcontrol.item.banitem.merge_overview_title"));
@@ -103,6 +102,7 @@ public class MergeItemPage extends KineticPage {
 
     @Override
     protected void build(KineticUi ui) {
+        bindDeleteAction(() -> hoveredDelete != null, () -> { var action = hoveredDelete; hoveredDelete = null; if (action != null) action.run(); });
         int sidePadding =
                 switch (layoutMetrics().level()) {
                     case LARGE -> 14;
@@ -121,11 +121,11 @@ public class MergeItemPage extends KineticPage {
     }
 
     // The rule list stays on the left and the item grid on the right at every window size. When the right column is
-    // too narrow for the search box, tag filter and the three buttons in one row, the buttons move down to the count row.
+    // too narrow for the search box, tag filter and actions in one row, the actions get their own row.
     private void initLayout(int sidePadding, int gap, int buttonHeight) {
         int searchY = 5;
         int panelY = 30;
-        int rightGridTop = panelY + 28;
+        int rightGridTop = panelY;
         leftW = Math.max(120, Math.min(170, width() / 4));
         leftX = sidePadding;
         leftY = panelY;
@@ -145,24 +145,22 @@ public class MergeItemPage extends KineticPage {
         gridCols = Math.max(1, (rightW - 10 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH);
         gridAreaH = ((rightH - 4 + SLOT_PITCH - SLOT_SIZE) / SLOT_PITCH) * SLOT_PITCH - (SLOT_PITCH - SLOT_SIZE);
 
-        leftSearchBox = createLeftSearchBox(leftX + 66, searchY, leftW - 66);
+        leftSearchBox = createLeftSearchBox(leftX + 44, searchY, leftW - 44);
 
-        int buttonWidth = 60;
+        int buttonWidth = 40;
         int tagWidth = 76;
         boolean oneRow = rightW >= 80 + 4 + tagWidth + gap + buttonWidth * 3 + gap * 2;
         int buttonsY = oneRow ? searchY : panelY;
         int saveX = rightX + rightW - buttonWidth;
         int addX = saveX - gap - buttonWidth;
         int searchRight = oneRow ? addX - gap : rightX + rightW;
-        int rightSearchWidth = Math.max(80, Math.min(oneRow ? 150 : rightW, searchRight - rightX - 4 - tagWidth));
+        int rightSearchWidth = Math.max(80, Math.min(oneRow ? 190 : rightW, searchRight - rightX - 4 - tagWidth));
 
         searchBox = createRightSearchBox(rightX, searchY, rightSearchWidth);
         tagFilterBtn = createTagFilterButton(rightX + rightSearchWidth + 4, searchY, tagWidth);
         addBtn = createAddButton(addX, buttonsY, buttonWidth, buttonHeight);
         saveBtn = createSaveButton(saveX, buttonsY, buttonWidth, buttonHeight);
         closeBtn = createCloseButton(leftX, searchY, buttonWidth, buttonHeight);
-        rightInfoY = oneRow ? panelY + 3 : panelY + (buttonHeight - KineticText.lineHeight()) / 2;
-        rightInfoRight = oneRow ? rightX + rightW : addX - gap;
     }
 
     private KineticTextField createLeftSearchBox(int x, int y, int width) {
@@ -209,7 +207,7 @@ public class MergeItemPage extends KineticPage {
     }
 
     private KineticButton createSaveButton(int x, int y, int width, int height) {
-        return ui().button(x, y, width).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.save")).onClick(() -> {
+        return ui().button(x, y, 40).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.save")).onClick(() -> {
                     BanItemConfig.Data data = new BanItemConfig.Data();
                     data.bannedItems = new ArrayList<>(BanItemConfig.data.bannedItems);
                     data.mergedItems.putAll(buildMergedRulesForSave());
@@ -224,7 +222,7 @@ public class MergeItemPage extends KineticPage {
     }
 
     private KineticButton createCloseButton(int x, int y, int width, int height) {
-        return ui().button(x, y, width).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.back")).onClick(this::close).build();
+        return ui().button(x, y, 40).text(KineticI18n.translatable("gui.itemcontrol.item.banitem.btn.back")).onClick(this::close).build();
     }
 
     private String getSearchDataForId(String idStr) {
@@ -253,11 +251,14 @@ public class MergeItemPage extends KineticPage {
             if (targetMatches || sourceMatches) {
                 leftEntries.add(new TargetEntry(target, entry.getValue().size()));
                 if (expandedTargets.contains(target) || !leftQuery.isEmpty()) {
+                    SourceEntry lastSource = null;
                     for (String source : entry.getValue()) {
                         if (leftQuery.isEmpty() || targetMatches || KineticSearch.match(getSearchDataForId(source), leftQuery)) {
-                            leftEntries.add(new SourceEntry(target, source));
+                            lastSource = new SourceEntry(target, source);
+                            leftEntries.add(lastSource);
                         }
                     }
+                    if (lastSource != null) lastSource.last = true;
                 }
             }
         }
@@ -451,13 +452,16 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
 
     @Override
     protected void renderBackground(KineticGraphics g, int smx, int smy, float pt) {
-        KineticTheme.canvasBackground(g, width(), height());
-        KineticTheme.panel(g, leftX, leftY, leftW, leftH);
-        KineticTheme.panel(g, rightX, rightY, rightW, rightH);
+        KineticTheme.panel(g, 0, 0, width(), height());
+        KineticTheme.surface(g, leftX, leftY, leftW, leftH, KineticTheme.Surface.PANEL);
+        KineticTheme.surface(g, rightX, rightY, rightW, rightH, KineticTheme.Surface.PANEL);
+        KineticTheme.verticalSeparator(g, (leftX + leftW + rightX) / 2, leftY, height() - leftY - 4);
+        KineticTheme.separator(g, 4, leftY - 3, width() - 8);
     }
 
     @Override
     protected void renderForeground(KineticGraphics g, int smx, int smy, float pt) {
+        hoveredDelete = null;
         int curY = leftY - (int) Math.round(leftScroll.smoothOffset());
         g.scissor(leftX, leftY, leftX + leftW, leftY + leftH);
         for (LeftEntry e : leftEntries) {
@@ -481,14 +485,6 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         );
 
         if (isCreatingRule || selectedTarget != null) {
-            int countX = getRightCountX();
-            Component countText = KineticI18n.translatable(
-                    "gui.itemcontrol.item.banitem.merge_count",
-                    rightDisplayList.size(),
-                    allItemsCache.size()
-            );
-            g.scrollingText(countText, countX, rightInfoY, rightInfoRight - countX - TEXT_GAP, 0xFFFFFF, false);
-
             int gridX = rightX + 2;
             int gridY = rightY + 2;
             g.scissor(rightX + 2, gridY, rightX + rightW - 2, gridY + gridAreaH);
@@ -540,10 +536,6 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
 
     }
 
-    private int getRightCountX() {
-        return rightX;
-    }
-
     private boolean insideRightGrid(double x, double y) {
         return x >= rightX + 2 && x < rightX + gridCols * SLOT_PITCH
                 && y >= rightY + 2 && y < rightY + 2 + gridAreaH;
@@ -580,22 +572,6 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
             return;
         }
 
-        if (isCreatingRule || selectedTarget != null) {
-            int countX = getRightCountX();
-            Component countText = KineticI18n.translatable(
-                    "gui.itemcontrol.item.banitem.merge_count",
-                    rightDisplayList.size(),
-                    allItemsCache.size()
-            );
-            if (smx >= countX && smx < countX + Math.min(KineticText.width(countText), rightInfoRight - countX - TEXT_GAP) && smy >= rightInfoY && smy < rightInfoY + KineticText.lineHeight()) {
-                List<Component> tooltip = new ArrayList<>();
-                tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.title"));
-                tooltip.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.count.merge.desc"));
-                KineticOverlays.requestTooltip(tooltip, mx, tooltipY);
-                return;
-            }
-        }
-
         if (smx >= leftX && smx < leftX + leftW && smy >= leftY && smy < leftY + leftH) {
             int currentY = leftY - (int) Math.round(leftScroll.smoothOffset());
             for (LeftEntry entry : leftEntries) {
@@ -608,7 +584,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         } else if ((isCreatingRule || selectedTarget != null) && insideRightGrid(smx, smy)) {
             int gridX = rightX + 2, gridY = rightY + 2;
             int localX = smx - gridX;
-            int localY = (int) Math.floor(smy - gridY + rightScroll.smoothOffset());
+            int localY = (int) Math.floor(smy - gridY + Math.round(rightScroll.smoothOffset()));
             int col = localX / SLOT_PITCH;
             int row = localY / SLOT_PITCH;
             int idx = row * gridCols + col;
@@ -622,7 +598,8 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
                 tt.add(Component.literal(ci.id()));
                 tt.add(Component.empty());
                 tt.add(KineticI18n.translatable(isCreatingRule ? "gui.itemcontrol.item.banitem.tooltip.set_target" : "gui.itemcontrol.item.banitem.tooltip.add_source"));
-                KineticOverlays.requestTooltip(tt, mx, my);
+                if (ci.stack().isEmpty()) KineticOverlays.requestTooltip(tt, mx, my);
+                else showItemTooltip(ci.stack(), tt.subList(1, tt.size()));
             }
         }
     }
@@ -675,7 +652,7 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         } else if ((isCreatingRule || selectedTarget != null) && insideRightGrid(smx, smy)) {
             int gridX = rightX + 2;
             int localX = (int) (smx - gridX);
-            int localY = (int) (smy - gridY + rightScroll.smoothOffset());
+            int localY = (int) (smy - gridY + Math.round(rightScroll.smoothOffset()));
             int col = localX / SLOT_PITCH;
             int row = localY / SLOT_PITCH;
             int idx = row * gridCols + col;
@@ -762,9 +739,15 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
         }
         void render(KineticGraphics g, int mx, int my) {
             boolean selected = id.equals(selectedTarget), hover = mx >= x && mx < x + w && my >= y && my < y + h;
+            if (hover && my >= leftY && my < leftY + leftH) hoveredDelete = () -> mouseClicked(new MouseInput(mx, my, dev.xyat.kineticcore.api.client.gui.input.MouseButton.RIGHT, 0, 0));
             KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, selected, hover, false);
             KineticTheme.itemSlot(g, x + ROW_INSET, y + ROW_INSET, SLOT_SIZE, 4, hover);
             ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + ROW_INSET, y + ROW_INSET, SLOT_SIZE, 1.0F, false); return null; });
+            // Start of the tree trunk under an expanded target's icon; its sources draw the rest.
+            if (expandedTargets.contains(id) && count > 0) {
+                int trunkX = x + ROW_INSET + SLOT_SIZE / 2;
+                g.fill(trunkX, y + ROW_INSET + SLOT_SIZE, trunkX + 1, y + h, KineticTheme.current().accentHover());
+            }
             int nameX = x + ROW_NAME_OFFSET;
             int countX = x + w - ROW_COUNT_WIDTH;
             int expandX = countX - ROW_EXPAND_WIDTH;
@@ -788,18 +771,29 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
             tt.add(ItemCacheHudRenderer.getDisplayNameCustom(stack)); tt.add(Component.literal(id));
             tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
             tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.target_del"));
-            KineticOverlays.requestTooltip(tt, mx, my);
+            if (stack.isEmpty()) KineticOverlays.requestTooltip(tt, mx, my);
+            else showItemTooltip(stack, tt.subList(1, tt.size()));
         }
     }
 
     class SourceEntry extends LeftEntry {
         String targetId, sourceId;
         ItemStack stack;
+        // The last source of its target ends the tree trunk at its own branch.
+        boolean last;
         SourceEntry(String t, String s) { targetId = t; sourceId = s; stack = BanItemConfig.parseItemStack(s);
         }
         void render(KineticGraphics g, int mx, int my) {
             boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;
+            if (hover && my >= leftY && my < leftY + leftH) hoveredDelete = () -> mouseClicked(new MouseInput(mx, my, dev.xyat.kineticcore.api.client.gui.input.MouseButton.RIGHT, 0, 0));
             KineticTheme.stateSurface(g, x, y, w, h, KineticTheme.Surface.PANEL_ALT, false, hover, false);
+            // Mind-map connector: the trunk drops from the target's icon centre through the gap above this row; each
+            // source branches off to its icon, and the last source ends the trunk at its branch.
+            int trunkX = x + ROW_INSET + SLOT_SIZE / 2;
+            int branchY = y + ROW_INSET + SLOT_SIZE / 2;
+            int lineColor = KineticTheme.current().accentHover();
+            g.fill(trunkX, y - ROW_GAP, trunkX + 1, last ? branchY + 1 : y + h, lineColor);
+            g.fill(trunkX, branchY, x + SOURCE_INDENT - 1, branchY + 1, lineColor);
             KineticTheme.itemSlot(g, x + SOURCE_INDENT, y + ROW_INSET, SLOT_SIZE, 3, hover);
             ItemBanControl.withSkip(() -> { KineticTheme.item(g, stack, x + SOURCE_INDENT, y + ROW_INSET, SLOT_SIZE, 1.0F, false); return null; });
             int nameX = x + SOURCE_INDENT + SLOT_SIZE + TEXT_GAP;
@@ -818,7 +812,8 @@ private void openNbtEditor(String idStr, int context, String targetParent, ItemS
             tt.add(ItemCacheHudRenderer.getDisplayNameCustom(stack)); tt.add(Component.literal(sourceId));
             tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.shift_edit_nbt"));
             tt.add(KineticI18n.translatable("gui.itemcontrol.item.banitem.tooltip.source_del"));
-            KineticOverlays.requestTooltip(tt, mx, my);
+            if (stack.isEmpty()) KineticOverlays.requestTooltip(tt, mx, my);
+            else showItemTooltip(stack, tt.subList(1, tt.size()));
         }
     }
 }

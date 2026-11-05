@@ -117,6 +117,12 @@ public final class ItemPropertyOverrides {
         return rule != null && rule.maxDamage() != null && rule.maxDamage() == -1;
     }
 
+    /** True when a rule removes the stack's durability: never breaks (-1) or has no durability at all (0). */
+    public static boolean hasNoDurability(ItemStack stack) {
+        ItemPropertyRule rule = active(stack);
+        return rule != null && rule.maxDamage() != null && rule.maxDamage() <= 0;
+    }
+
     public static int enchantability(Item item, int original) {
         ItemPropertyRule rule = ItemPropertyConfig.active(item);
         return rule == null || rule.enchantability() == null ? original : rule.enchantability();

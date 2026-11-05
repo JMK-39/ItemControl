@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
-/** The nested adapter is loaded only with Curios installed; no replacement item capabilities. */
+/** Optional Curios integration; existing item capabilities and their callbacks always take precedence. */
 public final class ItemCuriosCompat {
     private ItemCuriosCompat() {}
     public static boolean available() { return KineticPlatform.isModLoaded("curios"); }
@@ -39,6 +39,21 @@ public final class ItemCuriosCompat {
     private static ItemCurioSettings settings(ItemStack stack) {
         var rule = ItemPropertyOverrides.active(stack);
         return rule == null ? null : rule.curio();
+    }
+
+    public static boolean configuredAccessory(ItemStack stack) {
+        var rule = settings(stack);
+        return rule != null && rule.enabled();
+    }
+
+    /** Return original Curios data unless slots were explicitly overridden; never invent unregistered slots. */
+    public static <T> java.util.Map<String, T> configuredSlots(ItemStack stack, java.util.Map<String, T> available,
+                                                             java.util.Map<String, T> original) {
+        var rule = settings(stack);
+        if (rule == null || !rule.enabled() || !rule.overridesSlots()) return original;
+        java.util.Map<String, T> result = new java.util.TreeMap<>();
+        available.forEach((id, slot) -> { if (rule.allows(id)) result.put(id, slot); });
+        return result;
     }
 
     private static final class Loaded {
@@ -66,6 +81,7 @@ public final class ItemCuriosCompat {
             if (id != null) result.add(new AttributePreview(id.toString(), operation, amount));
         }
         private static List<String> slots(LivingEntity wearer) {
+            // Every slot type registered in the game, also ones players do not have: some accessories are made for mobs.
             return top.theillusivec4.curios.api.CuriosApi.getSlots(wearer.level()).keySet().stream().sorted().toList();
         }
         private static void register() {

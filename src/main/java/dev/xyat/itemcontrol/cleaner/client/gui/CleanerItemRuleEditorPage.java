@@ -29,6 +29,7 @@ import java.util.function.Function;
 //? if <26.1
 @OnlyIn(Dist.CLIENT)
 public final class CleanerItemRuleEditorPage extends KineticPage {
+    private Runnable hoveredDelete;
     public enum Mode {
         CLEANER_WHITELIST(
                 "gui.itemcontrol.cleaner.item_rule_editor.whitelist.title",
@@ -99,7 +100,7 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
                 }
             }
         }
-        useCanvas(640, 360, 6);
+        useCanvas(640, 360, 4);
         configureStandaloneDraft(
                 this::ruleValues,
                 this::restoreRuleValues
@@ -124,6 +125,7 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
 
     @Override
     protected void build(KineticUi ui) {
+        bindDeleteAction(() -> hoveredDelete != null, () -> { var action = hoveredDelete; hoveredDelete = null; if (action != null) action.run(); });
         layoutWindow();
         updateScrollRange();
 
@@ -133,12 +135,12 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
                 .onClick(this::openItemSelector)
                 .build();
 
-        ui.button(panelX + panelW - 100, buttonY, 80)
+        ui.button(panelX + panelW - 100, buttonY, 40)
                 .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.save"))
                 .onClick(this::save)
                 .build();
 
-        ui.button(panelX + PANEL_PAD, buttonY, 80)
+        ui.button(panelX + PANEL_PAD, buttonY, 40)
                 .text(KineticI18n.translatable("gui.itemcontrol.cleaner.item_rule_editor.back"))
                 .onClick(this::closeToParent)
                 .build();
@@ -261,9 +263,10 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
         // The world stays visible behind a light shade; only the panel itself is dark.
         KineticTheme.shadow(graphics, width(), height());
         KineticTheme.panel(graphics, panelX, panelY, panelW, panelH);
-        // Rule lists keep their scroll bar inside the grid frame, 3 px right of the slots.
+        // The content keeps its background; a single divider separates it from the header.
         int frameW = mode.singleItem ? gridW + 12 : scrollX + 4 + 4 - (gridX - 6);
-        KineticTheme.panel(graphics, gridX - 6, gridY - 6, frameW, gridH + 12);
+        KineticTheme.surface(graphics, gridX - 6, gridY - 6, frameW, gridH + 12, KineticTheme.Surface.PANEL);
+        KineticTheme.separator(graphics, panelX + 4, gridY - 7, panelW - 8);
     }
 
     @Override
@@ -283,6 +286,7 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
     }
 
     private void renderGrid(KineticGraphics graphics, int mouseX, int mouseY) {
+        hoveredDelete = null;
         int firstRow = gridScroll.smoothIndexOffset();
         int shift = gridScroll.visualShift(CELL_SIZE);
         int start = firstRow * gridCols;
@@ -299,6 +303,7 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
             boolean hovered = contains(mouseX, mouseY, gridX, gridY, gridW, gridH)
                     && contains(mouseX, mouseY, x, y, SLOT_SIZE, SLOT_SIZE);
             ItemStack stack = rules.get(index).preview();
+            if (hovered) { var target = rules.get(index); hoveredDelete = () -> { if (rules.remove(target)) refreshLayout(); }; }
             KineticTheme.itemSlot(graphics, x, y, SLOT_SIZE, 4, hovered);
             KineticTheme.item(graphics, stack, x, y, SLOT_SIZE, 1.0F, true);
             }
@@ -328,7 +333,10 @@ public final class CleanerItemRuleEditorPage extends KineticPage {
                 showTooltip(List.of(KineticI18n.translatable(mode.emptyKey), hintText()));
             } else {
                 RuleDraft rule = rules.get(0);
-                showTooltip(List.of(rule.preview().getHoverName(), Component.literal(rule.value), hintText()));
+                var stack = rule.preview();
+                var hints = List.of(Component.literal(rule.value), hintText());
+                if (stack.isEmpty()) showTooltip(List.of(stack.getHoverName(), hints.get(0), hints.get(1)));
+                else showItemTooltip(stack, hints);
             }
             return;
         }
