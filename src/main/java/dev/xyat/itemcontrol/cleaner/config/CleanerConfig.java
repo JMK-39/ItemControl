@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class CleanerConfig {
-    private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/cleaner.toml");
+    private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/itemcontrol/cleaner.toml");
     private static CommentedFileConfig configData;
 
     public static boolean enableCleaner = true;
@@ -52,16 +52,17 @@ public class CleanerConfig {
     private static final Set<ResourceLocation> TRASH_TAGS = new HashSet<>();
 
     public static void load() {
+        KineticPaths.migrateConfigFile("kineticcore/cleaner.toml", "kineticcore/itemcontrol/cleaner.toml");
         try {
             if (configData != null) {
                 configData.close();
                 configData = null;
             }
-            KineticPaths.ensureConfigDirectory("kineticcore");
+            KineticPaths.ensureConfigDirectory("kineticcore/itemcontrol");
 
             com.electronwill.nightconfig.core.Config oldValues = com.electronwill.nightconfig.core.Config.inMemory();
 
-            if (KineticPaths.configFileExists("kineticcore/cleaner.toml")) {
+            if (KineticPaths.configFileExists("kineticcore/itemcontrol/cleaner.toml")) {
                 try (FileConfig oldFile = FileConfig.of(CONFIG_PATH)) {
                     oldFile.load();
                     oldValues.putAll(oldFile);

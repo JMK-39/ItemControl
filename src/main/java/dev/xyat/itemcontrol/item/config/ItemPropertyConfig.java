@@ -28,7 +28,7 @@ import java.util.function.Supplier;
 
 /** Persistence and immutable active snapshots for per-item property overrides. */
 public final class ItemPropertyConfig {
-    private static final String CONFIG_FILE = "kineticcore/item_properties.json";
+    private static final String CONFIG_FILE = "kineticcore/itemcontrol/item_properties.json";
     private static final int MAX_RULES = 16_384;
     private static final int MAX_JSON_CHARS = 2 * 1024 * 1024;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -51,6 +51,7 @@ public final class ItemPropertyConfig {
 
     /** Loads disk data into both the editable document and the current process snapshot. */
     public static synchronized void load() {
+        KineticPaths.migrateConfigFile("kineticcore/item_properties.json", CONFIG_FILE);
         try {
             String raw = KineticPaths.configFileExists(CONFIG_FILE)
                     ? KineticPaths.readConfigText(CONFIG_FILE)
@@ -142,7 +143,7 @@ public final class ItemPropertyConfig {
     public static synchronized SaveResult savePending(String json) {
         try {
             Map<String, JsonElement> parsed = parseDocument(json);
-            if (!validateKnownEntries(parsed)) {
+            if (!validateKnownEntries(parsed, PENDING.get())) {
                 return new SaveResult(false, "gui.itemcontrol.item_property.error.invalid_rule");
             }
             writePending(parsed);
@@ -268,7 +269,7 @@ public final class ItemPropertyConfig {
         }
         try {
             parseDocument(GSON.toJson(toJsonObject(merged)));
-            if (!validateKnownEntries(merged)) {
+            if (!validateKnownEntries(merged, current)) {
                 ItemModule.LOGGER.warn("Cannot migrate legacy protection rules into invalid property rules");
                 return current;
             }
@@ -343,25 +344,35 @@ public final class ItemPropertyConfig {
                 ItemProtectionPatternIndex.build(patternRules), immutableCopy(entries));
     }
 
-    private static boolean validateKnownEntries(Map<String, JsonElement> entries) {
+    private static boolean validateKnownEntries(Map<String, JsonElement> entries, Map<String, JsonElement> previous) {
         java.util.HashSet<ResourceLocation> seen = new java.util.HashSet<>();
         for (Map.Entry<String, JsonElement> entry : entries.entrySet()) {
             if (ItemProtectionPatternIndex.isPatternKey(entry.getKey())) {
-                if (!isProtectionPattern(entry.getKey()) || !hasOnlyProtectionFields(entry.getValue())) return false;
+                if (entry.getValue().equals(previous.get(entry.getKey()))) continue;
+                if (!isProtectionPattern(entry.getKey()) || !hasOnlyProtectionFields(entry.getValue()))
+                    return rejectRule(entry.getKey(), List.of("invalid protection selector or non-protection properties"));
                 ArrayList<String> errors = new ArrayList<>();
                 parseRule(entry.getValue(), errors);
-                if (!errors.isEmpty()) return false;
+                if (!errors.isEmpty()) return rejectRule(entry.getKey(), errors);
                 continue;
             }
             ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
             Item item = id == null ? null : KineticRegistries.items().get(id);
             if (item == null || item == Items.AIR) continue;
-            if (!seen.add(id)) return false;
+            if (!seen.add(id)) return rejectRule(entry.getKey(), List.of("duplicate canonical item ID: " + id));
+            // The authoritative pending document may retain invalid legacy fields for later repair.
+            // They must not block saving an unrelated item. New and changed rows still validate in full.
+            if (entry.getValue().equals(previous.get(entry.getKey()))) continue;
             ArrayList<String> errors = new ArrayList<>();
             parseRule(entry.getValue(), errors);
-            if (!errors.isEmpty()) return false;
+            if (!errors.isEmpty()) return rejectRule(entry.getKey(), errors);
         }
         return true;
+    }
+
+    private static boolean rejectRule(String id, List<String> errors) {
+        ItemModule.LOGGER.warn("Rejected changed item property rule {}: {}", id, errors);
+        return false;
     }
 
     private static boolean hasOnlyProtectionFields(JsonElement raw) {

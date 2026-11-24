@@ -8,7 +8,7 @@ Item Control provides visual management for item rules, properties, dropped-item
 - Automatic/manual cleanup with recoverable trash history and protected areas.
 - Creative-tab curation and optional KubeJS/JEI integration.
 
-Supports Minecraft **1.20.1 / Forge 47.4.2+** with **Java 17**, **1.21.1 / NeoForge 21.1+** (validated with 21.1.252) with **Java 21**, and **26.1.2 / NeoForge 26.1.2.0+** (validated with 26.1.2.112) with **Java 25**. Requires **KineticCore 26.10.12+** matching the Minecraft/loader. Install required mods on the server and connecting clients.
+Supports Minecraft **1.20.1 / Forge 47.4.2+** with **Java 17**, **1.21.1 / NeoForge 21.1+** (validated with 21.1.252) with **Java 21**, and **26.1.2 / NeoForge 26.1.2.0+** (validated with 26.1.2.112) with **Java 25**. Requires **KineticCore 26.11.24+** matching the Minecraft/loader. Install required mods on the server and connecting clients.
 
 Optional: Curios, KubeJS and JEI builds matching the Minecraft/loader.
 
@@ -33,7 +33,7 @@ Item Control 提供物品规则、属性、掉落物保护、清理与创造标�
 - 自动与手动清理、历史回收及清理保护区域。
 - 创造标签页管理及可选 KubeJS、JEI 联动。
 
-支持 Minecraft **1.20.1 / Forge 47.4.2+**（**Java 17**）、**1.21.1 / NeoForge 21.1+**（验证使用 21.1.252，**Java 21**），以及 **26.1.2 / NeoForge 26.1.2.0+**（验证使用 26.1.2.112，**Java 25**）；必需与 Minecraft、加载器匹配的 **KineticCore 26.10.12+**。服务端与连接的客户端均安装必需模组。
+支持 Minecraft **1.20.1 / Forge 47.4.2+**（**Java 17**）、**1.21.1 / NeoForge 21.1+**（验证使用 21.1.252，**Java 21**），以及 **26.1.2 / NeoForge 26.1.2.0+**（验证使用 26.1.2.112，**Java 25**）；必需与 Minecraft、加载器匹配的 **KineticCore 26.11.24+**。服务端与连接的客户端均安装必需模组。
 
 可选：与 Minecraft 和加载器匹配的 Curios、KubeJS、JEI。
 
@@ -57,3 +57,19 @@ See the [English Wiki tutorial](https://github.com/JMK-39/ItemControl/wiki/Tutor
 详细用法见[中文 Wiki 教程](https://github.com/JMK-39/ItemControl/wiki/使用教程)。
 
 [Changelog / 更新日志](CHANGELOG.md)
+
+## Configuration files / 配置文件
+
+Requires KineticCore 26.11.24 or newer. Configuration files are grouped under `config/kineticcore/itemcontrol/`. Old files migrate automatically before loading; an existing new file wins and the conflicting old file is preserved.
+
+需要 KineticCore 26.11.24 或更新版本。配置统一归档在 `config/kineticcore/itemcontrol/`；首次读取前自动迁移旧文件，已有新文件优先，并保留发生冲突的旧文件。
+
+| Old path below `config/kineticcore/` / 旧相对路径 | New filename / 新文件名 |
+| --- | --- |
+| `banitem.json` | `item_rules.json` |
+| `banitem.old.json` | `item_rules_backup.json` |
+| `item_properties.json` | `item_properties.json` |
+| `item_property_templates.json` | `item_property_templates.json` |
+| `creative_tabs.json` | `creative_tabs.json` |
+| `cleaner.toml` | `cleaner.toml` |
+| `protection.toml` | `protection.toml` |

@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 public class ItemProtectionConfig {
-    private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/protection.toml");
+    private static final Path CONFIG_PATH = KineticPaths.configFile("kineticcore/itemcontrol/protection.toml");
     private static CommentedFileConfig configData;
 
     //? if >=1.21 {
@@ -121,7 +121,9 @@ public static class ProtectionRule {
     public static List<String> globalDirectEntityImmunityRaw = new ArrayList<>();
 
     public static void load() {
+        KineticPaths.migrateConfigFile("kineticcore/protection.toml", "kineticcore/itemcontrol/protection.toml");
         try {
+            KineticPaths.ensureConfigDirectory("kineticcore/itemcontrol");
             configData = CommentedFileConfig.builder(CONFIG_PATH)
                     .sync().preserveInsertionOrder().writingMode(WritingMode.REPLACE).build();
             configData.load();

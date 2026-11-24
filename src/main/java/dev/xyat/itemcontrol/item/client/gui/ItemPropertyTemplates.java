@@ -12,14 +12,16 @@ import java.nio.file.Path;
 
 /** Client-local reusable templates; importing never activates or saves server item rules. */
 final class ItemPropertyTemplates {
-    private static final String FILE="kineticcore/item_property_templates.json";
+    private static final String FILE="kineticcore/itemcontrol/item_property_templates.json";
     private ItemPropertyTemplates(){}
     static Map<String,ItemRuleDrafts.Template> load() throws java.io.IOException {
+        KineticPaths.migrateConfigFile("kineticcore/item_property_templates.json", FILE);
         var result=new LinkedHashMap<String,ItemRuleDrafts.Template>();if(!KineticPaths.configFileExists(FILE))return result;
         var json=JsonParser.parseString(KineticPaths.readConfigText(FILE)).getAsJsonObject();
         for(var raw:json.entrySet()){var template=ItemRuleDrafts.decodeTemplate(raw.getValue().toString());result.put(template.name(),template);}return result;
     }
     static void save(Map<String,ItemRuleDrafts.Template> templates) throws java.io.IOException{
+        KineticPaths.migrateConfigFile("kineticcore/item_property_templates.json", FILE);
         var root=new JsonObject();for(var template:templates.values())root.add(template.name(),JsonParser.parseString(ItemRuleDrafts.encodeTemplate(template.name(),template.fields(),template.selectedFields())));
         KineticPaths.writeConfigTextsAtomic(Map.of(FILE,new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root)));
     }

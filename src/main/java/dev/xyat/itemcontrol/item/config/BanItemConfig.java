@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
 public class BanItemConfig {
     private static final Logger LOGGER = LogManager.getLogger("itemcontrol/Config");
     public static final String VOID_ID = "itemcontrol:void_placeholder";
-    public static final Path PATH = KineticPaths.configFile("kineticcore/banitem.json");
-    public static final Path BACKUP_PATH = KineticPaths.configFile("kineticcore/banitem.old.json");
+    public static final Path PATH = KineticPaths.configFile("kineticcore/itemcontrol/item_rules.json");
+    public static final Path BACKUP_PATH = KineticPaths.configFile("kineticcore/itemcontrol/item_rules_backup.json");
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     public static volatile Data data = new Data();
     public static volatile Map<ItemRule, String> ruleReplacementMap = new HashMap<>();
@@ -613,15 +613,17 @@ private static String normalizeRuleIdentifier(String identifier) {
     static { load(); }
 
     public static void load() {
+        KineticPaths.migrateConfigFile("kineticcore/banitem.json", "kineticcore/itemcontrol/item_rules.json");
+        KineticPaths.migrateConfigFile("kineticcore/banitem.old.json", "kineticcore/itemcontrol/item_rules_backup.json");
         try {
-            if (KineticPaths.configFileExists("kineticcore/banitem.json")) {
-                String json = KineticPaths.readConfigText("kineticcore/banitem.json");
+            if (KineticPaths.configFileExists("kineticcore/itemcontrol/item_rules.json")) {
+                String json = KineticPaths.readConfigText("kineticcore/itemcontrol/item_rules.json");
                 data = readDataFromJson(json, "load");
             } else {
                 data = new Data();
             }
             normalizeData();
-            if (!KineticPaths.configFileExists("kineticcore/banitem.json")) writeConfigOnly();
+            if (!KineticPaths.configFileExists("kineticcore/itemcontrol/item_rules.json")) writeConfigOnly();
         } catch (Throwable e) {
             LOGGER.error("配置加载失败，已备份异常文件并使用空白安全配置", e);
             backupBrokenConfig();
@@ -705,20 +707,20 @@ private static String normalizeRuleIdentifier(String identifier) {
     private static void writeConfigOnly() {
         try {
             KineticPaths.writeConfigTextsAtomic(Map.of(
-                    "kineticcore/banitem.json",
+                    "kineticcore/itemcontrol/item_rules.json",
                     GSON.toJson(data == null ? new Data() : data)
             ));
         } catch (Throwable e) {
-            throw new IllegalStateException("写入 banitem.json 失败", e);
+            throw new IllegalStateException("写入 item_rules.json 失败", e);
         }
     }
 
     private static void backupBrokenConfig() {
         try {
-            if (!KineticPaths.configFileExists("kineticcore/banitem.json")) return;
+            if (!KineticPaths.configFileExists("kineticcore/itemcontrol/item_rules.json")) return;
             KineticPaths.writeConfigText(
-                    "kineticcore/banitem.old.json",
-                    KineticPaths.readConfigText("kineticcore/banitem.json")
+                    "kineticcore/itemcontrol/item_rules_backup.json",
+                    KineticPaths.readConfigText("kineticcore/itemcontrol/item_rules.json")
             );
             LOGGER.warn("已备份异常配置到 {}", BACKUP_PATH);
         } catch (Throwable e) {

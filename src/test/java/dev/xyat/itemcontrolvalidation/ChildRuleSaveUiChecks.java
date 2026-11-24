@@ -53,12 +53,19 @@ public final class ChildRuleSaveUiChecks {
             default -> new CurioSlotModifierEditorPage(rules, result::set);
         };
     }
-    private static KineticTextField field(int kind) {
-        int x = kind == 2 ? 312 : kind == 3 ? 326 : 396;
-        int y = kind == 2 ? 74 : kind == 3 ? 58 : 100;
+    static KineticTextField field(int kind) {
+        Class<?> page = KineticGui.currentPage().getClass();
+        int x = kind == 3 ? layout(page, "AMOUNT_X") : layout(page, "FORM_X");
+        if (kind < 2) x += layout(page, "MODE_W") + 4;
+        int y = kind == 3 ? 28 : layout(page, "ROW1_Y");
         for (var control : Minecraft.getInstance().screen.children())
             if (control instanceof KineticTextField field && field.controlX() == x && field.controlY() == y) return field;
         throw new AssertionError("actual child input missing " + kind);
+    }
+    private static int layout(Class<?> page, String name) {
+        try {
+            var field = page.getDeclaredField(name); field.setAccessible(true); return field.getInt(null);
+        } catch (ReflectiveOperationException error) { throw new AssertionError("Missing current form layout: " + name, error); }
     }
     private static void press(String key) {
         String label = KineticI18n.translatable("gui.itemcontrol.item_property." + key).getString();

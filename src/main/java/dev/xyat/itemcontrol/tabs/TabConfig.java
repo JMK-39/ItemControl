@@ -19,7 +19,7 @@ public final class TabConfig {
     private static final int MAX_ADDITIONS = 4096;
     private static final int MAX_ITEMS_PER_TAB = 4096;
     private static final int MAX_HIDDEN_TABS = 4096;
-    private static final String CONFIG_FILE = "kineticcore/creative_tabs.json";
+    private static final String CONFIG_FILE = "kineticcore/itemcontrol/creative_tabs.json";
 
     public static Data data = new Data();
     public static Data currentEditing = null;
@@ -47,6 +47,7 @@ public final class TabConfig {
     }
 
     private static boolean loadInternal() {
+        KineticPaths.migrateConfigFile("kineticcore/creative_tabs.json", CONFIG_FILE);
         if (KineticPaths.configFileExists(CONFIG_FILE)) {
             try {
                 Data loaded = GSON.fromJson(KineticPaths.readConfigText(CONFIG_FILE), Data.class);

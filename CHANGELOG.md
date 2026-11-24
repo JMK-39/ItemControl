@@ -1,3 +1,11 @@
+## 26.11.24 — 2026-11-24
+- Configuration files now live under `config/kineticcore/itemcontrol/`; legacy files migrate automatically without replacing existing new files. Requires KineticCore 26.11.24.
+- 配置归档至 `config/kineticcore/itemcontrol/`，旧文件自动迁移且不覆盖已有新文件；需要 KineticCore 26.11.24。
+
+## 26.11.20 — 2026-11-20
+- Item property edits no longer fail because an unrelated saved item has invalid legacy accessory or food settings. Unchanged rules are preserved for repair; new and changed rules still validate against the server's saved document, including duplicate item IDs and numeric limits. Rejected changes now log the affected item ID and validation errors.
+- 物品属性编辑不再因其他物品遗留的无效饰品或食物配置而无法保存。未改动的旧规则会保留以便修复；新建、修改的规则仍对照服务端已保存文档严格校验，包括重复物品 ID 和数值范围。拒绝保存时，日志会指出相关物品 ID 和具体校验错误。
+
 ## 26.10.26 — 2026-10-26
 - Item properties have a Never Breaks switch next to Max Durability (combat, tool and general categories): the item stops wearing out and hides its durability bar. Elytra-style chestplates, such as the ignitium elytra chestplate, keep gliding when set to never break or to no durability, even if the stack was already worn down.
 - 物品属性在“最大耐久”旁新增“不会损坏”开关（战斗类、工具类、通用类）：物品不再消耗耐久并隐藏耐久条。带鞘翅的胸甲（例如腾炎鞘翅胸甲）设为不会损坏或无耐久后照常滑翔，即使物品之前已经磨损。

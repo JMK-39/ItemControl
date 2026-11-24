@@ -44,6 +44,7 @@ if (project.property('loader') == 'forge') {
         dependsOn 'testClasses', writeCaptureMetadata
         from(sourceSets.test.output) { include 'dev/xyat/itemcontrolvalidation/GuiLongTextValidation*.class', 'dev/xyat/itemcontrolvalidation/ItemPlaytestValidation*.class', 'dev/xyat/itemcontrolvalidation/GuiCaptureForgeEntry.class', 'dev/xyat/itemcontrolvalidation/ItemPropertyRuntimeChecks*.class', 'dev/xyat/itemcontrolvalidation/CurioRuntimeChecks*.class', 'dev/xyat/itemcontrolvalidation/CurioNativeValidation*.class', 'dev/xyat/itemcontrolvalidation/ItemLayoutValidation.class', 'dev/xyat/itemcontrolvalidation/ItemEditorSaveValidation*.class', 'dev/xyat/itemcontrolvalidation/ItemAttributeDropdownValidation*.class', 'dev/xyat/itemcontrolvalidation/ChildRuleSaveUiChecks*.class' }
         from captureMetadata
+        from(sourceSets.test.output) { include 'dev/xyat/itemcontrolvalidation/ItemPropertySaveChecks*.class' }
         archiveFileName = 'itemcontrol-gui-capture.jar'
     }
     afterEvaluate {

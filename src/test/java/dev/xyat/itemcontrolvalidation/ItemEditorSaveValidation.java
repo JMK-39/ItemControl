@@ -20,6 +20,8 @@ public final class ItemEditorSaveValidation {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ItemEditorSaveValidation.class);
     private static ItemPropertyEditorPage editor;
     private static String before;
+    private static String beforeDisk;
+    private static String beforeActive;
     private static String beforeTags;
     private static dev.xyat.itemcontrol.item.client.gui.ItemTagEditorPage tagEditor;
     private static int step;
@@ -53,6 +55,10 @@ public final class ItemEditorSaveValidation {
                             permissionCaptured = true;
                             players.op(identity);
                             require(player.hasPermissions(2), "owned validation player has editor permission");
+                            before = ItemPropertyConfig.pendingJson();
+                            beforeActive = ItemPropertyConfig.activeJson();
+                            beforeDisk = KineticPaths.readConfigText("kineticcore/itemcontrol/item_properties.json");
+                            ItemPropertySaveChecks.prepare();
                             serverCheck.complete(null);
                         } catch (Throwable failure) { serverCheck.completeExceptionally(failure); }
                     });
@@ -61,8 +67,7 @@ public final class ItemEditorSaveValidation {
                 if (!serverCheck.isDone()) return;
                 serverCheck.join();
                 mc.options.pauseOnLostFocus = false;
-                before = ItemPropertyConfig.pendingJson();
-                editor = new ItemPropertyEditorPage(before);
+                editor = new ItemPropertyEditorPage(ItemPropertyConfig.pendingJson());
                 KineticGui.open(editor);
                 verifyProtectionPreview();
                 ChildRuleSaveUiChecks.run();
@@ -114,11 +119,13 @@ public final class ItemEditorSaveValidation {
                 serverCheck = new CompletableFuture<>();
                 mc.getSingleplayerServer().execute(() -> {
                     try {
-                        var disk = JsonParser.parseString(KineticPaths.readConfigText("kineticcore/item_properties.json")).getAsJsonObject();
+                        var disk = JsonParser.parseString(KineticPaths.readConfigText("kineticcore/itemcontrol/item_properties.json")).getAsJsonObject();
                         require(disk.getAsJsonObject("minecraft:brick").get("armor").getAsInt() == 12, "real save persists disk JSON");
+                        ItemPropertySaveChecks.verifyLegacyRows(disk);
                         require(ItemPropertyConfig.active(dev.xyat.kineticcore.api.resource.KineticResourceIds.parse("minecraft:brick")).armor() == 12,
                                 "real save activates runtime snapshot");
                         ItemPropertyConfig.load();
+                        ItemPropertySaveChecks.verifyLegacyRows(JsonParser.parseString(ItemPropertyConfig.pendingJson()).getAsJsonObject());
                         require(JsonParser.parseString(ItemPropertyConfig.pendingJson()).getAsJsonObject().getAsJsonObject("minecraft:brick").get("armor").getAsInt() == 12,
                                 "reload retains saved fields");
                         serverCheck.complete(null);
@@ -160,7 +167,7 @@ public final class ItemEditorSaveValidation {
             if (step == 3 || step == 5) {
                 require(System.currentTimeMillis() < deadline, "tag disk persistence timeout");
                 boolean shouldContain = step == 3;
-                var disk = JsonParser.parseString(KineticPaths.readConfigText("kineticcore/banitem.json")).getAsJsonObject();
+                var disk = JsonParser.parseString(KineticPaths.readConfigText("kineticcore/itemcontrol/item_rules.json")).getAsJsonObject();
                 var configured = disk.getAsJsonObject("addedItemTags");
                 boolean contains = configured != null && configured.has("minecraft:paper")
                         && configured.getAsJsonArray("minecraft:paper").asList().stream().anyMatch(tag -> tag.getAsString().equals("curios:ring"));
@@ -220,10 +227,7 @@ public final class ItemEditorSaveValidation {
         throw new AssertionError("actual Save button missing");
     }
     private static KineticTextField amountInput() {
-        for (var control : Minecraft.getInstance().screen.children()) {
-            if (control instanceof KineticTextField field && field.controlX() == 396 && field.controlY() == 100) return field;
-        }
-        throw new AssertionError("actual attribute amount field missing");
+        return ChildRuleSaveUiChecks.field(0);
     }
     private static void verifyProtectionPreview() throws Exception {
         //? if >=26.1 {
@@ -274,8 +278,15 @@ public final class ItemEditorSaveValidation {
             boolean restored = true;
             try {
                 if (before != null) {
-                    require(ItemPropertyConfig.savePending(before).success(), "restore fixture rules");
-                    ItemEquipmentRefresh.applyPending(server);
+                    // Rollback must not depend on accepting an edit to the user's own invalid legacy rows.
+                    if (beforeDisk != null) KineticPaths.writeConfigTextsAtomic(Map.of("kineticcore/itemcontrol/item_properties.json", beforeDisk));
+                    Map<net.minecraft.world.entity.LivingEntity, java.util.List<ItemEquipmentRefresh.ModifierEntry>> old = new java.util.IdentityHashMap<>();
+                    for (var level : server.getAllLevels()) for (var entity : level.getAllEntities())
+                        if (entity instanceof net.minecraft.world.entity.LivingEntity living) old.put(living, ItemEquipmentRefresh.collect(living));
+                    ItemPropertyConfig.applyServerSnapshots(before, beforeActive);
+                    old.forEach(ItemEquipmentRefresh::refresh);
+                    require(before.equals(ItemPropertyConfig.pendingJson()) && beforeActive.equals(ItemPropertyConfig.activeJson()), "restore exact original snapshots");
+                    require(beforeDisk.equals(KineticPaths.readConfigText("kineticcore/itemcontrol/item_properties.json")), "restore exact original disk text");
                     if (beforeTags != null) require(dev.xyat.itemcontrol.item.config.BanItemConfig.applyJson(beforeTags, "editor validation restore", true), "restore fixture tags");
                     dev.xyat.itemcontrol.item.network.ItemNetwork.syncServerConfigToAllPlayers();
                 }
