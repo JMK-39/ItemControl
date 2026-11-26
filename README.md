@@ -4,6 +4,10 @@
 
 Item Control provides visual management for item rules, properties, dropped-item protection, cleanup, and creative tabs.
 
+Choose which properties to change in bulk, then review the original values and the unsaved draft. [Item properties guide](https://github.com/JMK-39/ItemControl/wiki/Item-Properties-and-Protection)
+
+<img src="https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/showcase-20261126/en/item-drafts.gif" alt="Captured item property editor views showing bulk fields and original versus unsaved draft values" width="640">
+
 - Item bans, unification, tags, and item/accessory property editing with optional Curios integration.
 - Automatic/manual cleanup with recoverable trash history and protected areas.
 - Creative-tab curation and optional KubeJS/JEI integration.
@@ -28,6 +32,10 @@ Saved changes apply to held and equipped items. On Minecraft 26.1.2, enchantabil
 ## 简体中文
 
 Item Control 提供物品规则、属性、掉落物保护、清理与创造标签页的可视化管理。
+
+勾选要批量修改的属性，再并排核对物品原值与未保存的草稿。 [物品属性指南](https://github.com/JMK-39/ItemControl/wiki/%E7%89%A9%E5%93%81%E5%B1%9E%E6%80%A7%E4%B8%8E%E6%8E%89%E8%90%BD%E7%89%A9%E4%BF%9D%E6%8A%A4)
+
+<img src="https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/showcase-20261126/zh/item-drafts.gif" alt="批量属性字段、物品原值与未保存草稿的编辑器实拍" width="640">
 
 - 物品封禁、统一、标签及物品与饰品属性编辑，可选联动 Curios。
 - 自动与手动清理、历史回收及清理保护区域。
