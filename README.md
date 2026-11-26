@@ -4,9 +4,20 @@
 
 Item Control provides visual management for item rules, properties, dropped-item protection, cleanup, and creative tabs.
 
-Choose which properties to change in bulk, then review the original values and the unsaved draft. [Item properties guide](https://github.com/JMK-39/ItemControl/wiki/Item-Properties-and-Protection)
+### Give an iron helmet 10 armor
 
-<img src="https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/showcase-20261126/en/item-drafts.gif" alt="Captured item property editor views showing bulk fields and original versus unsaved draft values" width="640">
+Select the helmet to see its original armor value of 2. Add a rule, set armor to 10 and save. The inventory tooltip shows +10 armor, and equipping that same helmet adds 10 armor to the player.
+
+![Continuous gameplay showing the iron helmet armor rule, Save, the inventory tooltip, and equipping the helmet](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/tutorials-20261126/en.gif)
+
+<details>
+<summary>Full walkthrough with Mandarin narration</summary>
+
+https://github.com/user-attachments/assets/3e8cb385-561d-438a-a452-3680d1f04700
+
+</details>
+
+[Editor guide](https://github.com/JMK-39/ItemControl/wiki/Item-Properties-and-Protection)
 
 - Item bans, unification, tags, and item/accessory property editing with optional Curios integration.
 - Automatic/manual cleanup with recoverable trash history and protected areas.
@@ -33,9 +44,20 @@ Saved changes apply to held and equipped items. On Minecraft 26.1.2, enchantabil
 
 Item Control 提供物品规则、属性、掉落物保护、清理与创造标签页的可视化管理。
 
-勾选要批量修改的属性，再并排核对物品原值与未保存的草稿。 [物品属性指南](https://github.com/JMK-39/ItemControl/wiki/%E7%89%A9%E5%93%81%E5%B1%9E%E6%80%A7%E4%B8%8E%E6%8E%89%E8%90%BD%E7%89%A9%E4%BF%9D%E6%8A%A4)
+### 让铁头盔提供 10 点护甲
 
-<img src="https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/showcase-20261126/zh/item-drafts.gif" alt="批量属性字段、物品原值与未保存草稿的编辑器实拍" width="640">
+选中铁头盔，右侧就能看到原有的 2 点护甲。添加规则，把护甲改为 10 并保存。打开背包，提示已经变成「+10 护甲值」。穿上这一顶，角色也确实获得了 10 点护甲。
+
+![在物品编辑器修改铁头盔护甲、保存规则并穿戴核对的连续实录](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/tutorials-20261126/zh.gif)
+
+<details>
+<summary>播放完整普通话讲解</summary>
+
+https://github.com/user-attachments/assets/3e8cb385-561d-438a-a452-3680d1f04700
+
+</details>
+
+[编辑器使用指南](https://github.com/JMK-39/ItemControl/wiki/%E7%89%A9%E5%93%81%E5%B1%9E%E6%80%A7%E4%B8%8E%E6%8E%89%E8%90%BD%E7%89%A9%E4%BF%9D%E6%8A%A4)
 
 - 物品封禁、统一、标签及物品与饰品属性编辑，可选联动 Curios。
 - 自动与手动清理、历史回收及清理保护区域。
