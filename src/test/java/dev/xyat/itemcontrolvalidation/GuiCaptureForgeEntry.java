@@ -5,6 +5,7 @@ package dev.xyat.itemcontrolvalidation;
 @net.minecraftforge.fml.common.Mod("itemcontrol_validation")
 public final class GuiCaptureForgeEntry {
     public GuiCaptureForgeEntry() {
+        if (Boolean.getBoolean("itemcontrol.banValidation")) { ItemBanRuntimeChecks.install(); return; }
         if (Boolean.getBoolean("itemcontrol.curioValidation")) { CurioNativeValidation.install(); return; }
         if (Boolean.getBoolean("itemcontrol.layoutValidation")) {
             dev.xyat.kineticcore.api.runtime.KineticPlatform.runOnClient(() -> ItemLayoutValidation::install);

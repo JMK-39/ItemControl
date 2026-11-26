@@ -23,7 +23,8 @@ import java.util.function.Consumer;
  * Keeps banned items out of the world at every place they enter it, not only when they are put into a menu slot:
  * generated loot (chests, mob and block drops, fishing, archaeology, loot modifiers), every dropped item entity
  * (including mob equipment and items from saves), items given straight into a player's inventory, and banned items
- * already sitting in a container or inventory when it is opened. Every hook returns at once when nothing is banned.
+ * already sitting in a container or inventory when it is opened. Legacy internal ban markers are cleared even
+ * after all user ban rules have been removed.
  */
 public final class ItemBanMixins {
     private ItemBanMixins() {
@@ -36,7 +37,6 @@ public final class ItemBanMixins {
                 method = "getRandomItemsRaw(Lnet/minecraft/world/level/storage/loot/LootContext;Ljava/util/function/Consumer;)V",
                 at = @At("HEAD"), argsOnly = true)
         private Consumer<ItemStack> itemcontrol_ban$filterLoot(Consumer<ItemStack> output) {
-            if (!BanItemConfig.hasBanRules()) return output;
             return stack -> {
                 if (!BanItemConfig.isVoided(stack)) output.accept(stack);
             };
@@ -48,7 +48,7 @@ public final class ItemBanMixins {
                 at = @At("RETURN"))
         private void itemcontrol_ban$filterModifiedLoot(LootContext context, CallbackInfoReturnable<ObjectArrayList<ItemStack>> cir) {
             ObjectArrayList<ItemStack> items = cir.getReturnValue();
-            if (items != null && !items.isEmpty() && BanItemConfig.hasBanRules()) items.removeIf(BanItemConfig::isVoided);
+            if (items != null && !items.isEmpty()) items.removeIf(BanItemConfig::isVoided);
         }
     }
 
@@ -82,7 +82,7 @@ public final class ItemBanMixins {
         /** Containers filled before an item was banned are cleaned when someone opens them (and the player's own slots). */
         @Inject(method = "initMenu", at = @At("HEAD"))
         private void itemcontrol_ban$sweepOpenedMenu(AbstractContainerMenu menu, CallbackInfo ci) {
-            if (menu == null || !BanItemConfig.hasBanRules()) return;
+            if (menu == null) return;
             for (Slot slot : menu.slots) {
                 if (BanItemConfig.isVoided(slot.getItem())) slot.set(ItemStack.EMPTY);
             }

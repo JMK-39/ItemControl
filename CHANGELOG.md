@@ -1,3 +1,7 @@
+## 26.11.26 — 2026-11-26
+- Legacy internal ban placeholders, which use a barrier icon, become empty when server items load or are created. Old chest contents and generated loot also discard them after the ban list is cleared. Intentional vanilla barrier rewards and client item-editor previews remain available.
+- 使用屏障图标的旧封禁占位物在服务端物品载入或创建时变为空；即使封禁列表已清空，旧箱子和生成战利品也会清除它们。原版屏障奖励和客户端物品编辑器预览正常保留。
+
 ## 26.11.24 — 2026-11-24
 - Configuration files now live under `config/kineticcore/itemcontrol/`; legacy files migrate automatically without replacing existing new files. Requires KineticCore 26.11.24.
 - 配置归档至 `config/kineticcore/itemcontrol/`，旧文件自动迁移且不覆盖已有新文件；需要 KineticCore 26.11.24。

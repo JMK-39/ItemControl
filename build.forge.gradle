@@ -34,12 +34,22 @@ legacyForge {
             server()
             systemProperty 'forge.enabledGameTestNamespaces', kineticModId
             programArgument '--nogui'
+            if (project.findProperty('kinetic_ban_validation')?.toString()?.toBoolean()) {
+                gameDirectory = rootProject.file('.gradle/ban-validation-server')
+                systemProperty 'itemcontrol.banValidation', 'true'
+                systemProperty 'itemcontrol.banValidation.stopAfter', 'true'
+            }
         }
     }
 
     mods {
         "${kineticModId}" {
             sourceSet sourceSets.main
+        }
+        if (project.findProperty('kinetic_ban_validation')?.toString()?.toBoolean()) {
+            itemcontrol_validation {
+                sourceSet sourceSets.test
+            }
         }
     }
 }

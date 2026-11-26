@@ -12,6 +12,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import dev.xyat.itemcontrol.item.util.ItemBanControl;
+import dev.xyat.itemcontrol.item.VoidPlaceholderItem;
 import dev.xyat.kineticcore.api.registry.KineticRegistries;
 import dev.xyat.kineticcore.api.resource.KineticResourceIds;
 import dev.xyat.kineticcore.api.runtime.KineticPaths;
@@ -76,9 +77,15 @@ public class BanItemConfig {
         return map.isEmpty() ? null : map.get(source);
     }
 
-    /** Whether the stack is banned and bans are active right now (the world-entry hooks use this). */
+    /** Whether a saved internal ban marker or a currently banned item must become empty. */
     public static boolean isVoided(ItemStack stack) {
-        return stack != null && !stack.isEmpty() && hasBanRules() && !ItemBanControl.shouldSkip() && isBanned(stack);
+        return stack != null && !stack.isEmpty() && !ItemBanControl.shouldSkip()
+                && (isVoidPlaceholder(stack) || isBanned(stack));
+    }
+
+    /** The legacy marker used a barrier texture, but is never a real gameplay reward. */
+    public static boolean isVoidPlaceholder(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && stack.getItem() instanceof VoidPlaceholderItem;
     }
 
     /** Whether any ban rule exists; lets the per-item hooks return at once in packs that ban nothing. */

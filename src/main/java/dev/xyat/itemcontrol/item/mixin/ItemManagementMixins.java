@@ -108,7 +108,7 @@ public class ItemManagementMixins {
         private void itemcontrol_item$replaceMergedItem() {
             if (item == null || ItemBanControl.shouldSkip()) return;
             ItemStack self = (ItemStack) (Object) this;
-            String target = BanItemConfig.getReplacement(self);
+            String target = BanItemConfig.isVoidPlaceholder(self) ? BanItemConfig.VOID_ID : BanItemConfig.getReplacement(self);
             if (target == null || target.isBlank()) return;
             if (BanItemConfig.VOID_ID.equals(target)) {
                 // A banned item created on the server is air from the start (One Enough Item's approach).
@@ -180,7 +180,7 @@ public class ItemManagementMixins {
         private void itemcontrol_item$replaceMergedItem() {
             if (item == null || ItemBanControl.shouldSkip()) return;
             ItemStack self = (ItemStack) (Object) this;
-            String target = BanItemConfig.getReplacement(self);
+            String target = BanItemConfig.isVoidPlaceholder(self) ? BanItemConfig.VOID_ID : BanItemConfig.getReplacement(self);
             if (target == null || target.isBlank()) return;
             if (BanItemConfig.VOID_ID.equals(target)) {
                 // A banned item created on the server is air from the start (One Enough Item's approach).
@@ -215,7 +215,7 @@ public class ItemManagementMixins {
             if (item == null || ItemBanControl.shouldSkip()) return;
 
             ItemStack self = (ItemStack) (Object) this;
-            String replacement = BanItemConfig.getReplacement(self);
+            String replacement = BanItemConfig.isVoidPlaceholder(self) ? BanItemConfig.VOID_ID : BanItemConfig.getReplacement(self);
             if (replacement == null || replacement.isBlank()) return;
             if (BanItemConfig.VOID_ID.equals(replacement)) {
                 // A banned item created on the server is air from the start (One Enough Item's approach). The check also
