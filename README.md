@@ -6,16 +6,12 @@ Item Control provides visual management for item rules, properties, dropped-item
 
 ### Give an iron helmet 10 armor
 
-Select the helmet to see its original armor value of 2. Add a rule, set armor to 10 and save. The inventory tooltip shows +10 armor, and equipping that same helmet adds 10 armor to the player.
+Select the iron helmet, change its armor from 2 to 10, and save. Its inventory tooltip now shows +10 armor. Equipping it in the recorded modpack raised the player’s total armor from 6 to 16.
 
-![Continuous gameplay showing the iron helmet armor rule, Save, the inventory tooltip, and equipping the helmet](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/tutorials-20261126/en.gif)
+![Continuous gameplay showing the iron helmet armor rule, Save, the inventory tooltip, and equipping the helmet](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/bilingual-editors/ItemControl/en.gif)
 
-<details>
-<summary>Full walkthrough with Mandarin narration</summary>
+[Watch with English narration](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/bilingual-editors/ItemControl/en.mp4) · [Download English subtitles](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/bilingual-editors/ItemControl/en.srt)
 
-https://github.com/user-attachments/assets/3e8cb385-561d-438a-a452-3680d1f04700
-
-</details>
 
 [Editor guide](https://github.com/JMK-39/ItemControl/wiki/Item-Properties-and-Protection)
 
@@ -48,16 +44,12 @@ Item Control 提供物品规则、属性、掉落物保护、清理与创造标�
 
 ### 让铁头盔提供 10 点护甲
 
-选中铁头盔，右侧就能看到原有的 2 点护甲。添加规则，把护甲改为 10 并保存。打开背包，提示已经变成「+10 护甲值」。穿上这一顶，角色也确实获得了 10 点护甲。
+选中铁头盔，把护甲从 2 改为 10 并保存。打开背包就能看到「+10 护甲值」。在这次整合包实录里，戴上头盔后，服务器记录的角色总护甲从 6 升到了 16。
 
-![在物品编辑器修改铁头盔护甲、保存规则并穿戴核对的连续实录](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/tutorials-20261126/zh.gif)
+![在物品编辑器修改铁头盔护甲、保存规则并穿戴核对的连续实录](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/bilingual-editors/ItemControl/zh.gif)
 
-<details>
-<summary>播放完整普通话讲解</summary>
+[观看中文配音版](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/bilingual-editors/ItemControl/zh.mp4) · [下载中文字幕](https://raw.githubusercontent.com/wiki/JMK-39/ItemControl/media/bilingual-editors/ItemControl/zh.srt)
 
-https://github.com/user-attachments/assets/3e8cb385-561d-438a-a452-3680d1f04700
-
-</details>
 
 [编辑器使用指南](https://github.com/JMK-39/ItemControl/wiki/%E7%89%A9%E5%93%81%E5%B1%9E%E6%80%A7%E4%B8%8E%E6%8E%89%E8%90%BD%E7%89%A9%E4%BF%9D%E6%8A%A4)
 
