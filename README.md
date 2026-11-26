@@ -44,6 +44,8 @@ Saved changes apply to held and equipped items. On Minecraft 26.1.2, enchantabil
 
 Item Control 提供物品规则、属性、掉落物保护、清理与创造标签页的可视化管理。
 
+<a name="zh-walkthrough"></a>
+
 ### 让铁头盔提供 10 点护甲
 
 选中铁头盔，右侧就能看到原有的 2 点护甲。添加规则，把护甲改为 10 并保存。打开背包，提示已经变成「+10 护甲值」。穿上这一顶，角色也确实获得了 10 点护甲。
